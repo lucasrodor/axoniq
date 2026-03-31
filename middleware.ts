@@ -1,81 +1,47 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
   try {
-    const { pathname } = request.nextUrl
+    // Dynamically import supabase only when needed
+    const { createServerClient } = await import('@supabase/ssr')
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    // Public routes that don't need auth
-    const publicPaths = ['/login', '/forgot-password', '/reset-password', '/auth']
-    const isPublicPath = pathname === '/' || publicPaths.some(
-      (path) => pathname === path || pathname.startsWith(`${path}/`)
-    )
-    const isApiPath = pathname.startsWith('/api/')
-
-    // Skip middleware for public paths and API routes
-    if (isPublicPath || isApiPath) {
-      if (pathname === '/login') {
-        let response = NextResponse.next({ request: { headers: request.headers } })
-        
-        if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-          const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-            {
-              cookies: {
-                get(name: string) { return request.cookies.get(name)?.value },
-                set(name: string, value: string, options: CookieOptions) {
-                  request.cookies.set({ name, value, ...options })
-                  response.cookies.set({ name, value, ...options })
-                },
-                remove(name: string, options: CookieOptions) {
-                  request.cookies.set({ name, value: '', ...options })
-                  response.cookies.set({ name, value: '', ...options })
-                },
-              },
-            }
-          )
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            return NextResponse.redirect(new URL('/dashboard', request.url))
-          }
-        }
-        return response
-      }
-      return NextResponse.next()
-    }
-
-    // Protected routes — check auth
-    let response = NextResponse.next({ request: { headers: request.headers } })
-
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      // If no env vars, fallback to redirect to login so it doesn't crash protected routes
+    if (!supabaseUrl || !supabaseKey) {
+      // No env vars available — redirect to login for protected routes
+      if (pathname === '/login') return NextResponse.next()
       const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
     }
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          get(name: string) { return request.cookies.get(name)?.value },
-          set(name: string, value: string, options: CookieOptions) {
-            request.cookies.set({ name, value, ...options })
-            response.cookies.set({ name, value, ...options })
-          },
-          remove(name: string, options: CookieOptions) {
-            request.cookies.set({ name, value: '', ...options })
-            response.cookies.set({ name, value: '', ...options })
-          },
+    let response = NextResponse.next({ request: { headers: request.headers } })
+
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        get(name: string) { return request.cookies.get(name)?.value },
+        set(name: string, value: string, options: any) {
+          request.cookies.set({ name, value, ...options })
+          response.cookies.set({ name, value, ...options })
         },
-      }
-    )
+        remove(name: string, options: any) {
+          request.cookies.set({ name, value: '', ...options })
+          response.cookies.set({ name, value: '', ...options })
+        },
+      },
+    })
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
+    // If on /login and already logged in, redirect to dashboard
+    if (pathname === '/login' && user) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // Protected routes: if not logged in, redirect to login
+    if (!pathname.startsWith('/login') && !user) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
@@ -83,13 +49,15 @@ export async function middleware(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Middleware execution failed:', error)
+    console.error('Middleware error:', error)
+    // On error, let the request through rather than crashing
     return NextResponse.next()
   }
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/dashboard/:path*',
+    '/login',
   ],
 }
