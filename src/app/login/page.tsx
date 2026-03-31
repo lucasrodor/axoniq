@@ -38,8 +38,7 @@ export default function LoginPage() {
         })
         if (error) throw error
         toast('Bem-vindo de volta!', 'success')
-        router.push('/dashboard')
-        router.refresh()
+        window.location.href = '/dashboard'
       }
     } catch (error) {
       console.error(error)
