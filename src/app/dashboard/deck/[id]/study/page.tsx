@@ -18,6 +18,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
 // Dynamically import MarkdownDisplay to avoid Turbopack bundling issues/panics
 const MarkdownDisplay = dynamic(() => import('@/components/ui/markdown-display'), { ssr: false })
@@ -253,55 +259,51 @@ export default function StudyPage({
   const stage = getCardStage(currentCard)
 
   return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col relative overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 bg-[#09090B] relative overflow-hidden selection:bg-blue-500/30">
+      {/* Background Aurora */}
+      <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
       {/* Header / Progress */}
-      <div className="p-6 flex items-center justify-between z-10">
-        <Link href={`/dashboard/deck/${id}`}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-[var(--muted-foreground)]"
-          >
-            <ChevronLeft />
-          </Button>
-        </Link>
-        <div className="flex flex-col items-center">
-          <span className="text-sm font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-            {currentIndex + 1} / {cards.length}
+      <div className="flex justify-center p-3 border-b border-zinc-900 bg-zinc-950/30 backdrop-blur-sm z-10 w-full">
+        <div className="w-full max-w-xl grid grid-cols-3 items-center">
+        <div className="flex justify-start">
+          <Link href={`/dashboard/deck/${id}`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900/50 transition-all rounded-xl px-4"
+            >
+              <ChevronLeft size={18} className="mr-2" /> PAINEL
+            </Button>
+          </Link>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center">
+          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
+            PROGRESSO: {currentIndex + 1} / {cards.length}
           </span>
-          <div className="w-32 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full mt-2 overflow-hidden">
+          <div className="w-32 h-1.5 bg-zinc-900 border border-zinc-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-blue-500 transition-all duration-300 rounded-full"
+              className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-300 rounded-full"
               style={{
                 width: `${((currentIndex + 1) / cards.length) * 100}%`,
               }}
             />
           </div>
         </div>
-        <div className="w-10" />
+
+        <div className="flex justify-end invisible md:visible">
+          {/* Spacer to keep center balanced */}
+          <div className="w-[100px]" />
+        </div>
       </div>
+</div>
 
       {/* Card Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 pb-32">
-        {/* Stage badge */}
-        <div className="mb-4">
-          <span
-            className={`text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full ${
-              stage === 'new'
-                ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : stage === 'learning'
-                  ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                  : stage === 'mastered'
-                    ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                    : 'text-green-500 bg-green-50 dark:bg-green-900/20'
-            }`}
-          >
-            {getStageLabel(stage)}
-          </span>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center pt-4 pb-2">
 
         <div
-          className="relative w-full max-w-2xl aspect-[3/2] cursor-pointer"
+          className="relative w-full max-w-xl aspect-[3/2.2] cursor-pointer"
           style={{ perspective: '1000px' }}
           onClick={() => setIsFlipped(!isFlipped)}
         >
@@ -318,40 +320,31 @@ export default function StudyPage({
           >
             {/* Front */}
             <div
-              className="absolute inset-0 bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-2xl shadow-xl flex items-center justify-center p-8 text-center"
+              className="absolute inset-0 bg-zinc-900/60 border border-zinc-800/80 rounded-[2.5rem] shadow-2xl backdrop-blur-3xl flex flex-col items-center justify-center p-8 sm:p-12 text-center overflow-hidden"
               style={{ backfaceVisibility: 'hidden' }}
             >
-              <div className="absolute top-6 left-6 flex items-center gap-2">
-                <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">
-                  {currentCard.type === 'cloze' ? 'Preencha a Lacuna' : 'Pergunta'}
-                </span>
-                {currentCard.type === 'cloze' && (
-                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 dark:bg-violet-900/20 px-2 py-0.5 rounded-full">
-                    Lacuna
-                  </span>
-                )}
+              <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
+                <h2 className="text-3xl font-semibold text-zinc-100 leading-snug px-6 flex items-center justify-center text-center">
+                  <MarkdownDisplay content={currentCard.front} raw={true} className="text-inherit !leading-inherit" />
+                </h2>
               </div>
-              <div className="prose prose-sm md:prose-base dark:prose-invert text-2xl md:text-3xl font-medium text-[var(--foreground)] leading-tight max-w-none prose-img:rounded-xl prose-img:mx-auto">
-                <MarkdownDisplay content={currentCard.front} />
-              </div>
-              <div className="absolute bottom-6 text-xs text-[var(--muted-foreground)] flex items-center gap-1 animate-pulse">
-                <RotateCw size={12} /> Clique para virar
+              <div className="absolute bottom-6 text-[10px] uppercase font-black tracking-widest text-zinc-500 flex items-center gap-2 opacity-50">
+                <RotateCw size={10} /> Clique para virar
               </div>
             </div>
 
             {/* Back */}
             <div
-              className="absolute inset-0 bg-zinc-50 dark:bg-zinc-950 border border-[var(--border)] rounded-2xl shadow-xl flex items-center justify-center p-8 text-center"
+              className="absolute inset-0 bg-zinc-950/80 border border-zinc-800/80 rounded-[2.5rem] shadow-[0_0_50px_rgba(16,185,129,0.05)] backdrop-blur-3xl flex items-center justify-center p-8 sm:p-12 text-center overflow-hidden"
               style={{
                 backfaceVisibility: 'hidden',
                 transform: 'rotateY(180deg)',
               }}
             >
-              <div className="absolute top-6 left-6 text-xs font-bold text-green-500 uppercase tracking-widest">
-                Resposta
-              </div>
-              <div className="prose prose-sm md:prose-base dark:prose-invert text-xl md:text-2xl text-[var(--muted-foreground)] leading-relaxed max-w-none prose-img:rounded-xl prose-img:mx-auto">
-                <MarkdownDisplay content={currentCard.back} />
+              <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
+                <div className="text-2xl text-zinc-300 leading-snug font-medium max-w-[95%] flex items-center justify-center text-center">
+                  <MarkdownDisplay content={currentCard.back} raw={true} className="text-inherit !leading-inherit" />
+                </div>
               </div>
             </div>
           </motion.div>
@@ -359,15 +352,15 @@ export default function StudyPage({
       </div>
 
       {/* Controls */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--background)] via-[var(--background)]/95 to-transparent pt-16">
-        <div className="max-w-lg mx-auto">
+      <div className="mt-auto py-2 flex justify-center z-20">
+        <div className="w-full max-w-xl px-6">
           {!isFlipped ? (
             <Button
               size="lg"
-              className="w-full text-lg h-14 shadow-lg"
+              className="w-full text-xs h-16 flex items-center justify-center font-black uppercase tracking-[0.4em] rounded-[2rem] bg-blue-600/10 text-blue-400 border border-blue-500/30 hover:bg-blue-600/20 shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all hover:-translate-y-1 active:scale-95 group"
               onClick={() => setIsFlipped(true)}
             >
-              Mostrar Resposta
+              MOSTRAR RESPOSTA <Zap className="ml-3 group-hover:animate-pulse" size={16} />
             </Button>
           ) : (
             <div className="grid grid-cols-4 gap-2">

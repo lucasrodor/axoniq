@@ -34,7 +34,8 @@ import {
   User
 } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   DndContext,
   useDraggable,
@@ -54,9 +55,33 @@ import {
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+import { cn } from '@/lib/utils'
+import { StatCard, BentoGrid } from '@/components/dashboard/stat-card'
+import { NeuronBackground } from '@/components/dashboard/neuron-background'
+import { DeckCard, DraggableDeck } from '@/components/dashboard/deck-card'
+import { QuizCard, DraggableQuiz } from '@/components/dashboard/quiz-card'
+import { MindMapCard, DraggableMindMap } from '@/components/dashboard/mind-map-card'
+import { FolderHeader, DroppableFolder } from '@/components/dashboard/folder-management'
+import { 
+  RenameItemModal, 
+  CreateChoiceModal, 
+  DeleteConfirmationModal, 
+  LogoutModal, 
+  ReportLimitModal,
+  NewFolderModal,
+  NewDeckModal,
+  NewQuizModal
+} from '@/components/dashboard/dashboard-modals'
+
+import { 
+  Heart, 
+  Activity, 
+  Stethoscope, 
+  Microscope,
+  Baby,
+  Brain as BrainIcon,
+  CircleDot
+} from 'lucide-react'
 
 interface Flashcard {
   id: string
@@ -138,7 +163,8 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [allCards, setAllCards] = useState<Flashcard[]>([])
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
-  const [activeTab, setActiveTab] = useState<DashboardTab>('decks')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<DashboardTab>((searchParams.get('tab') as DashboardTab) || 'decks')
   const [folders, setFolders] = useState<FolderType[]>([])
   const [loading, setLoading] = useState(true)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
@@ -164,6 +190,7 @@ export default function DashboardPage() {
   const [generatingReport, setGeneratingReport] = useState(false)
   const [showReportLimitModal, setShowReportLimitModal] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -308,6 +335,21 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDashboard()
   }, [user])
+
+  // Sync activeTab with URL search params
+  useEffect(() => {
+    const tab = searchParams.get('tab') as DashboardTab
+    if (tab && ['decks', 'quizzes', 'reports', 'mindmaps'].includes(tab) && tab !== activeTab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
+
+  const handleTabChange = (tab: DashboardTab) => {
+    setActiveTab(tab)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.replace(`/dashboard?${params.toString()}`, { scroll: false })
+  }
 
   const handleDragStart = (event: any) => {
     setActiveId(event.active.id)
@@ -536,6 +578,16 @@ export default function DashboardPage() {
     executeReportGeneration()
   }
 
+  const getSpecialtyIcon = (tag: string) => {
+    const t = tag?.toLowerCase() || ''
+    if (t.includes('cardio')) return <Heart size={14} className="text-red-400" />
+    if (t.includes('neuro')) return <BrainIcon size={14} className="text-purple-400" />
+    if (t.includes('pediat')) return <Baby size={14} className="text-blue-300" />
+    if (t.includes('emerg')) return <Activity size={14} className="text-orange-400" />
+    if (t.includes('cirur')) return <Stethoscope size={14} className="text-emerald-400" />
+    return <CircleDot size={14} className="text-emerald-400" />
+  }
+  
   const executeReportGeneration = async () => {
     if (generatingReport) return
     setGeneratingReport(true)
@@ -608,46 +660,77 @@ export default function DashboardPage() {
     }
   }
 
+
   const openRenameItem = (id: string, currentName: string, type: 'deck' | 'quiz' | 'mindmap') => {
     setEditingItemId(id)
     setEditingItemName(currentName)
     setEditingItemType(type)
   }
 
+  // Search Filtering Logic
+  const filteredDecks = decks.filter(d => 
+    d.title.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  const filteredQuizzes = quizzes.filter(q => 
+    q.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    q.specialty_tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    q.quiz_questions?.[0]?.count?.toString().includes(searchTerm)
+  )
+  const filteredMindMaps = mindMaps.filter(m => 
+    m.title.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
   const folderedDecks = folders.map(folder => ({
     folder,
-    decks: decks.filter(d => d.folder_id === folder.id)
+    decks: filteredDecks.filter(d => d.folder_id === folder.id)
   }))
-  const unassignedDecks = decks.filter(d => !d.folder_id)
+  const unassignedDecks = filteredDecks.filter(d => !d.folder_id)
 
   const folderedMindMaps = folders.map(folder => ({
     folder,
-    mindMaps: mindMaps.filter(m => m.folder_id === folder.id)
+    mindMaps: filteredMindMaps.filter(m => m.folder_id === folder.id)
   }))
-  const unassignedMindMaps = mindMaps.filter(m => !m.folder_id)
+  const unassignedMindMaps = filteredMindMaps.filter(m => !m.folder_id)
 
-  const activeDeck = activeId?.startsWith('deck-') ? decks.find(d => d.id === activeId.replace('deck-', '')) : null
-  const activeQuiz = activeId?.startsWith('quiz-') ? quizzes.find(q => q.id === activeId.replace('quiz-', '')) : null
+  const activeIdString = activeId || ''
+  const activeDeck = activeIdString.startsWith('deck-') ? filteredDecks.find(d => d.id === activeIdString.replace('deck-', '')) : null
+  const activeQuiz = activeIdString.startsWith('quiz-') ? filteredQuizzes.find(q => q.id === activeIdString.replace('quiz-', '')) : null
 
-  return (
-    <DndContext 
-      sensors={sensors} 
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      modifiers={[restrictToWindowEdges]}
-    >
-      <div className="min-h-screen bg-[var(--background)] p-4 md:p-12">
-        <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-700">
-          {/* Header */}
-          <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-[var(--border)] pb-6 md:pb-8 gap-4">
+    return (
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="min-h-screen relative clinical-grid">
+        <NeuronBackground />
+        <div className="relative z-10 space-y-10 p-4 md:p-8 max-w-7xl mx-auto">
+        {/* Header - Unified with Bento Search */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between pb-6 md:pb-8 gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--foreground)]">
                 Painel de Estudo
               </h1>
-              <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                Bem-vindo de volta, {user?.email?.split('@')[0]}
+               <p className="text-sm text-zinc-500 mt-1">
+                Bem-vindo de volta, <span className="text-zinc-100 font-medium">{user?.email?.split('@')[0]}</span>
               </p>
             </div>
+
+            {/* Premium Search Bar */}
+            <div className="flex-1 max-w-md mx-4 hidden md:block">
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-blue-500 transition-colors">
+                  <span className="material-symbols-outlined text-[20px]">search</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Buscar decks, questões ou tópicos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-2.5 pl-10 pr-4 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all backdrop-blur-md"
+                />
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                  <span className="text-[10px] font-bold text-zinc-600 border border-zinc-800 px-1.5 py-0.5 rounded-md bg-zinc-900">⌘K</span>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
               <Button 
                 variant="primary" 
@@ -667,68 +750,44 @@ export default function DashboardPage() {
               >
                 <Plus size={16} className="mr-1" /> Criar {activeTab === 'decks' ? 'Deck' : activeTab === 'quizzes' ? 'Quiz' : 'Mapa'}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowNewFolder(true)} className="whitespace-nowrap">
-                <FolderPlus size={14} className="mr-1" /> <span className="hidden sm:inline">Nova </span>Pasta
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowNewFolder(true)} 
+                className="whitespace-nowrap rounded-2xl border-zinc-800 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all duration-500 group/btn"
+              >
+                <FolderPlus size={14} className="mr-2 text-zinc-500 group-hover/btn:text-blue-500 transition-colors" /> 
+                Nova Pasta
               </Button>
               
               {/* Spacer to push profile to the right on mobile */}
               <div className="flex-1 sm:hidden" />
               
-              {/* Desktop: Conta + Sair buttons */}
-              <div className="hidden sm:flex gap-2">
-                <Link href="/dashboard/account">
-                  <Button variant="outline" size="sm" className="whitespace-nowrap">
-                    <Settings size={14} className="mr-1" /> Conta
-                  </Button>
-                </Link>
-                <Button onClick={() => setShowLogoutModal(true)} variant="ghost" size="sm" className="whitespace-nowrap">
-                  <LogOut size={14} className="mr-1" /> Sair
-                </Button>
-              </div>
+              {/* Perfil e Ações movidos para a Sidebar */}
               
-              {/* Mobile: Profile icon dropdown */}
-              <div className="relative sm:hidden">
-                <button 
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                >
-                  <User size={18} />
-                </button>
-                {showProfileMenu && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                    <div className="absolute right-0 top-12 z-50 w-48 bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl shadow-xl py-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <Link href="/dashboard/account" onClick={() => setShowProfileMenu(false)}>
-                        <div className="flex items-center gap-3 px-4 py-3 text-sm text-[var(--foreground)] hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                          <Settings size={16} className="text-[var(--muted-foreground)]" />
-                          Conta
-                        </div>
-                      </Link>
-                      <button 
-                        onClick={() => { setShowProfileMenu(false); setShowLogoutModal(true); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                      >
-                        <LogOut size={16} />
-                        Sair
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              {/* Menu mobile movido para a Sidebar Hamburger */}
             </div>
           </header>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Bento Command Center */}
+          <BentoGrid>
+            <StatCard 
+              className="md:col-span-2"
+              icon={<Zap size={24} />} 
+              label="Devido Hoje" 
+              value={totalDue} 
+              description={totalDue > 0 ? "Você tem revisões pendentes. Mantenha o streak!" : "Tudo em dia! Ótimo trabalho."}
+              color={totalDue > 0 ? "amber" : "emerald"}
+              trend={{ value: 12, positive: true }}
+            />
             <StatCard icon={<Layers size={20} />} label="Decks" value={decks.length} color="blue" />
-            <StatCard icon={<BookOpen size={20} />} label="Flashcards" value={totalCards} color="green" />
-            <StatCard icon={<Clock size={20} />} label="Pendentes" value={totalDue} color="amber" />
             <StatCard icon={<Target size={20} />} label="Estudado" value={`${masteryRate}%`} color="emerald" />
-          </div>
+          </BentoGrid>
 
           {/* Learning Progress Bar */}
           {totalCards > 0 && (
-            <div className="bg-white dark:bg-zinc-900 border border-[var(--border)] p-6 rounded-xl shadow-sm">
+            <div className="glass-panel p-6 rounded-3xl border-zinc-800/50 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl pointer-events-none" />
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-2">
                   <TrendingUp size={16} className="text-blue-500" />
@@ -738,108 +797,100 @@ export default function DashboardPage() {
                   {studiedTotal} de {totalCards} estudados
                 </span>
               </div>
-              <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
-                <ProgressSegment value={totalMastered} total={totalCards} color="bg-emerald-500" />
-                <ProgressSegment value={totalCards - totalMastered - totalLearning - totalNew} total={totalCards} color="bg-green-400" />
-                <ProgressSegment value={totalLearning} total={totalCards} color="bg-orange-400" />
-                <ProgressSegment value={totalNew} total={totalCards} color="bg-blue-400" />
+              <div className="h-3 bg-zinc-900 border border-zinc-800 rounded-full overflow-hidden flex shadow-inner">
+                <ProgressSegment value={totalMastered} total={totalCards} color="bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
+                <ProgressSegment value={totalCards - totalMastered - totalLearning - totalNew} total={totalCards} color="bg-green-400/80 shadow-[0_0_10px_rgba(74,222,128,0.3)]" />
+                <ProgressSegment value={totalLearning} total={totalCards} color="bg-orange-400/80 shadow-[0_0_10px_rgba(251,146,60,0.3)]" />
+                <ProgressSegment value={totalNew} total={totalCards} color="bg-blue-400/80 shadow-[0_0_10px_rgba(96,165,250,0.3)]" />
               </div>
-              <div className="flex flex-wrap gap-4 mt-3">
+              <div className="flex flex-wrap gap-4 mt-4">
                 <LegendItem color="bg-emerald-500" label={`Dominado (${totalMastered})`} />
-                <LegendItem color="bg-green-400" label={`Revisão (${totalCards - totalMastered - totalLearning - totalNew})`} />
-                <LegendItem color="bg-orange-400" label={`Aprendendo (${totalLearning})`} />
-                <LegendItem color="bg-blue-400" label={`Novo (${totalNew})`} />
+                <LegendItem color="bg-green-400/80" label={`Revisão (${totalCards - totalMastered - totalLearning - totalNew})`} />
+                <LegendItem color="bg-orange-400/80" label={`Aprendendo (${totalLearning})`} />
+                <LegendItem color="bg-blue-400/80" label={`Novo (${totalNew})`} />
               </div>
             </div>
           )}
 
           {/* Due Cards Alert */}
           {totalDue > 0 && (
-            <div className="p-4 md:p-5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <Zap size={20} className="text-amber-500 flex-shrink-0" />
-                <p className="text-sm text-amber-700 dark:text-amber-400">
-                  <strong>{totalDue}</strong> {totalDue === 1 ? 'carta precisa ser revisada' : 'cartas precisam ser revisadas'} hoje!
+            <div className="p-1 px-1.5 rounded-3xl bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-transparent border border-amber-500/20 backdrop-blur-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 group">
+              <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <div className="flex items-center gap-3 relative z-10 px-3 py-3">
+                <div className="p-2 bg-amber-500/20 rounded-xl text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                  <Zap size={20} className="animate-pulse" />
+                </div>
+                <p className="text-sm text-zinc-300">
+                  <strong className="text-amber-500 font-bold">{totalDue}</strong> {totalDue === 1 ? 'carta precisa ser revisada' : 'cartas precisam ser revisadas'} hoje!
                 </p>
               </div>
-              <Link href="/dashboard/study-config" className="block">
-                <Button size="sm" className="w-full sm:w-auto whitespace-nowrap">Estudar Agora</Button>
+              <Link href="/dashboard/study-config" className="block relative z-10 pr-2">
+                <Button size="sm" className="w-full sm:w-auto whitespace-nowrap bg-amber-500 hover:bg-amber-600 text-black border-none font-bold shadow-lg shadow-amber-500/20 rounded-2xl">Estudar Agora</Button>
               </Link>
             </div>
           )}
 
           {/* New Folder Modal */}
-          {showNewFolder && (
-            <div className="bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl p-6 shadow-sm animate-in slide-in-from-top-4 duration-300">
-              <h3 className="text-sm font-bold text-[var(--foreground)] uppercase tracking-wider mb-4 flex items-center gap-2">
-                <FolderPlus size={16} className="text-blue-500" />
-                Criar Nova Pasta
-              </h3>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                  placeholder="Nome da pasta (ex: Cardiologia)"
-                  className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  autoFocus
-                />
-                <Button size="sm" onClick={handleCreateFolder}>Criar</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setShowNewFolder(false); setNewFolderName('') }}>Cancelar</Button>
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {showNewFolder && (
+              <NewFolderModal
+                value={newFolderName}
+                onChange={setNewFolderName}
+                onConfirm={handleCreateFolder}
+                onClose={() => { setShowNewFolder(false); setNewFolderName('') }}
+              />
+            )}
+          </AnimatePresence>
 
           {/* Tabs Navigation */}
-          <div className="flex items-center gap-1 border-b border-[var(--border)] overflow-x-auto scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="flex items-center gap-1 border-b border-zinc-800 overflow-x-auto scrollbar-none -mx-4 px-4 md:mx-0 md:px-0 mb-10">
             <button
-              onClick={() => setActiveTab('decks')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all ${
+              onClick={() => handleTabChange('decks')}
+              className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] border-b-2 transition-all duration-300 ${
                 activeTab === 'decks'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  ? 'border-blue-500 text-blue-500 bg-blue-500/5'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50'
               }`}
             >
-              <BookOpen size={16} />
-              Decks
-              <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">{decks.length}</span>
+              <BookOpen size={14} />
+              DECKS
+              <span className="text-[10px] bg-zinc-950 text-blue-500/70 px-2 py-0.5 rounded-md border border-zinc-800">{filteredDecks.length}</span>
             </button>
             <button
-              onClick={() => setActiveTab('quizzes')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all ${
+              onClick={() => handleTabChange('quizzes')}
+              className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] border-b-2 transition-all duration-300 ${
                 activeTab === 'quizzes'
-                  ? 'border-emerald-500 text-emerald-600'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  ? 'border-emerald-500 text-emerald-500 bg-emerald-500/5'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50'
               }`}
             >
-              <HelpCircle size={16} />
-              Quizzes
-              <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">{quizzes.length}</span>
+              <HelpCircle size={14} />
+              QUIZZES
+              <span className="text-[10px] bg-zinc-950 text-emerald-500/70 px-2 py-0.5 rounded-md border border-zinc-800">{filteredQuizzes.length}</span>
             </button>
             <button
-              onClick={() => setActiveTab('mindmaps')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all ${
+              onClick={() => handleTabChange('mindmaps')}
+              className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] border-b-2 transition-all duration-300 ${
                 activeTab === 'mindmaps'
-                  ? 'border-amber-500 text-amber-600'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  ? 'border-amber-500 text-amber-500 bg-amber-500/5'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50'
               }`}
             >
-              <Zap size={16} />
-              Mapas
-              <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">{mindMaps.length}</span>
+              <Zap size={14} />
+              MAPAS
+              <span className="text-[10px] bg-zinc-950 text-amber-500/70 px-2 py-0.5 rounded-md border border-zinc-800">{filteredMindMaps.length}</span>
             </button>
             <button
-              onClick={() => setActiveTab('reports')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all ${
+              onClick={() => handleTabChange('reports')}
+              className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] border-b-2 transition-all duration-300 ${
                 activeTab === 'reports'
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  ? 'border-blue-600 text-blue-600 bg-blue-600/5'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50'
               }`}
             >
-              <BarChart3 size={16} />
-              Relatórios
-              <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">{reports.length}</span>
+              <BarChart3 size={14} />
+              RELATÓRIOS
+              <span className="text-[10px] bg-zinc-950 text-blue-600/70 px-2 py-0.5 rounded-md border border-zinc-800">{reports.length}</span>
             </button>
           </div>
 
@@ -849,13 +900,27 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Seus Decks</h2>
 
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => <div key={i} className="h-48 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse" />)}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                {[1, 2, 3].map((i) => <div key={i} className="h-56 bg-zinc-900 border border-zinc-800 rounded-3xl animate-pulse relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                </div>)}
               </div>
             ) : decks.length === 0 ? (
-              <EmptyState />
+              <div className="text-center py-24 glass-panel border-zinc-800/50 rounded-[2rem] relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05)_0%,transparent_70%)]" />
+                <div className="w-20 h-20 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                   <HelpCircle size={32} className="text-zinc-700" />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-100 mb-3 tracking-tight">Protocolo de Decks Inexistente</h3>
+                <p className="text-zinc-500 mb-10 max-w-sm mx-auto text-sm leading-relaxed">Sua biblioteca neural está vazia. Comece criando um novo deck ou importe materiais via IA.</p>
+                <Link href="/dashboard/new">
+                  <Button className="h-12 px-8 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-blue-600/20 transition-all hover:scale-105 active:scale-95 border-none">
+                    <Plus size={16} className="mr-2" /> NOVO DECK
+                  </Button>
+                </Link>
+              </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-3">
                 {folderedDecks.map(({ folder, decks: folderDecks }) => (
                   <DroppableFolder key={folder.id} id={`deck-drop-${folder.id}`}>
                     <FolderHeader
@@ -874,9 +939,16 @@ export default function DashboardPage() {
                     {!collapsedFolders.has(folder.id) && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pl-6 min-h-[60px]">
                         {folderDecks.length === 0 ? (
-                          <p className="text-xs text-[var(--muted-foreground)] italic col-span-full py-4">Vazio. Arraste decks para cá.</p>
+                          <p className="text-[10px] text-zinc-600 font-bold col-span-full py-3 uppercase tracking-[0.2em] opacity-30 text-center border border-dashed border-zinc-800/50 rounded-3xl">Pasta vazia. Arraste seus decks para cá nos respectivos locais.</p>
                         ) : (
-                          folderDecks.map((deck) => <DraggableDeck key={deck.id} deck={deck} onRename={(id, title) => openRenameItem(id, title, 'deck')} onDelete={(id, title) => setDeletingItem({ id, type: 'deck', title })} />)
+                          folderDecks.map((deck) => (
+                            <DraggableDeck 
+                              key={deck.id} 
+                              deck={deck} 
+                              onRename={(id, title) => openRenameItem(id, title, 'deck')} 
+                              onDelete={(id, title) => setDeletingItem({ id, type: 'deck', title })} 
+                            />
+                          ))
                         )}
                       </div>
                     )}
@@ -884,16 +956,23 @@ export default function DashboardPage() {
                 ))}
 
                 <DroppableFolder id="deck-drop-unassigned">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Layers size={16} className="text-zinc-400" />
-                    <span className="text-sm font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Decks Soltos</span>
-                    <span className="text-[10px] text-[var(--muted-foreground)] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">{unassignedDecks.length}</span>
+                  <div className="flex items-center gap-3 mb-6 relative z-10 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800/50 w-fit">
+                    <Layers size={14} className="text-zinc-500" />
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Decks</span>
+                    <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">{unassignedDecks.length}</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[60px]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[60px]">
                     {unassignedDecks.length === 0 ? (
-                      folders.length > 0 && <p className="text-xs text-[var(--muted-foreground)] italic col-span-full py-4">Tudo organizado!</p>
+                      folders.length > 0 && <p className="text-[9px] text-zinc-600 font-bold col-span-full py-3 uppercase tracking-[0.2em] opacity-30 text-center border border-dashed border-zinc-800/50 rounded-2xl">Arraste seus decks para cá para organizar</p>
                     ) : (
-                      unassignedDecks.map((deck) => <DraggableDeck key={deck.id} deck={deck} onRename={(id, title) => openRenameItem(id, title, 'deck')} onDelete={(id, title) => setDeletingItem({ id, type: 'deck', title })} />)
+                      unassignedDecks.map((deck) => (
+                        <DraggableDeck 
+                          key={deck.id} 
+                          deck={deck} 
+                          onRename={(id, title) => openRenameItem(id, title, 'deck')} 
+                          onDelete={(id, title) => setDeletingItem({ id, type: 'deck', title })} 
+                        />
+                      ))
                     )}
                   </div>
                 </DroppableFolder>
@@ -908,20 +987,27 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Seus Quizzes</h2>
 
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => <div key={i} className="h-48 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse" />)}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                {[1, 2, 3].map((i) => <div key={i} className="h-56 bg-zinc-900 border border-zinc-800 rounded-3xl animate-pulse relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                </div>)}
               </div>
             ) : quizzes.length === 0 ? (
-              <div className="text-center py-16 bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl">
-                <HelpCircle size={48} className="mx-auto text-zinc-300 dark:text-zinc-700 mb-4" />
-                <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Nenhum quiz ainda</h3>
-                <p className="text-[var(--muted-foreground)] mb-6">Faça upload de um material e gere quizzes automaticamente.</p>
-                <Link href="/dashboard/new">
-                  <Button variant="primary" size="sm"><Plus size={14} className="mr-1" /> Nova Fonte</Button>
-                </Link>
-              </div>
+              <div className="text-center py-24 glass-panel border-zinc-800/50 rounded-[2rem] relative overflow-hidden">
+                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.05)_0%,transparent_70%)]" />
+                 <div className="w-20 h-20 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                    <HelpCircle size={32} className="text-zinc-700" />
+                 </div>
+                 <h3 className="text-xl font-bold text-zinc-100 mb-3 tracking-tight">Faltam Simulações de Quiz</h3>
+                 <p className="text-zinc-500 mb-10 max-w-sm mx-auto text-sm leading-relaxed">Sincronize seu conhecimento através de testes práticos. Utilize nossa IA para gerar questões agora.</p>
+                 <Link href="/dashboard/new">
+                   <Button className="h-12 px-8 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 border-none">
+                     <Plus size={16} className="mr-2" /> NOVO QUIZ
+                   </Button>
+                 </Link>
+               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-3">
                 {/* Quizzes in folders */}
                 {folders.map(folder => {
                   const folderQuizzes = quizzes.filter(q => q.folder_id === folder.id)
@@ -941,11 +1027,18 @@ export default function DashboardPage() {
                         onDelete={() => handleDeleteFolder(folder.id)}
                       />
                       {!collapsedFolders.has(folder.id) && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pl-6 min-h-[60px]">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pl-6 min-h-[60px]">
                           {folderQuizzes.length === 0 ? (
-                            <p className="text-xs text-[var(--muted-foreground)] italic col-span-full py-4">Vazio. Arraste quizzes para cá.</p>
+                            <p className="text-[10px] text-zinc-600 font-bold col-span-full py-3 uppercase tracking-[0.2em] opacity-30 text-center border border-dashed border-zinc-800/50 rounded-3xl">Pasta vazia. Arraste seus quizzes para cá nos respectivos locais.</p>
                           ) : (
-                            folderQuizzes.map(quiz => <DraggableQuiz key={quiz.id} quiz={quiz} onRename={(id, title) => openRenameItem(id, title, 'quiz')} onDelete={(id, title) => setDeletingItem({ id, type: 'quiz', title })} />)
+                            folderQuizzes.map(quiz => (
+                              <DraggableQuiz 
+                                key={quiz.id} 
+                                quiz={quiz} 
+                                onRename={(id, title) => openRenameItem(id, title, 'quiz')} 
+                                onDelete={(id, title) => setDeletingItem({ id, type: 'quiz', title })} 
+                              />
+                            ))
                           )}
                         </div>
                       )}
@@ -954,16 +1047,23 @@ export default function DashboardPage() {
                 })}
                 {/* Unassigned quizzes */}
                 <DroppableFolder id="quiz-drop-unassigned">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Layers size={16} className="text-zinc-400" />
-                    <span className="text-sm font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Quizzes Soltos</span>
-                    <span className="text-[10px] text-[var(--muted-foreground)] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">{quizzes.filter(q => !q.folder_id).length}</span>
+                  <div className="flex items-center gap-3 mb-6 relative z-10 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800/50 w-fit">
+                    <Layers size={14} className="text-zinc-500" />
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Quizzes</span>
+                    <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">{quizzes.filter(q => !q.folder_id).length}</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[60px]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 min-h-[60px]">
                     {quizzes.filter(q => !q.folder_id).length === 0 ? (
-                      folders.length > 0 && <p className="text-xs text-[var(--muted-foreground)] italic col-span-full py-4">Tudo organizado!</p>
+                      folders.length > 0 && <p className="text-[9px] text-zinc-600 font-bold col-span-full py-10 uppercase tracking-[0.2em] opacity-30 text-center border border-dashed border-zinc-800/50 rounded-2xl">Arraste seus itens para cá para organizar</p>
                     ) : (
-                      quizzes.filter(q => !q.folder_id).map(quiz => <DraggableQuiz key={quiz.id} quiz={quiz} onRename={(id, title) => openRenameItem(id, title, 'quiz')} onDelete={(id, title) => setDeletingItem({ id, type: 'quiz', title })} />)
+                      quizzes.filter(q => !q.folder_id).map(quiz => (
+                        <DraggableQuiz 
+                          key={quiz.id} 
+                          quiz={quiz} 
+                          onRename={(id, title) => openRenameItem(id, title, 'quiz')} 
+                          onDelete={(id, title) => setDeletingItem({ id, type: 'quiz', title })} 
+                        />
+                      ))
                     )}
                   </div>
                 </DroppableFolder>
@@ -974,7 +1074,7 @@ export default function DashboardPage() {
 
           {/* Mind Maps Tab */}
           {activeTab === 'mindmaps' && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-12 animate-in slide-in-from-bottom-4 duration-500">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Seus Mapas Mentais</h2>
@@ -986,7 +1086,7 @@ export default function DashboardPage() {
                 </Button>
               </div>
 
-              <div className="space-y-8">
+              <div className="space-y-3">
                 {folderedMindMaps.map(({ folder, mindMaps: folderItems }) => (
                   <DroppableFolder key={folder.id} id={`mindmap-drop-${folder.id}`}>
                     <FolderHeader 
@@ -1003,9 +1103,9 @@ export default function DashboardPage() {
                       onDelete={() => handleDeleteFolder(folder.id)}
                     />
                     {!collapsedFolders.has(folder.id) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[60px]">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[60px] pl-6">
                         {folderItems.length === 0 ? (
-                          <p className="text-xs text-[var(--muted-foreground)] italic col-span-full py-4">Vazio. Arraste mapas para cá.</p>
+                           <p className="text-[10px] text-zinc-600 font-bold col-span-full py-3 uppercase tracking-[0.2em] opacity-30 text-center border border-dashed border-zinc-800/50 rounded-3xl">Pasta vazia. Arraste seus mapas para cá nos respectivos locais.</p>
                         ) : (
                           folderItems.map((mm) => (
                             <DraggableMindMap 
@@ -1022,14 +1122,14 @@ export default function DashboardPage() {
                 ))}
 
                 <DroppableFolder id="mindmap-drop-unassigned">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Layers size={16} className="text-zinc-400" />
-                    <span className="text-sm font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Mapas Soltos</span>
-                    <span className="text-[10px] text-[var(--muted-foreground)] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">{unassignedMindMaps.length}</span>
+                  <div className="flex items-center gap-3 mb-6 relative z-10 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800/50 w-fit">
+                    <Layers size={14} className="text-zinc-500" />
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Mapas Mentais</span>
+                    <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">{unassignedMindMaps.length}</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[60px]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 min-h-[60px]">
                     {unassignedMindMaps.length === 0 ? (
-                      folders.length > 0 && <p className="text-xs text-[var(--muted-foreground)] italic col-span-full py-4">Tudo organizado!</p>
+                      folders.length > 0 && <p className="text-[9px] text-zinc-600 font-bold col-span-full py-10 uppercase tracking-[0.2em] opacity-30 text-center border border-dashed border-zinc-800/50 rounded-2xl">Arraste seus itens para cá para organizar</p>
                     ) : (
                       unassignedMindMaps.map((mm) => (
                         <DraggableMindMap 
@@ -1056,7 +1156,7 @@ export default function DashboardPage() {
 
           {/* Reports Tab */}
           {activeTab === 'reports' && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-12 animate-in slide-in-from-bottom-4 duration-500">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Suas Análises</h2>
@@ -1065,7 +1165,7 @@ export default function DashboardPage() {
                 <Button 
                   onClick={handleGenerateReport} 
                   disabled={generatingReport}
-                  className="w-full sm:w-auto shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+                  className="w-full sm:w-auto shadow-xl hover:shadow-blue-500/10 transition-all whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white border-none"
                 >
                   {generatingReport ? (
                     <span className="flex items-center gap-2">
@@ -1075,20 +1175,25 @@ export default function DashboardPage() {
                   ) : (
                     <span className="flex items-center gap-2">
                       <Zap size={16} />
-                      Nova Análise de Desempenho
+                      Gerar Nova Análise
                     </span>
                   )}
                 </Button>
               </div>
 
               {reports.length === 0 ? (
-                <div className="text-center py-20 bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-2xl">
-                  <BarChart3 size={48} className="mx-auto text-zinc-300 dark:text-zinc-700 mb-4" />
-                  <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Pronto para sua primeira análise?</h3>
-                  <p className="text-[var(--muted-foreground)] mb-8 max-w-sm mx-auto">
+                <div className="text-center py-20 glass-panel border-zinc-800/50 rounded-2xl">
+                  <BarChart3 size={48} className="mx-auto text-zinc-700 dark:text-zinc-800 mb-4" />
+                  <h3 className="text-lg font-semibold text-zinc-100 mb-2 tracking-tight">Pronto para sua primeira análise?</h3>
+                  <p className="text-zinc-500 mb-8 max-w-sm mx-auto text-sm leading-relaxed">
                     Nossa IA vai analisar seus erros e acertos para dizer exatamente onde você deve focar seus estudos.
                   </p>
-                  <Button variant="outline" onClick={handleGenerateReport} disabled={generatingReport}>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleGenerateReport} 
+                    disabled={generatingReport}
+                    className="border-blue-500/30 text-blue-400 hover:bg-blue-500/5"
+                  >
                     Gerar Primeiro Relatório
                   </Button>
                 </div>
@@ -1096,9 +1201,9 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 gap-4">
                   {reports.map((report) => (
                     <Link key={report.id} href={`/dashboard/reports/${report.id}`}>
-                      <div className="group bg-white dark:bg-zinc-900 border border-[var(--border)] p-6 rounded-2xl hover:border-blue-500 transition-all flex items-center justify-between">
+                      <div className="group glass-panel border-zinc-800/50 p-6 rounded-2xl hover:border-blue-500/50 transition-all flex items-center justify-between backdrop-blur-md">
                         <div className="flex items-center gap-4">
-                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                           <div className="p-3 bg-blue-500/5 rounded-xl text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all border border-blue-500/10">
                             <FileText size={24} />
                           </div>
                           <div>
@@ -1110,17 +1215,15 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
                           <div className="hidden md:flex gap-2">
                             {report.analysis_json?.recommended_topics?.slice(0, 2).map((topic: string, i: number) => (
-                              <span key={topic + i} className="text-[10px] font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-full uppercase tracking-widest leading-none">
+                              <span key={topic + i} className="text-[9px] font-black text-zinc-400 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-lg uppercase tracking-[0.2em]">
                                 {topic}
                               </span>
                             ))}
                           </div>
                           <ChevronRight size={20} className="text-zinc-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                         </div>
-                      </div>
                     </Link>
                   ))}
                 </div>
@@ -1150,242 +1253,91 @@ export default function DashboardPage() {
         ) : null}
       </DragOverlay>
 
-      {/* Rename Item Modal */}
-      {editingItemId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setEditingItemId(null)}>
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl border border-[var(--border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500"><Pencil size={20} /></div>
-              <h3 className="text-lg font-semibold text-[var(--foreground)]">Renomear {editingItemType === 'deck' ? 'Deck' : editingItemType === 'quiz' ? 'Quiz' : 'Mapa Mental'}</h3>
-            </div>
-            <input
-              type="text"
-              value={editingItemName}
-              onChange={(e) => setEditingItemName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  editingItemType === 'deck'
-                    ? handleRenameDeck(editingItemId, editingItemName)
-                    : editingItemType === 'quiz'
-                    ? handleRenameQuiz(editingItemId, editingItemName)
-                    : handleRenameMindMap(editingItemId, editingItemName)
-                }
-              }}
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 mb-4"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setEditingItemId(null)}>Cancelar</Button>
-              <Button variant="primary" className="flex-1" onClick={() => {
-                editingItemType === 'deck'
-                  ? handleRenameDeck(editingItemId, editingItemName)
-                  : editingItemType === 'quiz'
-                  ? handleRenameQuiz(editingItemId, editingItemName)
-                  : handleRenameMindMap(editingItemId, editingItemName)
-              }}>Salvar</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modals Refactored */}
+      <AnimatePresence>
+        {editingItemId && (
+          <RenameItemModal
+            id={editingItemId}
+            name={editingItemName}
+            type={editingItemType}
+            onClose={() => setEditingItemId(null)}
+            onRename={(id, name) => {
+              if (editingItemType === 'deck') handleRenameDeck(id, name)
+              else if (editingItemType === 'quiz') handleRenameQuiz(id, name)
+              else handleRenameMindMap(id, name)
+            }}
+          />
+        )}
 
-      {/* Create Choice Modal */}
-      {showCreateChoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowCreateChoice(false)}>
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl border border-[var(--border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-[var(--foreground)]">
-                Como deseja criar seu {activeTab === 'decks' ? 'Deck' : 'Quiz'}?
-              </h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowCreateChoice(false)}>
-                <X size={20} />
-              </Button>
-            </div>
-            
-              {activeTab === 'decks' && (
-                <>
-                  <button 
-                    onClick={() => {
-                      setShowCreateChoice(false)
-                      router.push('/dashboard/new?type=deck')
-                    }}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 border-zinc-100 dark:border-zinc-800 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-left group"
-                  >
-                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 group-hover:scale-110 transition-transform">
-                      <Zap size={24} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 dark:text-zinc-100">Gerar com IA (Automático)</h4>
-                      <p className="text-sm text-zinc-500">Faça upload de um PDF ou cole um texto e deixe nossa IA gerar todo o conteúdo para você em segundos.</p>
-                    </div>
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setShowCreateChoice(false)
-                      setShowNewDeckModal(true)
-                    }}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 border-zinc-100 dark:border-zinc-800 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all text-left group"
-                  >
-                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 group-hover:scale-110 transition-transform">
-                      <Pencil size={24} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 dark:text-zinc-100">Criar Manualmente</h4>
-                      <p className="text-sm text-zinc-500">Comece do zero e escreva suas próprias cartas ou questões. Ideal para revisões personalizadas.</p>
-                    </div>
-                  </button>
-                </>
-              )}
+        {showCreateChoice && (
+          <CreateChoiceModal
+            activeTab={activeTab === 'decks' || activeTab === 'quizzes' ? activeTab : 'decks'}
+            onClose={() => setShowCreateChoice(false)}
+            onChoice={(choice) => {
+              setShowCreateChoice(false)
+              if (choice === 'ai') {
+                router.push(`/dashboard/new?type=${activeTab === 'quizzes' ? 'quiz' : 'deck'}`)
+              } else {
+                if (activeTab === 'quizzes') setShowNewQuizModal(true)
+                else setShowNewDeckModal(true)
+              }
+            }}
+          />
+        )}
 
-              {activeTab === 'quizzes' && (
-                <>
-                  <button 
-                    onClick={() => {
-                      setShowCreateChoice(false)
-                      router.push('/dashboard/new?type=quiz')
-                    }}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 border-zinc-100 dark:border-zinc-800 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-left group"
-                  >
-                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 group-hover:scale-110 transition-transform">
-                      <Zap size={24} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 dark:text-zinc-100">Gerar com IA (Automático)</h4>
-                      <p className="text-sm text-zinc-500">Faça upload de um PDF ou cole um texto e deixe nossa IA gerar todo o conteúdo para você em segundos.</p>
-                    </div>
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setShowCreateChoice(false)
-                      setShowNewQuizModal(true)
-                    }}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 border-zinc-100 dark:border-zinc-800 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all text-left group"
-                  >
-                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 group-hover:scale-110 transition-transform">
-                      <Pencil size={24} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 dark:text-zinc-100">Criar Manualmente</h4>
-                      <p className="text-sm text-zinc-500">Comece do zero e escreva suas próprias cartas ou questões. Ideal para revisões personalizadas.</p>
-                    </div>
-                  </button>
-                </>
-              )}
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deletingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setDeletingItem(null)}>
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl border border-[var(--border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-500"><Trash2 size={20} /></div>
-            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-              Excluir {deletingItem.type === 'deck' ? 'Deck' : deletingItem.type === 'quiz' ? 'Quiz' : 'Mapa Mental'}
-            </h3>
-          </div>
-          <p className="text-[var(--muted-foreground)] text-sm mb-6">Tem certeza que deseja excluir <strong className="text-[var(--foreground)]">"{deletingItem.title}"</strong>? Esta ação não pode ser desfeita.</p>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => setDeletingItem(null)}>Cancelar</Button>
-            <Button variant="primary" className="flex-1 !bg-red-600 hover:!bg-red-700" onClick={() => {
+        {deletingItem && (
+          <DeleteConfirmationModal
+            title={deletingItem.title}
+            type={deletingItem.type === 'deck' ? 'Deck' : deletingItem.type === 'quiz' ? 'Quiz' : 'Mapa Mental'}
+            onClose={() => setDeletingItem(null)}
+            onConfirm={() => {
               if (deletingItem.type === 'deck') handleDeleteDeck(deletingItem.id)
               else if (deletingItem.type === 'quiz') handleDeleteQuiz(deletingItem.id)
               else handleDeleteMindMap(deletingItem.id)
-            }}>Excluir</Button>
-          </div>
-          </div>
-        </div>
-      )}
+            }}
+          />
+        )}
 
-      {/* New Deck Modal */}
-      {showNewDeckModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowNewDeckModal(false)}>
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl border border-[var(--border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500"><BookOpen size={20} /></div>
-              <h3 className="text-lg font-semibold text-[var(--foreground)]">Novo Deck Manual</h3>
-            </div>
-            <p className="text-[var(--muted-foreground)] text-sm mb-4">Dê um nome para sua nova coleção de flashcards.</p>
-            <input
-              type="text"
-              placeholder="Ex: Anatomia Cardíaca"
-              value={newDeckTitle}
-              onChange={(e) => setNewDeckTitle(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateDeck()}
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 mb-4"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowNewDeckModal(false)}>Cancelar</Button>
-              <Button variant="primary" className="flex-1" onClick={handleCreateDeck} disabled={!newDeckTitle.trim()}>Criar Deck</Button>
-            </div>
-          </div>
-        </div>
-      )}
+        {showNewDeckModal && (
+          <NewDeckModal
+            title={newDeckTitle}
+            onChange={setNewDeckTitle}
+            disabled={!newDeckTitle.trim()}
+            onClose={() => setShowNewDeckModal(false)}
+            onConfirm={handleCreateDeck}
+          />
+        )}
 
-      {/* New Quiz Modal */}
-      {showNewQuizModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowNewQuizModal(false)}>
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl border border-[var(--border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-500"><HelpCircle size={20} /></div>
-              <h3 className="text-lg font-semibold text-[var(--foreground)]">Novo Quiz Manual</h3>
-            </div>
-            <p className="text-[var(--muted-foreground)] text-sm mb-4">Crie um conjunto de questões personalizadas.</p>
-            <input
-              type="text"
-              placeholder="Ex: Simulado Fisiologia"
-              value={newQuizTitle}
-              onChange={(e) => setNewQuizTitle(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateQuiz()}
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 mb-4"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowNewQuizModal(false)}>Cancelar</Button>
-              <Button variant="primary" className="flex-1 !bg-emerald-600 hover:!bg-emerald-700" onClick={handleCreateQuiz} disabled={!newQuizTitle.trim()}>Criar Quiz</Button>
-            </div>
-          </div>
-        </div>
-      )}
+        {showNewQuizModal && (
+          <NewQuizModal
+            title={newQuizTitle}
+            onChange={setNewQuizTitle}
+            disabled={!newQuizTitle.trim()}
+            onClose={() => setShowNewQuizModal(false)}
+            onConfirm={handleCreateQuiz}
+          />
+        )}
 
-      {/* Logout confirmation modal */}
-      {showLogoutModal && (
-        <LogoutModal onClose={() => setShowLogoutModal(false)} onConfirm={() => { handleSignOut(); setShowLogoutModal(false); }} />
-      )}
+        {showLogoutModal && (
+          <LogoutModal
+            onClose={() => setShowLogoutModal(false)}
+            onConfirm={() => { handleSignOut(); setShowLogoutModal(false); }}
+          />
+        )}
 
-      {/* Report Limit Modal */}
-      {showReportLimitModal && (
-        <ReportLimitModal 
-          onClose={() => setShowReportLimitModal(false)} 
-          onConfirm={executeReportGeneration} 
-          loading={generatingReport}
-        />
-      )}
+        {showReportLimitModal && (
+          <ReportLimitModal
+            loading={generatingReport}
+            onClose={() => setShowReportLimitModal(false)}
+            onConfirm={executeReportGeneration}
+          />
+        )}
+      </AnimatePresence>
     </DndContext>
   )
 }
 
-// Subcomponents
-function StatCard({ icon, label, value, color }: { icon: any, label: string, value: any, color: string }) {
-  const colors: any = {
-    blue: "bg-blue-50 dark:bg-blue-900/20 text-blue-600",
-    green: "bg-green-50 dark:bg-green-900/20 text-green-600",
-    amber: "bg-amber-50 dark:bg-amber-900/20 text-amber-600",
-    emerald: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600"
-  }
-  return (
-    <div className="bg-white dark:bg-zinc-900 border border-[var(--border)] p-5 rounded-xl shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className={cn("p-2.5 rounded-lg", colors[color])}>{icon}</div>
-        <div>
-          <p className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">{label}</p>
-          <p className="text-2xl font-bold text-[var(--foreground)]">{value}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
+// Subcomponents (centralized in components/dashboard)
 
 function ProgressSegment({ value, total, color }: { value: number, total: number, color: string }) {
   if (value <= 0) return null
@@ -1403,408 +1355,5 @@ function LegendItem({ color, label }: { color: string, label: string }) {
   )
 }
 
-function EmptyState() {
-  return (
-    <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl p-12 flex flex-col items-center justify-center text-center space-y-4">
-      <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-3xl mb-2">📂</div>
-      <h3 className="text-lg font-medium text-[var(--foreground)]">Nenhuma coleção encontrada</h3>
-      <p className="text-[var(--muted-foreground)] max-w-sm">Faça upload de documentos para que a IA gere seus flashcards automaticamente.</p>
-      <div className="pt-4"><Link href="/dashboard/new"><Button variant="secondary">Começar Agora</Button></Link></div>
-    </div>
-  )
-}
 
-function LogoutModal({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl border border-[var(--border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2.5 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-500"><LogOut size={20} /></div>
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">Sair da conta</h3>
-        </div>
-        <p className="text-[var(--muted-foreground)] text-sm mb-6">Tem certeza que deseja sair?</p>
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" className="flex-1 !bg-red-600 hover:!bg-red-700" onClick={onConfirm}>Sair</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
-function DraggableDeck({ deck, onRename, onDelete }: { deck: DeckWithStats, onRename?: (id: string, title: string) => void, onDelete?: (id: string, title: string) => void }) {
-  const router = useRouter()
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `deck-${deck.id}` })
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: 200,
-  } : undefined
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={cn(
-        "cursor-grab active:cursor-grabbing touch-none select-none",
-        isDragging && "opacity-40 scale-95"
-      )}
-    >
-      <Link 
-        href={`/dashboard/deck/${deck.id}`} 
-        className="block"
-        onClick={(e) => {
-          if (isDragging) e.preventDefault()
-        }}
-      >
-        <DeckCard
-          deck={deck}
-          onDelete={onDelete}
-          onRename={onRename}
-        />
-      </Link>
-    </div>
-  )
-}
-
-function DraggableQuiz({ quiz, onRename, onDelete }: { quiz: Quiz, onRename?: (id: string, title: string) => void, onDelete?: (id: string, title: string) => void }) {
-  const router = useRouter()
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `quiz-${quiz.id}` })
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: 200,
-  } : undefined
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={cn(
-        "cursor-grab active:cursor-grabbing touch-none select-none",
-        isDragging && "opacity-40 scale-95"
-      )}
-    >
-      <Link 
-        href={`/dashboard/quiz/${quiz.id}`} 
-        className="block"
-        onClick={(e) => {
-          if (isDragging) e.preventDefault()
-        }}
-      >
-        <QuizCard 
-          quiz={quiz} 
-          onRename={onRename} 
-          onDelete={onDelete} 
-        />
-      </Link>
-    </div>
-  )
-}
-
-function DroppableFolder({ id, children }: { id: string, children: React.ReactNode }) {
-  const { isOver, setNodeRef } = useDroppable({ id })
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "rounded-xl transition-all duration-200 p-3 -m-3",
-        isOver
-          ? "bg-blue-500/10 ring-2 ring-blue-500 ring-inset shadow-lg shadow-blue-500/10"
-          : "ring-2 ring-transparent"
-      )}
-    >
-      {children}
-    </div>
-  )
-}
-
-function FolderHeader({
-  folder,
-  itemCount,
-  isCollapsed,
-  isEditing,
-  editName,
-  onToggleCollapse,
-  onStartEdit,
-  onEditNameChange,
-  onSaveEdit,
-  onCancelEdit,
-  onDelete,
-}: {
-  folder: FolderType
-  itemCount: number
-  isCollapsed: boolean
-  isEditing: boolean
-  editName: string
-  onToggleCollapse: () => void
-  onStartEdit: () => void
-  onEditNameChange: (name: string) => void
-  onSaveEdit: () => void
-  onCancelEdit: () => void
-  onDelete: () => void
-}) {
-  return (
-    <div className="flex items-center gap-2 group mb-3">
-      <button onClick={onToggleCollapse} className="flex items-center gap-2 text-[var(--foreground)] hover:text-blue-500 transition-colors">
-        {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-        <Folder size={16} className="text-amber-500" />
-        {isEditing ? (
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => onEditNameChange(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onSaveEdit()}
-              className="px-2 py-0.5 text-sm rounded border border-blue-500 bg-transparent focus:outline-none"
-              autoFocus
-            />
-            <button onClick={onSaveEdit} className="text-green-500 hover:text-green-600"><Check size={14} /></button>
-            <button onClick={onCancelEdit} className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"><X size={14} /></button>
-          </div>
-        ) : (
-          <span className="text-sm font-bold uppercase tracking-wider">{folder.name}</span>
-        )}
-      </button>
-      <span className="text-[10px] text-[var(--muted-foreground)] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">{itemCount}</span>
-      {!isEditing && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
-          <button onClick={onStartEdit} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-[var(--muted-foreground)]"><Pencil size={12} /></button>
-          <button onClick={onDelete} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-[var(--muted-foreground)] hover:text-red-500"><Trash2 size={12} /></button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function DeckCard({ deck, onRename, onDelete }: { deck: DeckWithStats, onRename?: (id: string, title: string) => void, onDelete?: (id: string, title: string) => void }) {
-  return (
-    <div className="group/card h-full bg-white dark:bg-zinc-900 border border-[var(--border)] p-6 rounded-xl shadow-sm hover:shadow-md transition-all hover:border-blue-200 dark:hover:border-blue-800/50 relative">
-      <div className="flex justify-between items-start mb-4">
-        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors">
-          <BookOpen size={18} />
-        </div>
-        <div className="flex items-center gap-2">
-          {deck.dueCards > 0 && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full uppercase tracking-wider">{deck.dueCards} pendente{deck.dueCards > 1 ? 's' : ''}</span>}
-          <span className="text-xs font-medium text-[var(--muted-foreground)] bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-full">{deck.totalCards} cards</span>
-          {onRename && onDelete && (
-            <CardKebabMenu
-              onRename={() => onRename(deck.id, deck.title)}
-              onDelete={() => onDelete(deck.id, deck.title)}
-            />
-          )}
-        </div>
-      </div>
-      <h3 className="text-lg font-bold text-[var(--foreground)] line-clamp-2 mb-3 group-hover/card:text-blue-600 transition-colors">{deck.title}</h3>
-      <div className="mb-2">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Progresso</span>
-          <span className="text-[10px] font-bold text-emerald-500">{deck.progressPercent}%</span>
-        </div>
-        <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-          <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${deck.progressPercent}%` }} />
-        </div>
-      </div>
-      <p className="text-xs text-[var(--muted-foreground)]">Criado em {new Date(deck.created_at).toLocaleDateString()}</p>
-    </div>
-  )
-}
-
-function QuizCard({ quiz, onRename, onDelete }: { quiz: Quiz, onRename?: (id: string, title: string) => void, onDelete?: (id: string, title: string) => void }) {
-  return (
-    <div className="group/card h-full bg-white dark:bg-zinc-900 border border-[var(--border)] p-6 rounded-xl shadow-sm hover:shadow-md transition-all hover:border-emerald-200 dark:hover:border-emerald-800/50 cursor-pointer relative">
-      <div className="flex justify-between items-start mb-4">
-        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 group-hover/card:bg-emerald-600 group-hover/card:text-white transition-colors">
-          <HelpCircle size={18} />
-        </div>
-        <div className="flex items-center gap-2">
-          {quiz.status === 'generating' && (
-            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-              Gerando...
-            </span>
-          )}
-          {quiz.status === 'error' && (
-            <span className="text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              Erro
-            </span>
-          )}
-          <span className="text-xs font-medium text-[var(--muted-foreground)] bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-full">
-            {quiz.totalQuestions} questões
-          </span>
-          {onRename && onDelete && (
-            <CardKebabMenu
-              onRename={() => onRename(quiz.id, quiz.title)}
-              onDelete={() => onDelete(quiz.id, quiz.title)}
-            />
-          )}
-        </div>
-      </div>
-      <h3 className="text-lg font-bold text-[var(--foreground)] line-clamp-2 mb-2 group-hover/card:text-emerald-600 transition-colors">
-        {quiz.title}
-      </h3>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">
-          {quiz.specialty_tag}
-        </span>
-        {quiz.lastScoreHit !== undefined && quiz.lastScoreTotal !== undefined && (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
-            <Trophy size={10} /> {quiz.lastScoreHit}/{quiz.lastScoreTotal} acertos
-          </span>
-        )}
-      </div>
-      <p className="text-xs text-[var(--muted-foreground)]">Criado em {new Date(quiz.created_at).toLocaleDateString()}</p>
-    </div>
-  )
-}
-
-function DraggableMindMap({ mindMap, onRename, onDelete }: { mindMap: MindMap, onRename?: (id: string, title: string) => void, onDelete?: (id: string, title: string) => void }) {
-  const router = useRouter()
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `mindmap-${mindMap.id}` })
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: 200,
-  } : undefined
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={cn(
-        "cursor-grab active:cursor-grabbing touch-none select-none",
-        isDragging && "opacity-40 scale-95"
-      )}
-    >
-      <Link 
-        href={`/dashboard/mindmap/${mindMap.id}`} 
-        className="block"
-        onClick={(e) => {
-          if (isDragging) e.preventDefault()
-        }}
-      >
-        <MindMapCard 
-          mindMap={mindMap} 
-          onRename={onRename} 
-          onDelete={onDelete} 
-        />
-      </Link>
-    </div>
-  )
-}
-
-function MindMapCard({ mindMap, onRename, onDelete }: { mindMap: MindMap, onRename?: (id: string, title: string) => void, onDelete?: (id: string, title: string) => void }) {
-  return (
-    <div className="group/card h-full bg-white dark:bg-zinc-900 border border-[var(--border)] p-6 rounded-xl shadow-sm hover:shadow-md transition-all hover:border-amber-200 dark:hover:border-amber-800/50 cursor-pointer relative">
-      <div className="flex justify-between items-start mb-4">
-        <div className="p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600 group-hover/card:bg-amber-600 group-hover/card:text-white transition-colors">
-          <Zap size={18} />
-        </div>
-        <div className="flex items-center gap-2">
-          {mindMap.status === 'generating' && (
-            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-              Gerando...
-            </span>
-          )}
-          {mindMap.status === 'error' && (
-            <span className="text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              Erro
-            </span>
-          )}
-          {onRename && onDelete && (
-            <CardKebabMenu
-              onRename={() => onRename(mindMap.id, mindMap.title)}
-              onDelete={() => onDelete(mindMap.id, mindMap.title)}
-            />
-          )}
-        </div>
-      </div>
-      <h3 className="text-lg font-bold text-[var(--foreground)] line-clamp-2 mb-2 group-hover/card:text-amber-600 transition-colors">
-        {mindMap.title}
-      </h3>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
-          {mindMap.specialty_tag}
-        </span>
-      </div>
-      <p className="text-xs text-[var(--muted-foreground)]">Criado em {new Date(mindMap.created_at).toLocaleDateString()}</p>
-    </div>
-  )
-}
-
-function CardKebabMenu({ onRename, onDelete }: { onRename: () => void, onDelete: () => void }) {
-  const [open, setOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [open])
-
-  return (
-    <div ref={menuRef} className="relative">
-      <button
-        onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(!open) }}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors opacity-0 group-hover/card:opacity-100"
-      >
-        <MoreVertical size={16} />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-150">
-          <button
-            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(false); onRename() }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--foreground)] hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-          >
-            <Pencil size={14} className="text-[var(--muted-foreground)]" />
-            Renomear
-          </button>
-          <div className="border-t border-[var(--border)]" />
-          <button
-            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(false); onDelete() }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-          >
-            <Trash2 size={14} />
-            Excluir
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-function ReportLimitModal({ onClose, onConfirm, loading }: { onClose: () => void, onConfirm: () => void, loading: boolean }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-sm mx-4 shadow-2xl border border-[var(--border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl text-amber-500"><Zap size={24} /></div>
-          <h3 className="text-xl font-bold text-[var(--foreground)]">Análise Recente</h3>
-        </div>
-        <p className="text-[var(--muted-foreground)] text-sm mb-2 leading-relaxed">
-          Você já gerou uma análise de desempenho nos últimos <strong>7 dias</strong>.
-        </p>
-        <p className="text-[var(--muted-foreground)] text-sm mb-8 leading-relaxed">
-          Para extrair o máximo valor, recomendamos estudar um pouco mais antes de pedir uma nova visão da IA. Deseja prosseguir mesmo assim?
-        </p>
-        <div className="flex flex-col gap-3">
-          <Button variant="primary" className="w-full shadow-lg" onClick={onConfirm} disabled={loading}>
-            {loading ? 'Iniciando...' : 'Gerar Nova Análise'}
-          </Button>
-          <Button variant="outline" className="w-full" onClick={onClose}>
-            Estudar Mais Primeiro
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}

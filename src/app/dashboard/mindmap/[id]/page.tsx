@@ -56,22 +56,33 @@ const MindMapNode = ({ data }: any) => {
         duration: 0.3 
       }}
       className={cn(
-        "relative px-6 py-4 rounded-2xl border-2 font-semibold text-sm shadow-xl transition-all flex items-center gap-3 min-w-[280px]",
-        isRoot ? "bg-blue-600 border-blue-500 text-white text-lg shadow-[0_0_25px_rgba(59,130,246,0.3)]" : 
-        isBranch ? "bg-white border-blue-400 text-zinc-900 shadow-md" :
-        "bg-zinc-50 border-zinc-200 text-zinc-600 shadow-sm"
+        "relative px-8 py-5 rounded-[1.5rem] border font-bold text-sm backdrop-blur-xl transition-all flex items-center gap-4 min-w-[320px] group",
+        isRoot 
+          ? "bg-blue-600 border-blue-500 text-white text-base shadow-[0_0_30px_rgba(37,99,235,0.25)]" 
+          : isBranch 
+          ? "bg-zinc-900/80 border-zinc-800 text-zinc-100 shadow-xl hover:border-zinc-700 hover:bg-zinc-900" 
+          : "bg-zinc-950/50 border-zinc-900 text-zinc-400 shadow-sm hover:border-zinc-800 hover:text-zinc-200"
       )}
     >
+      {!isRoot && (
+        <div className="absolute left-[-1px] top-1/2 -translate-y-1/2 w-[3px] h-10 bg-blue-500/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
+      
       {!isRoot && <Handle type="target" position={Position.Left} className="!opacity-0" />}
       
-      <span className="flex-1 truncate leading-tight">{data.label}</span>
+      <span className={cn(
+        "flex-1 tracking-tight leading-relaxed",
+        isRoot && "uppercase tracking-[0.1em] font-black"
+      )}>{data.label}</span>
       
       {hasChildren && (
         <button 
           onClick={(e) => { e.stopPropagation(); onToggle(); }}
           className={cn(
-            "p-2 rounded-xl transition-all active:scale-90",
-            isRoot ? "bg-blue-500 hover:bg-blue-400 text-white" : "bg-zinc-100 hover:bg-blue-100 text-zinc-400 hover:text-blue-600"
+            "p-2.5 rounded-xl transition-all active:scale-90 border",
+            isRoot 
+              ? "bg-blue-500 border-blue-400 hover:bg-blue-400 text-white" 
+              : "bg-zinc-950 border-zinc-800 hover:border-blue-500/50 text-zinc-500 hover:text-blue-400"
           )}
         >
           {isExpanded ? <ChevronDown size={18} strokeWidth={3} /> : <ChevronRight size={18} strokeWidth={3} />}
@@ -197,9 +208,10 @@ function MindMapViewPage() {
             source: normId,
             target: normalizeId(childId),
             animated: isExpanded,
-            type: 'default',
-            style: { stroke: '#3b82f6', strokeWidth: 2, opacity: 0.8 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
+            type: 'smoothstep',
+            animated: true,
+            style: { stroke: isExpanded ? '#3b82f6' : '#1e293b', strokeWidth: 2, opacity: isExpanded ? 0.8 : 0.4 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: isExpanded ? '#3b82f6' : '#1e293b' }
           })
         })
         finalY = (childYs[0] + childYs[childYs.length - 1]) / 2
@@ -254,29 +266,61 @@ function MindMapViewPage() {
   }, [rawNodes, rawEdges, expandedNodes, toggleExpand, setNodes, setEdges, fitView])
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-white font-mono">
-      <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-6" />
-      <p className="animate-pulse tracking-widest text-sm uppercase">Gerando Estrutura...</p>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#09090B] text-white overflow-hidden relative">
+      {/* Background Aurora */}
+      <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="w-24 h-24 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center mb-10 shadow-2xl animate-pulse">
+          <Zap className="w-10 h-10 text-blue-500 fill-blue-500" />
+        </div>
+        <div className="space-y-4 text-center">
+          <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] animate-pulse">Iniciando Protocolo</p>
+          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-500">Mapeamento Neural</h2>
+          <div className="flex items-center gap-1.5 justify-center pt-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.1}s` }} />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 overflow-hidden font-sans">
-      <header className="h-20 px-8 border-b border-zinc-800 bg-zinc-900/60 backdrop-blur-xl flex items-center justify-between z-10 shadow-2xl">
-        <div className="flex items-center gap-5">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')} className="text-zinc-400 hover:text-white transition-all">
-            <ChevronLeft size={20} className="mr-2" /> Painel
+    <div className="flex flex-col h-screen bg-[#09090B] overflow-hidden font-sans selection:bg-blue-500/30">
+      <header className="h-24 px-10 border-b border-zinc-800/50 bg-[#09090B]/80 backdrop-blur-2xl flex items-center justify-between z-10 shadow-2xl relative">
+        <div className="absolute bottom-0 left-0 w-1/4 h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+        
+        <div className="flex items-center gap-8">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => router.push('/dashboard')} 
+            className="h-12 px-5 bg-zinc-900/50 border border-zinc-800 text-zinc-500 hover:text-white rounded-xl font-bold uppercase text-[10px] tracking-[0.2em] transition-all hover:scale-105 active:scale-95"
+          >
+            <ChevronLeft size={16} className="mr-2" /> PAINEL
           </Button>
-          <div className="h-8 w-px bg-zinc-800 mx-2" />
-          <div className="flex items-center gap-3">
-             <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Zap size={22} className="text-blue-500 fill-blue-500" />
+          
+          <div className="flex items-center gap-4">
+             <div className="p-2.5 bg-blue-600/10 border border-blue-500/20 rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.1)]">
+              <Zap size={20} className="text-blue-500 fill-blue-500" />
             </div>
-            <h1 className="font-bold text-lg text-white truncate max-w-xl">{mapTitle}</h1>
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black text-blue-500 uppercase tracking-[0.3em] mb-1">MAPA NEURAL EM TEMPO REAL</span>
+              <h1 className="font-black text-xl text-zinc-100 tracking-tight leading-none truncate max-w-xl">{mapTitle}</h1>
+            </div>
           </div>
         </div>
-        <Button variant="primary" size="sm" onClick={() => fitView({ duration: 800, padding: 0.15 })} className="shadow-xl shadow-blue-500/20 bg-blue-600 hover:bg-blue-500 text-white border-none px-6 font-bold transition-all hover:scale-105 active:scale-95">
-          <Maximize2 size={18} className="mr-2" /> Recentralizar
+
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => fitView({ duration: 800, padding: 0.15 })} 
+          className="h-12 px-6 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-[0.2em] shadow-[0_0_30px_rgba(37,99,235,0.3)] transition-all hover:scale-105 active:scale-95 hover:bg-blue-500 border-none"
+        >
+          <Maximize2 size={16} className="mr-3" /> RECENTRALIZAR
         </Button>
       </header>
 
@@ -287,12 +331,14 @@ function MindMapViewPage() {
           onNodesChange={onNodesChange} 
           onEdgesChange={onEdgesChange} 
           nodeTypes={nodeTypes}
-          minZoom={0.05}
-          maxZoom={1.5}
-        >
-          <Controls className="!bg-zinc-900/80 !border-zinc-800 !text-white !fill-white shadow-2xl rounded-xl overflow-hidden" />
-          <Background color="#1e293b" gap={25} variant={BackgroundVariant.Dots} size={1} />
-        </ReactFlow>
+            minZoom={0.05}
+            maxZoom={2}
+          >
+            <Controls className="flex flex-col gap-2 !bg-zinc-950/80 !border-zinc-800 !p-2 !shadow-2xl rounded-2xl overflow-hidden [&_button]:!bg-zinc-900 [&_button]:!border-zinc-800 [&_button]:!text-zinc-400 [&_button]:hover:!bg-zinc-800 [&_button]:hover:!text-white [&_button]:!transition-all [&_button]:!rounded-xl [&_button]:!w-10 [&_button]:!h-10 [&_button]:!mb-1 last:[&_button]:!mb-0 [&_svg]:!w-5 [&_svg]:!h-5" showInteractive={false} />
+            <Background color="#111111" gap={30} variant={BackgroundVariant.Dots} size={2} />
+            {/* Custom overlay grid */}
+            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,rgba(37,99,235,0.02)_0%,transparent_70%)]" />
+          </ReactFlow>
       </main>
     </div>
   )

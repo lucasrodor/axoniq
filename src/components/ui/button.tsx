@@ -19,7 +19,7 @@ export function Button({
   const variants = {
     primary: 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 shadow-sm',
     secondary: 'bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:bg-zinc-100 dark:hover:bg-zinc-800',
-    outline: 'border border-[var(--border)] bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900 text-[var(--foreground)]',
+    outline: 'border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-100 backdrop-blur-sm',
     ghost: 'text-[var(--foreground)] hover:bg-zinc-100 dark:hover:bg-zinc-900',
   }
 

@@ -249,87 +249,102 @@ export default function DeckDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)] p-4 sm:p-6 md:p-12">
-      <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
+    <div className="min-h-screen bg-[#09090B] p-4 sm:p-6 md:p-12 relative overflow-hidden selection:bg-blue-500/30">
+      {/* Background Aurora */}
+      <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="max-w-4xl mx-auto animate-in fade-in duration-700 relative z-10">
         {/* Navigation */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-10">
           <Link href="/dashboard">
             <Button
               variant="ghost"
               size="sm"
-              className="-ml-3 text-[var(--muted-foreground)]"
+              className="-ml-3 text-zinc-500 hover:text-white hover:bg-zinc-900/50 transition-all group px-4 rounded-xl"
             >
-              <ChevronLeft size={16} className="mr-1" />
-              Voltar ao Painel
+              <ChevronLeft size={16} className="mr-1 group-hover:-translate-x-1 transition-transform" />
+              PAINEL
             </Button>
           </Link>
         </div>
 
         {/* Deck Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-12">
           <div className="flex-1 min-w-0">
             {isEditingDeck ? (
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full text-2xl sm:text-3xl font-bold bg-transparent border-b-2 border-blue-500 focus:outline-none text-[var(--foreground)] pb-1"
-                  autoFocus
-                />
-                <input
-                  type="text"
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="Descrição (opcional)"
-                  className="w-full text-sm bg-transparent border-b border-[var(--border)] focus:outline-none text-[var(--muted-foreground)] pb-1"
-                />
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSaveDeck}>
-                    <Check size={14} className="mr-1" /> Salvar
+              <div className="space-y-4 max-w-2xl bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800/50 backdrop-blur-xl shadow-2xl">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] ml-1">Título do Deck</label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full text-2xl font-black bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 text-zinc-100 transition-all"
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Descrição</label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    placeholder="O que este deck aborda..."
+                    className="w-full text-sm bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 text-zinc-300 min-h-[100px] transition-all"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" onClick={handleSaveDeck} className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-6">
+                    <Check size={14} className="mr-1.5" /> Salvar Alterações
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="text-zinc-500 hover:text-zinc-100"
                     onClick={() => setIsEditingDeck(false)}
                   >
-                    <X size={14} className="mr-1" /> Cancelar
+                    <X size={14} className="mr-1.5" /> Cancelar
                   </Button>
                 </div>
               </div>
             ) : (
               <>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)] truncate">
+                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-100 truncate mb-1">
                   {deck.title}
                 </h1>
                 {deck.description && (
-                  <p className="text-[var(--muted-foreground)] mt-1 text-sm sm:text-base">
+                  <p className="text-zinc-400 mt-2 text-sm sm:text-base leading-relaxed max-w-2xl">
                     {deck.description}
                   </p>
                 )}
-                <div className="flex items-center gap-2 mt-3 text-xs text-[var(--muted-foreground)]">
-                  <Layers size={14} />
-                  {flashcards.length} flashcard
-                  {flashcards.length !== 1 ? 's' : ''}
+                <div className="flex items-center gap-2 mt-4">
+                  <span className="text-[10px] font-black text-blue-500 bg-blue-500/5 border border-blue-500/20 px-3 py-1 rounded-lg uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                    {flashcards.length} Flashcard{flashcards.length !== 1 ? 's' : ''}
+                  </span>
+                  <span className="text-[10px] font-black text-zinc-500 bg-zinc-950 border border-zinc-800 px-3 py-1 rounded-lg uppercase tracking-[0.2em]">
+                    GERADO DIA {new Date(deck.created_at).toLocaleDateString()}
+                  </span>
                 </div>
                 {/* Folder selector */}
                 {folders.length > 0 && (
-                  <CustomSelect
-                    className="mt-3 w-1/2"
-                    label="Pasta"
-                    options={[
-                      { value: '', label: 'Sem pasta' },
-                      ...folders.map((f) => ({ value: f.id, label: f.name }))
-                    ]}
-                    value={selectedFolderId}
-                    onChange={async (val) => {
-                      const folderId = val || null
-                      setSelectedFolderId(val)
-                      await supabase.from('decks').update({ folder_id: folderId }).eq('id', deckId)
-                      toast('Deck movido com sucesso!', 'success')
-                    }}
-                    icon={<Folder size={16} className="text-amber-500" />}
-                  />
+                  <div className="mt-8">
+                    <CustomSelect
+                      className="w-full max-w-[300px]"
+                      label="Pasta de Destino"
+                      options={[
+                        { value: '', label: 'Sem pasta' },
+                        ...folders.map((f) => ({ value: f.id, label: f.name }))
+                      ]}
+                      value={selectedFolderId}
+                      onChange={async (val) => {
+                        const folderId = val || null
+                        setSelectedFolderId(val)
+                        await supabase.from('decks').update({ folder_id: folderId }).eq('id', deckId)
+                        toast('Deck movido com sucesso!', 'success')
+                      }}
+                      icon={<Folder size={16} className="text-blue-500" />}
+                    />
+                  </div>
                 )}
               </>
             )}
@@ -341,21 +356,22 @@ export default function DeckDetailPage() {
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-zinc-400 hover:text-zinc-100 transition-colors"
                 onClick={() => setIsEditingDeck(true)}
               >
-                <Pencil size={14} className="mr-1" /> Editar
+                <Pencil size={14} className="mr-1.5" /> Editar
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-red-500 hover:text-red-600"
+                className="text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors"
                 onClick={() => setShowDeleteConfirm(true)}
               >
-                <Trash2 size={14} className="mr-1" /> Deletar
+                <Trash2 size={14} className="mr-1.5" /> Deletar
               </Button>
               <Link href={`/dashboard/deck/${deckId}/study`}>
-                <Button size="sm">
-                  <Play size={14} className="mr-1" /> Estudar
+                <Button size="sm" className="bg-zinc-900/50 text-blue-400 border border-blue-500/30 hover:bg-blue-600/10 rounded-xl px-5 font-black uppercase tracking-[0.1em] text-[10px] shadow-[0_0_20px_rgba(59,130,246,0.1)] transition-all hover:-translate-y-0.5">
+                  <Play size={14} className="mr-1.5 fill-current" /> ESTUDAR
                 </Button>
               </Link>
             </div>
@@ -364,22 +380,23 @@ export default function DeckDetailPage() {
 
         {/* Delete Confirmation */}
         {showDeleteConfirm && (
-          <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl p-6 mb-8 animate-in zoom-in duration-200">
-            <p className="text-red-700 dark:text-red-400 font-medium mb-4">
-              Tem certeza que deseja deletar este deck e todos os{' '}
-              {flashcards.length} flashcards?
+          <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8 mb-12 animate-in zoom-in duration-300 backdrop-blur-xl shadow-[0_0_50px_rgba(239,68,68,0.05)]">
+            <p className="text-red-400 font-bold mb-6 text-lg tracking-tight">
+              Ação Irreversível: Deletar este deck e todos os{' '}
+              <span className="text-white px-2 py-0.5 bg-red-500/20 rounded-lg">{flashcards.length}</span> flashcards?
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Button
-                size="sm"
-                className="bg-red-600 hover:bg-red-700 text-white"
+                size="lg"
+                className="bg-red-600 hover:bg-red-500 text-white rounded-xl px-8 font-bold transition-all shadow-lg shadow-red-500/10"
                 onClick={handleDeleteDeck}
               >
-                Sim, deletar
+                Sim, Deletar Tudo
               </Button>
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="lg"
+                className="text-zinc-400 hover:text-zinc-100 rounded-xl px-8"
                 onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancelar
@@ -389,43 +406,43 @@ export default function DeckDetailPage() {
         )}
 
         {/* Flashcards Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-[var(--foreground)]">Flashcards</h2>
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-xl font-black text-zinc-100 uppercase tracking-[0.2em]">Flashcards</h2>
           {!isAddingCard && (
-            <Button size="sm" onClick={() => setIsAddingCard(true)}>
-              <Plus size={16} className="mr-1" /> Novo Card
+            <Button size="sm" onClick={() => setIsAddingCard(true)} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-500/10 transition-all hover:-translate-y-0.5">
+              <Plus size={16} className="mr-1.5" /> Novo Card
             </Button>
           )}
         </div>
 
         {/* Add Card Form */}
         {isAddingCard && (
-          <div className="bg-white dark:bg-zinc-900 border-2 border-dashed border-blue-500/30 rounded-xl p-6 mb-8 animate-in slide-in-from-top-4 duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-blue-500 uppercase tracking-widest flex items-center gap-2">
-                <Plus size={16} /> Novo Flashcard
+          <div className="bg-zinc-900/50 border border-blue-500/30 rounded-3xl p-8 mb-12 animate-in slide-in-from-top-4 duration-500 backdrop-blur-xl shadow-2xl">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                <Plus size={16} /> Adicionar Novo Conhecimento
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => setIsAddingCard(false)}>
-                <X size={16} />
+              <Button variant="ghost" size="icon" onClick={() => setIsAddingCard(false)} className="text-zinc-500 hover:text-zinc-100">
+                <X size={20} />
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 items-start">
               <RichEditor
                 value={newFront}
                 onChange={setNewFront}
-                label="Frente (Pergunta)"
+                label="Frente (Pergunta/Conceito)"
                 placeholder="Ex: Qual a tríade da meningite?"
               />
               <RichEditor
                 value={newBack}
                 onChange={setNewBack}
-                label="Verso (Resposta)"
-                placeholder="Ex: Febre, rigidez de nuca e alteração do nível de consciência."
+                label="Verso (Resposta/Definição)"
+                placeholder="Ex: Febre, rigidez de nuca e alteração..."
               />
             </div>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsAddingCard(false)}>Cancelar</Button>
-              <Button onClick={handleCreateCard} disabled={!newFront.trim() || !newBack.trim()}>
+              <Button variant="ghost" className="text-zinc-500 hover:text-zinc-100" onClick={() => setIsAddingCard(false)}>Cancelar</Button>
+              <Button onClick={handleCreateCard} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-10 font-bold shadow-lg shadow-blue-500/20" disabled={!newFront.trim() || !newBack.trim()}>
                 Criar Flashcard
               </Button>
             </div>
@@ -434,21 +451,21 @@ export default function DeckDetailPage() {
 
         {/* Flashcards */}
         {flashcards.length === 0 ? (
-          <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl p-12 text-center">
-            <p className="text-[var(--muted-foreground)]">
-              Este deck ainda não tem flashcards.
+          <div className="bg-zinc-900/30 border border-dashed border-zinc-800 rounded-3xl p-20 text-center backdrop-blur-sm">
+            <p className="text-zinc-500 font-bold uppercase tracking-[0.2em] text-xs">
+              Este deck ainda não possui unidades de conhecimento.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {flashcards.map((card) => (
               <div
                 key={card.id}
-                className="bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl p-5 sm:p-6 shadow-sm group relative"
+                className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2rem] p-8 shadow-xl group relative backdrop-blur-xl hover:border-blue-500/30 transition-all duration-300"
               >
                 {editingCardId === card.id ? (
                   /* Edit Mode */
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <RichEditor
                       value={editFront}
                       onChange={setEditFront}
@@ -460,12 +477,13 @@ export default function DeckDetailPage() {
                       label="Resposta"
                     />
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleSaveCard(card.id)}>
-                        <Check size={14} className="mr-1" /> Salvar
+                      <Button size="sm" onClick={() => handleSaveCard(card.id)} className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-6 font-bold">
+                        <Check size={14} className="mr-1.5" /> Salvar
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="text-zinc-500 hover:text-zinc-100"
                         onClick={cancelEditCard}
                       >
                         Cancelar
@@ -475,34 +493,34 @@ export default function DeckDetailPage() {
                 ) : (
                   /* View Mode */
                   <>
-                    <div className="mb-4 pb-4 border-b border-[var(--border)]">
-                      <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">
+                    <div className="mb-6 pb-6 border-b border-zinc-800/50">
+                      <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">
                         Pergunta
                       </span>
-                      <div className="mt-2 prose prose-sm dark:prose-invert text-[var(--foreground)] max-w-none prose-img:rounded-lg">
+                      <div className="mt-4 prose prose-sm dark:prose-invert text-zinc-100 max-w-none prose-p:leading-relaxed">
                         <MarkdownDisplay content={card.front} />
                       </div>
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-green-500 uppercase tracking-widest">
+                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
                         Resposta
                       </span>
-                      <div className="mt-2 prose prose-sm dark:prose-invert text-[var(--muted-foreground)] max-w-none prose-img:rounded-lg">
+                      <div className="mt-4 prose prose-sm dark:prose-invert text-zinc-400 max-w-none prose-p:leading-relaxed">
                         <MarkdownDisplay content={card.back} />
                       </div>
                     </div>
                     {/* Hover Actions */}
-                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
                       <button
                         onClick={() => startEditCard(card)}
-                        className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                        className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-blue-500 hover:border-blue-500/30 transition-all shadow-2xl"
                         title="Editar"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => handleDeleteCard(card.id)}
-                        className="p-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/20 text-[var(--muted-foreground)] hover:text-red-600 transition-colors"
+                        className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-red-500 hover:border-red-500/30 transition-all shadow-2xl"
                         title="Deletar"
                       >
                         <Trash2 size={14} />

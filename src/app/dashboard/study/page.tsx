@@ -57,6 +57,28 @@ function StudySession() {
     easy: 0,
   })
 
+  const [allDecks, setAllDecks] = useState<DeckWithStats[]>([])
+  
+  useEffect(() => {
+    async function loadDecks() {
+      if (deckIds.length > 0) return
+      
+      const { data: decksData, error: decksError } = await supabase
+        .from('decks')
+        .select(`
+          id, 
+          title, 
+          created_at,
+          flashcards(count)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (decksError) return
+      setAllDecks(decksData as any)
+    }
+    loadDecks()
+  }, [])
+
   useEffect(() => {
     async function loadDueCards() {
       if (!user || deckIds.length === 0) {
@@ -137,10 +159,10 @@ function StudySession() {
   }
 
   if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-[var(--background)]">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-[var(--muted-foreground)] uppercase font-bold tracking-widest">Iniciando sessão...</p>
+    <div className="h-screen flex items-center justify-center bg-[#09090B]">
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(59,130,246,0.2)]" />
+        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.3em] animate-pulse">Sincronizando Neurônios...</p>
       </div>
     </div>
   )
@@ -148,38 +170,73 @@ function StudySession() {
   if (sessionComplete || (cards.length === 0 && !loading)) {
     const total = stats.again + stats.hard + stats.good + stats.easy
     return (
-      <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-6 text-center">
-        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${cards.length === 0 ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
-          {cards.length === 0 ? <Clock size={40} /> : <CheckCircle size={40} />}
-        </div>
-        <h1 className="text-3xl font-bold text-[var(--foreground)] mb-2">
-          {cards.length === 0 ? 'Nada por aqui!' : 'Sessão Concluída!'}
-        </h1>
-        <p className="text-[var(--muted-foreground)] mb-8 max-w-xs">
-          {cards.length === 0 
-            ? 'Não há mais cards pendentes para os decks selecionados.' 
-            : `Você revisou ${total} ${total === 1 ? 'carta' : 'cartas'} hoje.`}
-        </p>
+      <div className="min-h-screen bg-[#09090B] flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+        {/* Background Aurora */}
+        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/10 rounded-full blur-[120px]" />
 
-        {cards.length > 0 && (
-          <div className="grid grid-cols-4 gap-4 mb-10 w-full max-w-md">
-            {[
-              { label: 'Errei', val: stats.again, color: 'red' },
-              { label: 'Difícil', val: stats.hard, color: 'orange' },
-              { label: 'Acertei', val: stats.good, color: 'green' },
-              { label: 'Fácil', val: stats.easy, color: 'blue' },
-            ].map(s => (
-              <div key={s.label} className={`text-center p-3 rounded-xl bg-${s.color}-50 dark:bg-${s.color}-900/20`}>
-                <p className={`text-xl font-bold text-${s.color}-500`}>{s.val}</p>
-                <p className={`text-[10px] uppercase tracking-wider text-${s.color}-400 mt-1`}>{s.label}</p>
-              </div>
-            ))}
+        <div className="z-10 w-full max-w-4xl flex flex-col items-center">
+          <div className={`w-24 h-24 rounded-2xl flex items-center justify-center mb-10 border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-xl shadow-2xl ${cards.length === 0 ? 'text-blue-500' : 'text-emerald-500'}`}>
+            {cards.length === 0 ? <Clock size={40} /> : <CheckCircle size={40} />}
           </div>
-        )}
+          
+          <h1 className="text-4xl md:text-5xl font-black text-zinc-100 tracking-tighter mb-4">
+            {cards.length === 0 ? (allDecks.length > 0 ? 'Selecione o que estudar' : 'Nada por aqui!') : 'Sessão Concluída!'}
+          </h1>
+          <p className="text-zinc-400 mb-12 max-w-md text-lg">
+            {cards.length === 0 
+              ? (allDecks.length > 0 ? 'Escolha um dos seus decks abaixo para iniciar uma sessão de revisão imediata.' : 'Você ainda não possui flashcards pendentes ou decks criados.') 
+              : `Excelente progresso! Você revisou ${total} ${total === 1 ? 'carta' : 'cartas'} hoje.`}
+          </p>
 
-        <Link href="/dashboard">
-          <Button size="lg" variant="primary">Voltar ao Painel</Button>
-        </Link>
+          {cards.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 w-full max-w-2xl">
+              {[
+                { label: 'Errei', val: stats.again, color: 'text-red-400', bg: 'bg-red-500/5', border: 'border-red-500/20' },
+                { label: 'Difícil', val: stats.hard, color: 'text-orange-400', bg: 'bg-orange-500/5', border: 'border-orange-500/20' },
+                { label: 'Acertei', val: stats.good, color: 'text-emerald-400', bg: 'bg-emerald-500/5', border: 'border-emerald-500/20' },
+                { label: 'Fácil', val: stats.easy, color: 'text-blue-400', bg: 'bg-blue-500/5', border: 'border-blue-500/20' },
+              ].map(s => (
+                <div key={s.label} className={cn("text-center p-6 rounded-2xl border backdrop-blur-md", s.bg, s.border)}>
+                  <p className={cn("text-3xl font-black mb-1", s.color)}>{s.val}</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {cards.length === 0 && allDecks.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full mb-12">
+              {allDecks.map((deck) => (
+                <button
+                  key={deck.id}
+                  onClick={() => router.push(`/dashboard/study?decks=${deck.id}`)}
+                  className="group p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 backdrop-blur-md text-left hover:border-blue-500/50 transition-all hover:bg-zinc-800/50"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500">
+                      <Brain size={20} />
+                    </div>
+                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-950 px-2 py-1 rounded-md border border-zinc-800">
+                      {deck.flashcards?.[0]?.count || 0} CARDS
+                    </span>
+                  </div>
+                  <h3 className="text-zinc-100 font-bold group-hover:text-blue-400 transition-colors uppercase tracking-tight text-sm truncate">
+                    {deck.title}
+                  </h3>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-4">
+            <Link href="/dashboard">
+              <Button size="lg" className="bg-zinc-900 text-zinc-100 hover:bg-zinc-800 border border-zinc-800 rounded-[2rem] px-12 h-16 font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl transition-all hover:scale-105 active:scale-95">
+                Voltar ao Painel
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     )
   }
@@ -188,59 +245,64 @@ function StudySession() {
   const stage = getCardStage(currentCard)
 
   return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#09090B] flex flex-col relative overflow-hidden selection:bg-blue-500/30">
+      {/* Background Aurora */}
+      <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
+
       <div className="p-6 flex items-center justify-between z-10">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-[var(--muted-foreground)]">
+        <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-zinc-500 hover:text-zinc-100 transition-colors">
           <ChevronLeft />
         </Button>
         <div className="flex flex-col items-center">
-          <span className="text-sm font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-            {currentIndex + 1} / {cards.length}
+          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
+            PROCESSO {currentIndex + 1} <span className="text-zinc-700">/</span> {cards.length}
           </span>
-          <div className="w-32 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full mt-2 overflow-hidden">
-            <div className="h-full bg-blue-500 transition-all duration-300 rounded-full" style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }} />
+          <div className="w-48 h-1 bg-zinc-900 rounded-full mt-3 overflow-hidden border border-zinc-800/50">
+            <div className="h-full bg-blue-500/80 shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all duration-500 ease-out" style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }} />
           </div>
         </div>
         <div className="w-10" />
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center p-6 pb-32">
-        <div className="mb-6">
-          <span className={`text-[10px] uppercase font-bold tracking-widest px-4 py-1.5 rounded-full border shadow-sm ${
-            stage === 'new' ? 'text-blue-500 bg-blue-50 border-blue-100' : 
-            stage === 'learning' ? 'text-orange-500 bg-orange-50 border-orange-100' : 
-            'text-emerald-500 bg-emerald-50 border-emerald-100'
-          }`}>
+      <div className="flex-1 flex flex-col items-center justify-center p-6 pb-32 z-10">
+        <div className="mb-10">
+          <span className={cn(
+            "text-[10px] uppercase font-black tracking-[0.3em] px-6 py-2 rounded-lg border shadow-lg backdrop-blur-md transition-all duration-500",
+            stage === 'new' ? 'text-blue-400 bg-blue-500/5 border-blue-500/20 shadow-blue-500/5' : 
+            stage === 'learning' ? 'text-orange-400 bg-orange-500/5 border-orange-500/20 shadow-orange-500/5' : 
+            'text-emerald-400 bg-emerald-500/5 border-emerald-500/20 shadow-emerald-500/5'
+          )}>
             {getStageLabel(stage)}
           </span>
         </div>
 
-        <div className="relative w-full max-w-2xl aspect-[4/3] md:aspect-[3/2] cursor-pointer group" style={{ perspective: '1200px' }} onClick={() => setIsFlipped(!isFlipped)}>
-          <motion.div className="w-full h-full relative" animate={{ rotateY: isFlipped ? 180 : 0 }} transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }} style={{ transformStyle: 'preserve-3d' }}>
+        <div className="relative w-full max-w-2xl aspect-[4/3] md:aspect-[3/2] group" style={{ perspective: '2000px' }} onClick={() => setIsFlipped(!isFlipped)}>
+          <motion.div className="w-full h-full relative" animate={{ rotateY: isFlipped ? 180 : 0 }} transition={{ duration: 0.8, type: 'spring', stiffness: 200, damping: 25 }} style={{ transformStyle: 'preserve-3d' }}>
             {/* Front */}
-            <div className="absolute inset-0 bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-2xl shadow-xl flex flex-col items-center justify-center p-10 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-blue-600 opacity-50" />
-              <div className="absolute top-8 left-8 text-[10px] font-bold text-blue-500 uppercase tracking-[0.2em] opacity-80">
-                Pergunta
+            <div className="absolute inset-0 bg-zinc-900/60 border border-zinc-800/80 rounded-[2.5rem] shadow-2xl backdrop-blur-3xl flex flex-col items-center justify-center p-12 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/0 via-blue-500/40 to-blue-500/0" />
+              <div className="absolute top-10 left-10 text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] opacity-50">
+                PROMPT ANALÍTICO
               </div>
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-medium text-[var(--foreground)] leading-snug">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-zinc-100 leading-tight tracking-tight px-4">
                   {currentCard.front}
                 </h2>
               </div>
-              <div className="absolute bottom-6 text-[10px] text-[var(--muted-foreground)] flex items-center gap-1.5 opacity-60 uppercase tracking-widest">
-                <RotateCw size={12} /> Clique para virar
+              <div className="absolute bottom-10 text-[10px] text-zinc-500 flex items-center gap-2 opacity-60 uppercase tracking-[0.2em] font-bold">
+                <RotateCw size={14} className="animate-spin-slow" /> Clique para revelar resposta
               </div>
             </div>
 
             {/* Back */}
-            <div className="absolute inset-0 bg-zinc-50 dark:bg-zinc-950 border border-[var(--border)] rounded-2xl shadow-xl flex flex-col items-center justify-center p-10 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-green-600 opacity-50" />
-              <div className="absolute top-8 left-8 text-[10px] font-bold text-green-500 uppercase tracking-[0.2em] opacity-80">
-                Resposta
+            <div className="absolute inset-0 bg-zinc-950/80 border border-zinc-800/80 rounded-[2.5rem] shadow-[0_0_50px_rgba(16,185,129,0.05)] backdrop-blur-3xl flex flex-col items-center justify-center p-12 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0" />
+              <div className="absolute top-10 left-10 text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] opacity-40">
+                SÍNTESE DE RESPOSTA
               </div>
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <p className="text-lg sm:text-xl md:text-2xl text-[var(--muted-foreground)] leading-relaxed">
+                <p className="text-xl sm:text-2xl md:text-3xl text-zinc-300 leading-relaxed max-w-lg">
                   {currentCard.back}
                 </p>
               </div>
@@ -249,22 +311,38 @@ function StudySession() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--background)] via-[var(--background)]/95 to-transparent pt-16">
-        <div className="max-w-lg mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 p-8 z-20">
+        <div className="max-w-2xl mx-auto">
           {!isFlipped ? (
-            <Button size="lg" className="w-full text-lg h-14 shadow-lg" onClick={() => setIsFlipped(true)}>Mostrar Resposta</Button>
+            <Button 
+              size="lg" 
+              className="w-full text-[10px] h-20 font-black uppercase tracking-[0.4em] rounded-[2rem] bg-blue-600/10 text-blue-400 border border-blue-500/30 hover:bg-blue-600/20 shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all hover:-translate-y-1 active:scale-95 group" 
+              onClick={() => setIsFlipped(true)}
+            >
+              MOSTRAR RESPOSTA <Zap className="ml-3 group-hover:animate-pulse" size={16} />
+            </Button>
           ) : (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-4">
               {[
-                { q: 1, label: 'Errei', icon: XCircle, color: 'red', desc: '<1min' },
-                { q: 3, label: 'Difícil', icon: Brain, color: 'orange', desc: currentCard.repetition === 0 ? '1d' : `${Math.round(currentCard.interval * 1.2)}d` },
-                { q: 4, label: 'Acertei', icon: CheckCircle, color: 'green', desc: currentCard.repetition === 0 ? '1d' : currentCard.repetition === 1 ? '6d' : `${Math.round(currentCard.interval * currentCard.ease_factor)}d` },
-                { q: 5, label: 'Fácil', icon: Zap, color: 'blue', desc: currentCard.repetition === 0 ? '1d' : currentCard.repetition === 1 ? '6d' : `${Math.round(currentCard.interval * currentCard.ease_factor * 1.3)}d` },
+                { q: 1, label: 'Errei', icon: XCircle, color: 'text-red-400', hover: 'hover:bg-red-500/10 hover:border-red-500/30', border: 'border-red-500/10', desc: '<1min' },
+                { q: 3, label: 'Difícil', icon: Brain, color: 'text-orange-400', hover: 'hover:bg-orange-500/10 hover:border-orange-500/30', border: 'border-orange-500/10', desc: currentCard.repetition === 0 ? '1d' : `${Math.round(currentCard.interval * 1.2)}d` },
+                { q: 4, label: 'Acertei', icon: CheckCircle, color: 'text-emerald-400', hover: 'hover:bg-emerald-500/10 hover:border-emerald-500/30', border: 'border-emerald-500/10', desc: currentCard.repetition === 0 ? '1d' : currentCard.repetition === 1 ? '6d' : `${Math.round(currentCard.interval * currentCard.ease_factor)}d` },
+                { q: 5, label: 'Fácil', icon: Zap, color: 'text-blue-400', hover: 'hover:bg-blue-500/10 hover:border-blue-500/30', border: 'border-blue-500/10', desc: currentCard.repetition === 0 ? '1d' : currentCard.repetition === 1 ? '6d' : `${Math.round(currentCard.interval * currentCard.ease_factor * 1.3)}d` },
               ].map(opt => (
-                <button key={opt.q} disabled={saving} onClick={() => handleAnswer(opt.q as any)} className={`flex flex-col items-center gap-1 p-3 rounded-xl border border-${opt.color}-200 dark:border-${opt.color}-900/50 text-${opt.color}-600 hover:bg-${opt.color}-50 dark:hover:bg-${opt.color}-950/30 transition-colors disabled:opacity-50`}>
-                  <opt.icon size={22} />
-                  <span className="text-xs font-semibold">{opt.label}</span>
-                  <span className={`text-[10px] text-${opt.color}-400`}>{opt.desc}</span>
+                <button 
+                  key={opt.q} 
+                  disabled={saving} 
+                  onClick={() => handleAnswer(opt.q as any)} 
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-4 rounded-2xl border bg-zinc-900/50 backdrop-blur-md transition-all duration-300 disabled:opacity-50 hover:-translate-y-1 group",
+                    opt.color, opt.border, opt.hover
+                  )}
+                >
+                  <opt.icon size={24} className="group-hover:scale-110 transition-transform" />
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest">{opt.label}</span>
+                    <span className="text-[9px] opacity-40 font-bold mt-0.5">{opt.desc}</span>
+                  </div>
                 </button>
               ))}
             </div>

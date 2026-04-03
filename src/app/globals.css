@@ -48,6 +48,16 @@
   --accent-foreground: #FFFFFF;
 
   --border: #27272A;
+
+  /* Dashboard Visual Tokens */
+  --sidebar-width-collapsed: 72px;
+  --sidebar-width-expanded: 240px;
+  --glass-bg: rgba(9, 9, 11, 0.7);
+  --glass-border: rgba(39, 39, 42, 0.5);
+  --neon-blue: #3B82F6;
+  --neon-emerald: #10B981;
+  --neon-amber: #F59E0B;
+  --neon-red: #EF4444;
 }
 
 /* Base Styles */
@@ -57,6 +67,40 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Premium Dashboard Utilities */
+@utility glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px); /* Increased blur */
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+@utility clinical-grid {
+  background-image: 
+    radial-gradient(circle at 2px 2px, rgba(59, 130, 246, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+@utility aurora-border-blue {
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+}
+
+@utility aurora-border-emerald {
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+}
+
+@utility aurora-border-amber {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.1);
+}
+
+@utility aurora-border-red {
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);
 }
 
 /* Smooth Scroll */
