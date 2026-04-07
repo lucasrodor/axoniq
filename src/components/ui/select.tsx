@@ -64,14 +64,14 @@ export function CustomSelect({
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
             "w-full flex items-center justify-between pl-4 pr-5 py-2.5 rounded-lg border transition-all duration-300 text-sm",
-            "bg-white dark:bg-zinc-900/50 backdrop-blur-sm border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-sm hover:shadow-md",
-            isOpen && "ring-4 ring-blue-500/5 border-blue-500/50 shadow-lg bg-white dark:bg-zinc-900",
-            !selectedOption && "text-[var(--muted-foreground)]"
+            "bg-zinc-900/80 backdrop-blur-sm border-zinc-800 hover:border-zinc-600 shadow-sm hover:shadow-md",
+            isOpen && "ring-4 ring-blue-500/5 border-blue-500/50 shadow-lg bg-zinc-900",
+            !selectedOption && "text-zinc-500"
           )}
         >
           <div className="flex items-center gap-3 overflow-hidden">
-            {icon && <span className="flex-shrink-0 opacity-60 text-blue-500">{icon}</span>}
-            <span className="truncate font-semibold tracking-tight">{selectedOption ? selectedOption.label : placeholder}</span>
+            {icon && <span className="flex-shrink-0 opacity-60 text-blue-400">{icon}</span>}
+            <span className="truncate font-semibold tracking-tight text-zinc-100">{selectedOption ? selectedOption.label : placeholder}</span>
           </div>
           <ChevronDown 
             size={16} 
@@ -95,7 +95,7 @@ export function CustomSelect({
                 animate={{ opacity: 1, y: 4, scale: 1, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: 8, scale: 0.98, filter: "blur(4px)" }}
                 transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                className="absolute z-50 w-full bg-white/90 dark:bg-zinc-900/95 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-xl shadow-2xl overflow-hidden py-1.5 ring-1 ring-black/5 dark:ring-white/5"
+                className="absolute z-50 w-full bg-zinc-950/95 backdrop-blur-xl border border-zinc-800/50 rounded-xl shadow-2xl overflow-hidden py-1.5 ring-1 ring-white/5"
               >
                 <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
                   {options.length === 0 ? (

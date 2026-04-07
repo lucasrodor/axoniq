@@ -56,7 +56,7 @@ export function UploadZone({ onFileSelect, isProcessing }: UploadZoneProps) {
       <div className="w-full space-y-4 animate-in fade-in zoom-in duration-300">
         <div className="border border-[var(--border)] rounded-xl p-6 bg-[var(--background)] flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+            <div className="p-3 bg-blue-600/10 rounded-lg text-blue-400">
               <FileText size={24} />
             </div>
             <div>
@@ -98,14 +98,14 @@ export function UploadZone({ onFileSelect, isProcessing }: UploadZoneProps) {
           relative border-2 border-dashed rounded-xl p-12 lg:p-20 text-center cursor-pointer transition-all duration-300 ease-in-out
           flex flex-col items-center justify-center space-y-4
           ${isDragActive 
-            ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 scale-[1.01]' 
-            : 'border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900/50'}
-          ${error ? 'border-red-500 bg-red-50/50' : ''}
+            ? 'border-blue-500 bg-blue-500/5 scale-[1.01]' 
+            : 'border-zinc-300 dark:border-zinc-700 hover:border-blue-500/50 dark:hover:border-blue-500/50 hover:bg-zinc-950/40 dark:hover:bg-zinc-950/40'}
+          ${error ? 'border-red-500 bg-red-500/5' : ''}
         `}
       >
         <input {...getInputProps()} />
         
-        <div className={`p-4 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[var(--foreground)] mb-2 transition-transform duration-300 ${isDragActive ? 'scale-110' : ''}`}>
+        <div className={`p-4 rounded-full bg-zinc-900 border border-zinc-800/50 text-blue-400 mb-2 transition-transform duration-300 ${isDragActive ? 'scale-110' : ''}`}>
           <UploadCloud size={32} strokeWidth={1.5} />
         </div>
         

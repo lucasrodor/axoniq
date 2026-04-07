@@ -207,7 +207,6 @@ function MindMapViewPage() {
             id: `e-${normId}-${normalizeId(childId)}`,
             source: normId,
             target: normalizeId(childId),
-            animated: isExpanded,
             type: 'smoothstep',
             animated: true,
             style: { stroke: isExpanded ? '#3b82f6' : '#1e293b', strokeWidth: 2, opacity: isExpanded ? 0.8 : 0.4 },

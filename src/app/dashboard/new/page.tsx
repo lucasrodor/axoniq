@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { UploadZone } from '@/components/upload/upload-zone'
+import { AudioUploadZone } from '@/components/upload/audio-upload-zone'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { useRouter } from 'next/navigation'
 import { 
   ChevronLeft, Loader2, Folder, BookOpen, 
   HelpCircle, CheckCircle2, XCircle, ArrowRight, Zap,
-  FileText, Tag, ChevronDown
+  FileText, Tag, ChevronDown, Mic
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { CustomSelect } from '@/components/ui/select'
@@ -37,7 +38,8 @@ export default function NewSourcePage() {
   const [step, setStep] = useState<Step>('upload')
   const [isExtracting, setIsExtracting] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
-  const [inputMode, setInputMode] = useState<'file' | 'text'>('file')
+  const [processingStep, setProcessingStep] = useState('')
+  const [inputMode, setInputMode] = useState<'file' | 'text' | 'audio'>('file')
   const [rawText, setRawText] = useState('')
   const [rawTitle, setRawTitle] = useState('')
 
@@ -160,6 +162,46 @@ export default function NewSourcePage() {
     } finally {
       setIsExtracting(false)
       setLoadingMessage('')
+    }
+  }
+
+  // Handle Audio Selection
+  const handleAudioSelect = async (file: File) => {
+    setIsExtracting(true)
+    setLoadingMessage('Preparando áudio...')
+    setProcessingStep('Enviando arquivo...')
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Sessão expirada. Faça login novamente.')
+      
+      const formData = new FormData()
+      formData.append('file', file)
+
+      // 1. Transcribe the audio
+      const res = await fetch('/api/process-audio', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
+
+      // Once transcribed, we treat it like a document
+      setSourceId(data.sourceId)
+      setSourceTitle(data.title)
+      setCustomTitle(data.title)
+      setSpecialtyTag(data.specialtyTag || 'Outros')
+      setTextPreview(data.preview || '')
+      setStep('source-ready')
+      toast('Transcrição concluída!', 'success')
+    } catch (error) {
+      console.error('Audio process error:', error)
+      toast('Erro ao transcrever áudio. Verifique o tamanho e formato.', 'error')
+    } finally {
+      setIsExtracting(false)
+      setProcessingStep('')
     }
   }
 
@@ -322,7 +364,7 @@ export default function NewSourcePage() {
               </p>
             </div>
 
-            {isExtracting ? (
+            {isExtracting && inputMode !== 'audio' ? (
               <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl p-12 flex flex-col items-center justify-center text-center animate-pulse">
                 <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
                 <p className="text-lg font-medium text-[var(--foreground)]">{loadingMessage}</p>
@@ -330,8 +372,9 @@ export default function NewSourcePage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Seletor Visual Moderno */}
-                <div className="flex bg-[var(--secondary)] p-1.5 rounded-xl w-fit border border-[var(--border)]">
+                {/* Seletor Visual Moderno - Escondido durante extração de texto para foco */}
+                {!isExtracting && (
+                  <div className="flex bg-zinc-900/50 p-1.5 rounded-xl w-fit border border-zinc-800/50">
                   <button 
                     onClick={() => setInputMode('file')}
                     className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${inputMode === 'file' ? 'bg-[var(--background)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
@@ -344,11 +387,20 @@ export default function NewSourcePage() {
                   >
                     Colar Texto
                   </button>
+                  <button 
+                    onClick={() => setInputMode('audio')}
+                    className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${inputMode === 'audio' ? 'bg-[var(--background)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
+                  >
+                    Áudio
+                  </button>
                 </div>
+              )}
 
-                {inputMode === 'file' ? (
+                {inputMode === 'file' && (
                   <UploadZone onFileSelect={(file) => handleFileSelect(file)} isProcessing={isExtracting} />
-                ) : (
+                )}
+                
+                {inputMode === 'text' && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <input 
                       type="text" 
@@ -372,6 +424,16 @@ export default function NewSourcePage() {
                     </Button>
                   </div>
                 )}
+
+                {inputMode === 'audio' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <AudioUploadZone 
+                      onFileSelect={handleAudioSelect} 
+                      isProcessing={isExtracting}
+                      processingStep={processingStep}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -393,9 +455,9 @@ export default function NewSourcePage() {
 
             <div className="space-y-6">
               {/* Source Info Card */}
-              <div className="bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl p-6 shadow-sm">
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-6 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600">
+                  <div className="p-2.5 bg-blue-600/10 rounded-lg text-blue-400">
                     <FileText size={20} />
                   </div>
                   <div className="flex-1">
@@ -431,7 +493,7 @@ export default function NewSourcePage() {
               </div>
 
               {/* Output Selection */}
-              <div className="bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl p-6 shadow-sm">
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-6 shadow-sm">
                 <h2 className="text-sm font-bold text-[var(--muted-foreground)] mb-5 uppercase tracking-widest">
                   O que deseja gerar?
                 </h2>
@@ -440,8 +502,8 @@ export default function NewSourcePage() {
                 <div className="space-y-4">
                   <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     generateFlashcards
-                      ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/10'
-                      : 'border-[var(--border)] hover:border-zinc-400'
+                      ? 'border-blue-500/50 bg-blue-600/10'
+                      : 'border-zinc-800/50 hover:border-zinc-700'
                   }`}>
                     <input
                       type="checkbox"
@@ -465,8 +527,8 @@ export default function NewSourcePage() {
                               onClick={(e) => { e.preventDefault(); setFlashcardQuantity(opt.value) }}
                               className={`text-center py-2 px-3 rounded-lg border text-sm transition-all ${
                                 flashcardQuantity === opt.value
-                                  ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30 text-blue-600 font-bold'
-                                  : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-zinc-400'
+                                  ? 'border-blue-500/50 bg-blue-600/20 text-blue-400 font-bold'
+                                  : 'border-zinc-800 text-[var(--muted-foreground)] hover:border-zinc-700'
                               }`}
                             >
                               <span className="font-medium">{opt.label}</span>
@@ -481,8 +543,8 @@ export default function NewSourcePage() {
                   {/* Quiz Option */}
                   <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     generateQuiz
-                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10'
-                      : 'border-[var(--border)] hover:border-zinc-400'
+                      ? 'border-emerald-500/60 bg-emerald-500/10'
+                      : 'border-zinc-800/50 hover:border-zinc-700 bg-zinc-950/40'
                   }`}>
                     <input
                       type="checkbox"
@@ -492,10 +554,10 @@ export default function NewSourcePage() {
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <HelpCircle size={18} className="text-emerald-500" />
-                        <span className="font-bold text-[var(--foreground)]">Quiz</span>
+                        <HelpCircle size={18} className="text-emerald-400" />
+                        <span className="font-bold text-zinc-100">Quiz</span>
                       </div>
-                      <p className="text-sm text-[var(--muted-foreground)]">
+                      <p className="text-sm text-zinc-400">
                         Questões de múltipla escolha, lacuna e verdadeiro/falso no estilo prova de residência.
                       </p>
                       {generateQuiz && (
@@ -506,8 +568,8 @@ export default function NewSourcePage() {
                               onClick={(e) => { e.preventDefault(); setQuizQuantity(opt.value) }}
                               className={`text-center py-2 px-3 rounded-lg border text-sm transition-all ${
                                 quizQuantity === opt.value
-                                  ? 'border-emerald-500 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 font-bold'
-                                  : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-zinc-400'
+                                  ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-400 font-bold'
+                                  : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'
                               }`}
                             >
                               <span className="font-medium">{opt.label}</span>
@@ -520,8 +582,8 @@ export default function NewSourcePage() {
                   </label>
                   <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     generateMindMap
-                      ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-900/10'
-                      : 'border-[var(--border)] hover:border-zinc-400'
+                      ? 'border-amber-500/60 bg-amber-500/10'
+                      : 'border-zinc-800/50 hover:border-zinc-700 bg-zinc-950/40'
                   }`}>
                     <input
                       type="checkbox"
@@ -531,10 +593,10 @@ export default function NewSourcePage() {
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <Zap size={18} className="text-amber-500" />
-                        <span className="font-bold text-[var(--foreground)]">Mapa Mental IA</span>
+                        <Zap size={18} className="text-amber-400" />
+                        <span className="font-bold text-zinc-100">Mapa Mental IA</span>
                       </div>
-                      <p className="text-sm text-[var(--muted-foreground)]">
+                      <p className="text-sm text-zinc-400">
                         Uma visão panorâmica e hierárquica dos conceitos-chave para revisão rápida.
                       </p>
                     </div>
@@ -665,15 +727,15 @@ export default function NewSourcePage() {
               {genStatus.deckId && (
                 <button
                   onClick={() => router.push(`/dashboard/deck/${genStatus.deckId}`)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 hover:border-blue-500/60 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-500/20 bg-blue-600/5 hover:border-blue-500/40 transition-all active:scale-[0.98]"
                 >
-                  <div className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-500">
+                  <div className="p-2.5 rounded-lg bg-blue-600/10 text-blue-400">
                     <BookOpen size={22} />
                   </div>
                   <div className="flex-1 text-left">
-                    <span className="font-bold text-[var(--foreground)] text-base">Ver Flashcards</span>
+                    <span className="font-bold text-zinc-100 text-base">Ver Flashcards</span>
                     {genStatus.flashcardsCount && (
-                      <p className="text-xs text-[var(--muted-foreground)]">{genStatus.flashcardsCount} cards prontos para estudar</p>
+                      <p className="text-xs text-zinc-500">{genStatus.flashcardsCount} cards prontos para estudar</p>
                     )}
                   </div>
                   <ArrowRight size={18} className="text-blue-500" />
@@ -682,15 +744,15 @@ export default function NewSourcePage() {
               {genStatus.quizId && (
                 <button
                   onClick={() => router.push(`/dashboard/quiz/${genStatus.quizId}`)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 hover:border-emerald-500/60 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-emerald-500/20 bg-emerald-600/5 hover:border-emerald-500/40 transition-all active:scale-[0.98]"
                 >
-                  <div className="p-2.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500">
+                  <div className="p-2.5 rounded-lg bg-emerald-600/10 text-emerald-400">
                     <HelpCircle size={22} />
                   </div>
                   <div className="flex-1 text-left">
-                    <span className="font-bold text-[var(--foreground)] text-base">Fazer Quiz</span>
+                    <span className="font-bold text-zinc-100 text-base">Fazer Quiz</span>
                     {genStatus.quizCount && (
-                      <p className="text-xs text-[var(--muted-foreground)]">{genStatus.quizCount} questões geradas</p>
+                      <p className="text-xs text-zinc-500">{genStatus.quizCount} questões geradas</p>
                     )}
                   </div>
                   <ArrowRight size={18} className="text-emerald-500" />
@@ -747,19 +809,19 @@ function GenerationStatusCard({
 }) {
   const colorMap = {
     blue: {
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
-      text: 'text-blue-600',
-      border: 'border-blue-200 dark:border-blue-800',
+      bg: 'bg-zinc-900/40',
+      text: 'text-blue-400',
+      border: 'border-zinc-800',
     },
     emerald: {
-      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-      text: 'text-emerald-600',
-      border: 'border-emerald-200 dark:border-emerald-800',
+      bg: 'bg-zinc-900/40',
+      text: 'text-emerald-400',
+      border: 'border-zinc-800',
     },
     amber: {
-      bg: 'bg-amber-50 dark:bg-amber-900/20',
-      text: 'text-amber-600',
-      border: 'border-amber-200 dark:border-amber-800',
+      bg: 'bg-zinc-900/40',
+      text: 'text-amber-400',
+      border: 'border-zinc-800',
     },
   }
   const c = colorMap[color]

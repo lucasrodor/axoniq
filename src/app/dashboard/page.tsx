@@ -913,11 +913,13 @@ export default function DashboardPage() {
                 </div>
                 <h3 className="text-xl font-bold text-zinc-100 mb-3 tracking-tight">Protocolo de Decks Inexistente</h3>
                 <p className="text-zinc-500 mb-10 max-w-sm mx-auto text-sm leading-relaxed">Sua biblioteca neural está vazia. Comece criando um novo deck ou importe materiais via IA.</p>
-                <Link href="/dashboard/new">
-                  <Button className="h-12 px-8 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-blue-600/20 transition-all hover:scale-105 active:scale-95 border-none">
-                    <Plus size={16} className="mr-2" /> NOVO DECK
-                  </Button>
-                </Link>
+                <Button 
+                  type="button"
+                  onClick={() => router.push('/dashboard/new')}
+                  className="relative z-50 cursor-pointer pointer-events-auto h-12 px-8 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-blue-600/20 transition-all hover:scale-105 active:scale-95 border-none"
+                >
+                  <Plus size={16} className="mr-2" /> NOVO DECK
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -1000,11 +1002,13 @@ export default function DashboardPage() {
                  </div>
                  <h3 className="text-xl font-bold text-zinc-100 mb-3 tracking-tight">Faltam Simulações de Quiz</h3>
                  <p className="text-zinc-500 mb-10 max-w-sm mx-auto text-sm leading-relaxed">Sincronize seu conhecimento através de testes práticos. Utilize nossa IA para gerar questões agora.</p>
-                 <Link href="/dashboard/new">
-                   <Button className="h-12 px-8 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 border-none">
-                     <Plus size={16} className="mr-2" /> NOVO QUIZ
-                   </Button>
-                 </Link>
+                 <Button 
+                   type="button"
+                   onClick={() => router.push('/dashboard/new')}
+                   className="relative z-50 cursor-pointer pointer-events-auto h-12 px-8 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 border-none"
+                 >
+                   <Plus size={16} className="mr-2" /> NOVO QUIZ
+                 </Button>
                </div>
             ) : (
               <div className="space-y-3">

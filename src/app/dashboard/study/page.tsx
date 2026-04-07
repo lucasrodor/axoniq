@@ -17,6 +17,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
 import {
   calculateNextReview,
   getCardStage,
@@ -57,7 +58,7 @@ function StudySession() {
     easy: 0,
   })
 
-  const [allDecks, setAllDecks] = useState<DeckWithStats[]>([])
+  const [allDecks, setAllDecks] = useState<any[]>([])
   
   useEffect(() => {
     async function loadDecks() {

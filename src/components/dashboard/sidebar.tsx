@@ -84,10 +84,10 @@ export function Sidebar() {
   const menuItems = [
     { href: '/dashboard', icon: 'dashboard', label: 'Painel' },
     { href: '/dashboard/study', icon: 'auto_stories', label: 'Estudo' },
+    { href: '/dashboard/retention', icon: 'analytics', label: 'Desempenho' },
     { href: '/dashboard?tab=decks', icon: 'layers', label: 'Decks' },
     { href: '/dashboard?tab=quizzes', icon: 'quiz', label: 'Quizzes' },
     { href: '/dashboard?tab=mindmaps', icon: 'schema', label: 'Mapas Mentais' },
-    { href: '/dashboard?tab=reports', icon: 'analytics', label: 'Desempenho' },
   ]
 
   const bottomItems = [
