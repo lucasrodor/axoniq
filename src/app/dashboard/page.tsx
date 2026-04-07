@@ -4,7 +4,7 @@ import { useAuth } from '@/components/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { supabase } from '@/lib/supabase/client'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import {
   Plus,
   BookOpen,
@@ -155,7 +155,7 @@ interface MindMap {
 
 type DashboardTab = 'decks' | 'quizzes' | 'reports' | 'mindmaps'
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const { user, signOut } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -1361,3 +1361,11 @@ function LegendItem({ color, label }: { color: string, label: string }) {
 
 
 
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-zinc-500">Carregando painel principal...</div>}>
+      <DashboardPageContent />
+    </Suspense>
+  )
+}
