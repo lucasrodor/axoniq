@@ -374,7 +374,7 @@ export default function NewSourcePage() {
               <div className="space-y-6">
                 {/* Seletor Visual Moderno - Escondido durante extração de texto para foco */}
                 {!isExtracting && (
-                  <div className="flex bg-zinc-900/50 p-1.5 rounded-xl w-fit border border-zinc-800/50">
+                  <div className="flex flex-col sm:flex-row bg-zinc-900/50 p-1.5 rounded-xl w-full sm:w-fit border border-zinc-800/50 gap-1 sm:gap-0">
                   <button 
                     onClick={() => setInputMode('file')}
                     className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${inputMode === 'file' ? 'bg-[var(--background)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
@@ -520,7 +520,7 @@ export default function NewSourcePage() {
                         Cards de pergunta e resposta + cloze (lacuna) para memorização via repetição espaçada.
                       </p>
                       {generateFlashcards && (
-                        <div className="mt-3 grid grid-cols-3 gap-2">
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
                           {quantityOptions.map((opt) => (
                             <button
                               key={opt.value}
@@ -561,7 +561,7 @@ export default function NewSourcePage() {
                         Questões de múltipla escolha, lacuna e verdadeiro/falso no estilo prova de residência.
                       </p>
                       {generateQuiz && (
-                        <div className="mt-3 grid grid-cols-3 gap-2">
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
                           {quantityOptions.map((opt) => (
                             <button
                               key={opt.value}

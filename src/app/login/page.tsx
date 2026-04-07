@@ -143,6 +143,9 @@ export default function LoginPage() {
       {/* Right: Form */}
       <div className="flex items-center justify-center p-8 bg-[var(--background)]">
         <div className="w-full max-w-sm space-y-8 animate-in fade-in slide-in-from-right-4 duration-500" key={isSignUp ? 'signup' : 'login'}>
+          <div className="lg:hidden mb-8 flex justify-center">
+            <Image src="/AxonIQ.png" alt="AxonIQ" width={140} height={40} className="h-8 w-auto object-contain" />
+          </div>
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
               {isSignUp ? 'Crie sua conta' : 'Acesse a plataforma'}

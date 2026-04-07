@@ -171,17 +171,17 @@ function StudySession() {
   if (sessionComplete || (cards.length === 0 && !loading)) {
     const total = stats.again + stats.hard + stats.good + stats.easy
     return (
-      <div className="min-h-screen bg-[#09090B] flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+      <div className="min-h-screen bg-[#09090B] flex flex-col items-center justify-start sm:justify-center p-6 pt-20 sm:pt-6 text-center relative overflow-hidden">
         {/* Background Aurora */}
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/10 rounded-full blur-[120px]" />
 
         <div className="z-10 w-full max-w-4xl flex flex-col items-center">
-          <div className={`w-24 h-24 rounded-2xl flex items-center justify-center mb-10 border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-xl shadow-2xl ${cards.length === 0 ? 'text-blue-500' : 'text-emerald-500'}`}>
+          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center mb-6 sm:mb-10 border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-xl shadow-2xl ${cards.length === 0 ? 'text-blue-500' : 'text-emerald-500'}`}>
             {cards.length === 0 ? <Clock size={40} /> : <CheckCircle size={40} />}
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-black text-zinc-100 tracking-tighter mb-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-100 tracking-tight mb-4">
             {cards.length === 0 ? (allDecks.length > 0 ? 'Selecione o que estudar' : 'Nada por aqui!') : 'Sessão Concluída!'}
           </h1>
           <p className="text-zinc-400 mb-12 max-w-md text-lg">
@@ -251,19 +251,21 @@ function StudySession() {
       <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="p-6 flex items-center justify-between z-10">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-zinc-500 hover:text-zinc-100 transition-colors">
+      <div className="p-4 sm:p-6 flex items-center justify-between z-10 w-full">
+        <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-zinc-500 hover:text-zinc-100 transition-colors shrink-0">
           <ChevronLeft />
         </Button>
-        <div className="flex flex-col items-center">
-          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
+        <div className="flex flex-col items-center flex-1 mx-4">
+          <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
             PROCESSO {currentIndex + 1} <span className="text-zinc-700">/</span> {cards.length}
           </span>
-          <div className="w-48 h-1 bg-zinc-900 rounded-full mt-3 overflow-hidden border border-zinc-800/50">
+          <div className="w-full max-w-[140px] sm:max-w-[200px] h-1 bg-zinc-900 rounded-full mt-2 overflow-hidden border border-zinc-800/50">
             <div className="h-full bg-blue-500/80 shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all duration-500 ease-out" style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }} />
           </div>
         </div>
-        <div className="w-10" />
+        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center p-6 pb-32 z-10">
@@ -278,16 +280,16 @@ function StudySession() {
           </span>
         </div>
 
-        <div className="relative w-full max-w-2xl aspect-[4/3] md:aspect-[3/2] group" style={{ perspective: '2000px' }} onClick={() => setIsFlipped(!isFlipped)}>
+        <div className="relative w-full max-w-2xl px-4 aspect-[4/5] sm:aspect-[4/3] md:aspect-[3/2] group" style={{ perspective: '2000px' }} onClick={() => setIsFlipped(!isFlipped)}>
           <motion.div className="w-full h-full relative" animate={{ rotateY: isFlipped ? 180 : 0 }} transition={{ duration: 0.8, type: 'spring', stiffness: 200, damping: 25 }} style={{ transformStyle: 'preserve-3d' }}>
             {/* Front */}
-            <div className="absolute inset-0 bg-zinc-900/60 border border-zinc-800/80 rounded-[2.5rem] shadow-2xl backdrop-blur-3xl flex flex-col items-center justify-center p-12 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
+            <div className="absolute inset-0 bg-zinc-900/60 border border-zinc-800/80 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl backdrop-blur-3xl flex flex-col items-center justify-center p-8 sm:p-12 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/0 via-blue-500/40 to-blue-500/0" />
               <div className="absolute top-10 left-10 text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] opacity-50">
                 PROMPT ANALÍTICO
               </div>
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-zinc-100 leading-tight tracking-tight px-4">
+                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-zinc-100 leading-tight tracking-tight px-4 flex items-center justify-center text-center">
                   {currentCard.front}
                 </h2>
               </div>
@@ -297,13 +299,13 @@ function StudySession() {
             </div>
 
             {/* Back */}
-            <div className="absolute inset-0 bg-zinc-950/80 border border-zinc-800/80 rounded-[2.5rem] shadow-[0_0_50px_rgba(16,185,129,0.05)] backdrop-blur-3xl flex flex-col items-center justify-center p-12 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+            <div className="absolute inset-0 bg-zinc-950/80 border border-zinc-800/80 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_0_50px_rgba(16,185,129,0.05)] backdrop-blur-3xl flex flex-col items-center justify-center p-8 sm:p-12 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0" />
               <div className="absolute top-10 left-10 text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] opacity-40">
                 SÍNTESE DE RESPOSTA
               </div>
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <p className="text-xl sm:text-2xl md:text-3xl text-zinc-300 leading-relaxed max-w-lg">
+                <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-zinc-300 leading-relaxed max-w-lg flex items-center justify-center text-center">
                   {currentCard.back}
                 </p>
               </div>
@@ -317,13 +319,13 @@ function StudySession() {
           {!isFlipped ? (
             <Button 
               size="lg" 
-              className="w-full text-[10px] h-20 font-black uppercase tracking-[0.4em] rounded-[2rem] bg-blue-600/10 text-blue-400 border border-blue-500/30 hover:bg-blue-600/20 shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all hover:-translate-y-1 active:scale-95 group" 
+              className="w-full text-[10px] h-14 sm:h-20 font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] rounded-[1.5rem] sm:rounded-[2rem] bg-blue-600/10 text-blue-400 border border-blue-500/30 hover:bg-blue-600/20 shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all hover:-translate-y-1 active:scale-95 group px-4" 
               onClick={() => setIsFlipped(true)}
             >
-              MOSTRAR RESPOSTA <Zap className="ml-3 group-hover:animate-pulse" size={16} />
+              MOSTRAR RESPOSTA <Zap className="ml-2 sm:ml-3 group-hover:animate-pulse" size={16} />
             </Button>
           ) : (
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4">
               {[
                 { q: 1, label: 'Errei', icon: XCircle, color: 'text-red-400', hover: 'hover:bg-red-500/10 hover:border-red-500/30', border: 'border-red-500/10', desc: '<1min' },
                 { q: 3, label: 'Difícil', icon: Brain, color: 'text-orange-400', hover: 'hover:bg-orange-500/10 hover:border-orange-500/30', border: 'border-orange-500/10', desc: currentCard.repetition === 0 ? '1d' : `${Math.round(currentCard.interval * 1.2)}d` },

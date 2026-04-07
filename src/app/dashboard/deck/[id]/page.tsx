@@ -249,7 +249,7 @@ export default function DeckDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090B] p-4 sm:p-6 md:p-12 relative overflow-hidden selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#09090B] p-3 sm:p-6 md:p-12 relative overflow-x-hidden selection:bg-blue-500/30">
       {/* Background Aurora */}
       <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
@@ -270,10 +270,10 @@ export default function DeckDetailPage() {
         </div>
 
         {/* Deck Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-12">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12 px-2">
           <div className="flex-1 min-w-0">
             {isEditingDeck ? (
-              <div className="space-y-4 max-w-2xl bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800/50 backdrop-blur-xl shadow-2xl">
+              <div className="space-y-4 max-w-2xl bg-zinc-900/50 p-6 sm:p-8 rounded-3xl border border-zinc-800/50 backdrop-blur-xl shadow-2xl">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] ml-1">Título do Deck</label>
                   <input
@@ -309,7 +309,7 @@ export default function DeckDetailPage() {
               </div>
             ) : (
               <>
-                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-100 truncate mb-1">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-zinc-100 break-words mb-2 leading-tight">
                   {deck.title}
                 </h1>
                 {deck.description && (
@@ -317,11 +317,11 @@ export default function DeckDetailPage() {
                     {deck.description}
                   </p>
                 )}
-                <div className="flex items-center gap-2 mt-4">
-                  <span className="text-[10px] font-black text-blue-500 bg-blue-500/5 border border-blue-500/20 px-3 py-1 rounded-lg uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-                    {flashcards.length} Flashcard{flashcards.length !== 1 ? 's' : ''}
+                <div className="flex flex-wrap items-center gap-2 mt-4">
+                  <span className="text-[9px] sm:text-[10px] font-black text-blue-400 bg-blue-500/5 border border-blue-500/20 px-3 py-1.5 rounded-lg uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                    {flashcards.length} FLASHCARDS
                   </span>
-                  <span className="text-[10px] font-black text-zinc-500 bg-zinc-950 border border-zinc-800 px-3 py-1 rounded-lg uppercase tracking-[0.2em]">
+                  <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-lg uppercase tracking-[0.2em]">
                     GERADO DIA {new Date(deck.created_at).toLocaleDateString()}
                   </span>
                 </div>
@@ -352,11 +352,11 @@ export default function DeckDetailPage() {
 
           {/* Actions */}
           {!isEditingDeck && (
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 w-full sm:w-auto">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-zinc-400 hover:text-zinc-100 transition-colors"
+                className="text-zinc-400 hover:text-zinc-100 transition-colors border border-zinc-800 sm:border-none p-4 sm:p-2"
                 onClick={() => setIsEditingDeck(true)}
               >
                 <Pencil size={14} className="mr-1.5" /> Editar
@@ -364,14 +364,14 @@ export default function DeckDetailPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                className="text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors border border-red-800/20 sm:border-none p-4 sm:p-2"
                 onClick={() => setShowDeleteConfirm(true)}
               >
                 <Trash2 size={14} className="mr-1.5" /> Deletar
               </Button>
-              <Link href={`/dashboard/deck/${deckId}/study`}>
-                <Button size="sm" className="bg-zinc-900/50 text-blue-400 border border-blue-500/30 hover:bg-blue-600/10 rounded-xl px-5 font-black uppercase tracking-[0.1em] text-[10px] shadow-[0_0_20px_rgba(59,130,246,0.1)] transition-all hover:-translate-y-0.5">
-                  <Play size={14} className="mr-1.5 fill-current" /> ESTUDAR
+              <Link href={`/dashboard/deck/${deckId}/study`} className="col-span-2 sm:col-span-1">
+                <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl h-14 sm:h-10 sm:px-6 font-black uppercase tracking-[0.1em] text-[10px] shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95">
+                  <Play size={14} className="mr-2 fill-current" /> ESTUDAR AGORA
                 </Button>
               </Link>
             </div>
@@ -407,7 +407,7 @@ export default function DeckDetailPage() {
 
         {/* Flashcards Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-xl font-black text-zinc-100 uppercase tracking-[0.2em]">Flashcards</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-zinc-100 uppercase tracking-[0.2em]">Flashcards</h2>
           {!isAddingCard && (
             <Button size="sm" onClick={() => setIsAddingCard(true)} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-500/10 transition-all hover:-translate-y-0.5">
               <Plus size={16} className="mr-1.5" /> Novo Card
@@ -461,7 +461,7 @@ export default function DeckDetailPage() {
             {flashcards.map((card) => (
               <div
                 key={card.id}
-                className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2rem] p-8 shadow-xl group relative backdrop-blur-xl hover:border-blue-500/30 transition-all duration-300"
+                className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-8 shadow-xl group relative backdrop-blur-xl hover:border-blue-500/30 transition-all duration-300 min-w-0"
               >
                 {editingCardId === card.id ? (
                   /* Edit Mode */

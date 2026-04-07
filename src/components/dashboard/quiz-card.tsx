@@ -54,26 +54,26 @@ export function QuizCard({
   const isGenerating = quiz.status === 'generating'
 
   return (
-    <Tilt glowColor={glowColor} className="h-full">
-      <div className="group/card h-full glass-panel p-6 rounded-2xl aurora-border-emerald transition-all duration-500 relative">
+    <Tilt glowColor={glowColor} className="h-full w-full">
+      <div className="group/card h-full glass-panel p-4 sm:p-6 rounded-2xl aurora-border-emerald transition-all duration-500 relative min-w-0">
         {/* Background Clipping Container for internal glows */}
         <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
           {/* Secondary Glow */}
           <div className="absolute -top-12 -right-12 w-24 h-24 blur-[40px] opacity-10 bg-emerald-500 transition-all duration-700 group-hover/card:scale-150 group-hover/card:opacity-20" />
         </div>
 
-        <div className="flex justify-between items-start mb-6 relative z-10">
-          <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)] group-hover/card:bg-emerald-500/20 group-hover/card:text-emerald-400 group-hover/card:shadow-[0_0_20px_rgba(16,185,129,0.2)] transition-all duration-500">
-            <HelpCircle size={18} />
+        <div className="flex justify-between items-start mb-4 sm:mb-6 relative z-10 w-full min-w-0">
+          <div className="p-2 sm:p-3 bg-emerald-500/10 rounded-xl text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)] group-hover/card:bg-emerald-500/20 group-hover/card:text-emerald-400 Transition-all duration-500">
+            <HelpCircle className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             {isGenerating && (
-              <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md uppercase tracking-wider animate-pulse border border-blue-500/20">
-                Sintetizando...
+              <span className="text-[9px] sm:text-[10px] font-black text-blue-400 bg-blue-500/5 px-2 py-1 rounded-lg uppercase tracking-wider animate-pulse border border-blue-500/20">
+                Sintetizando
               </span>
             )}
-            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900/50 px-2.5 py-1 rounded-md uppercase tracking-widest border border-zinc-800">
-              {quiz.totalQuestions} questões
+            <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 bg-zinc-950 px-2 py-1.5 rounded-lg uppercase tracking-widest border border-zinc-800 shrink-0">
+              {quiz.totalQuestions} Qs
             </span>
             {onRename && onDelete && (
               <CardKebabMenu

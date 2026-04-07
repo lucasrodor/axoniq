@@ -31,19 +31,19 @@ export function MindMapCard({
   const isGenerating = mindMap.status === 'generating'
 
   return (
-    <Tilt glowColor={glowColor} className="h-full">
-      <div className="group/card h-full glass-panel p-6 rounded-2xl aurora-border-blue transition-all duration-500 relative">
+    <Tilt glowColor={glowColor} className="h-full w-full">
+      <div className="group/card h-full glass-panel p-4 sm:p-6 rounded-2xl aurora-border-blue transition-all duration-500 relative min-w-0">
         {/* Background Clipping Container for internal glows */}
         <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
           {/* Synaptic Glow */}
           <div className="absolute -top-12 -right-12 w-24 h-24 blur-[40px] opacity-10 bg-blue-500 transition-all duration-700 group-hover/card:scale-150 group-hover/card:opacity-20" />
         </div>
 
-        <div className="flex justify-between items-start mb-6 relative z-10">
-          <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)] group-hover/card:bg-blue-500/20 group-hover/card:text-blue-400 group-hover/card:shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-500">
-            <Zap size={18} />
+        <div className="flex justify-between items-start mb-4 sm:mb-6 relative z-10 w-full min-w-0">
+          <div className="p-2 sm:p-3 bg-blue-500/10 rounded-xl text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)] group-hover/card:bg-blue-500/20 group-hover/card:text-blue-400 transition-all duration-500">
+            <Zap className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {isGenerating && (
               <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-md uppercase tracking-wider animate-pulse border border-amber-500/20">
                 Mapeando...

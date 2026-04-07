@@ -128,9 +128,9 @@ export function DeckCard({
       : "aurora-border-blue"
 
   return (
-    <Tilt glowColor={glowColor} className="h-full">
+    <Tilt glowColor={glowColor} className="h-full w-full">
       <div className={cn(
-        "group/card h-full glass-panel p-6 rounded-2xl transition-all duration-500 relative",
+        "group/card h-full glass-panel p-4 sm:p-6 rounded-2xl transition-all duration-500 relative min-w-0 max-w-[400px] mx-auto sm:max-w-none",
         auroraClass
       )}>
         {/* Background Clipping Container for internal glows */}
@@ -142,22 +142,22 @@ export function DeckCard({
           )} />
         </div>
 
-        <div className="flex justify-between items-start mb-6 relative z-10">
+        <div className="flex justify-between items-start mb-4 sm:mb-6 relative z-10 min-w-0 w-full">
           <div className={cn(
-            "p-3 rounded-xl transition-all duration-500 group-hover/card:scale-110",
+            "p-2 sm:p-3 rounded-xl transition-all duration-500 group-hover/card:scale-110 shrink-0",
             isDue ? "bg-amber-500/10 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]" : 
             isMastered ? "bg-emerald-500/10 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]" : 
             "bg-blue-500/10 text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
           )}>
             {getSpecialtyIcon(deck.title)}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             {isDue && (
-              <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md uppercase tracking-wider border border-amber-500/20">
-                Revisar Agora
+              <span className="text-[9px] sm:text-[10px] font-black text-amber-400 bg-amber-500/5 px-2 py-1.5 rounded-lg uppercase tracking-wider border border-amber-500/20">
+                REVISAR
               </span>
             )}
-            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900/50 px-2.5 py-1 rounded-md uppercase tracking-widest border border-zinc-800">
+            <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 bg-zinc-950 px-2 py-1.5 rounded-lg uppercase tracking-widest border border-zinc-800 shrink-0">
               {deck.totalCards} cards
             </span>
             {onRename && onDelete && (
@@ -169,7 +169,7 @@ export function DeckCard({
           </div>
         </div>
 
-        <h3 className="text-lg font-bold text-zinc-100 line-clamp-2 mb-6 group-hover/card:text-blue-400 transition-colors relative z-10 tracking-tight">
+        <h3 className="text-base sm:text-lg font-bold text-zinc-100 line-clamp-2 mb-6 group-hover/card:text-blue-400 transition-colors relative z-10 tracking-tight">
           {deck.title}
         </h3>
 

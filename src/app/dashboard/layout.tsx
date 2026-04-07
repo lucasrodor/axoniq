@@ -42,12 +42,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content Area */}
       <main 
         className={cn(
-          "flex-1 transition-all duration-500 ease-in-out relative z-10",
+          "flex-1 transition-all duration-500 ease-in-out relative z-10 w-full max-w-full overflow-x-hidden",
           "lg:pl-[72px]", // Base desktop margin (collapsed)
           !isSidebarCollapsed && "lg:pl-[240px]" // Expanded desktop margin
         )}
       >
-        <div className="p-4 md:p-6 lg:p-8 pt-4 md:pt-6 lg:pt-8 max-w-7xl mx-auto">
+        <div className="p-3 sm:p-4 md:p-6 lg:p-8 pt-20 md:pt-20 lg:pt-8 max-w-7xl mx-auto w-full">
           {children}
         </div>
       </main>

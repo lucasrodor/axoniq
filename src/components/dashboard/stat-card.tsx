@@ -36,14 +36,14 @@ export function StatCard({
     <motion.div
       whileHover={{ y: -4, scale: 1.01 }}
       className={cn(
-        "glass-panel p-6 rounded-2xl flex flex-col justify-between group transition-all duration-500",
+        "glass-panel p-4 sm:p-6 rounded-2xl flex flex-col justify-between group transition-all duration-500 w-full min-w-0",
         auroraClasses[color],
         className
       )}
     >
       <div className="flex items-start justify-between mb-4">
         <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center bg-zinc-900/50 border border-zinc-800/50 group-hover:scale-110 transition-transform duration-500",
+          "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-zinc-900/50 border border-zinc-800/50 group-hover:scale-110 transition-transform duration-500",
           color === 'blue' && "text-blue-500",
           color === 'emerald' && "text-emerald-500",
           color === 'amber' && "text-amber-5100",
@@ -62,14 +62,14 @@ export function StatCard({
       </div>
       
       <div>
-        <div className="text-3xl font-bold tracking-tighter text-zinc-100 mb-1">
+        <div className="text-2xl sm:text-3xl font-bold tracking-tighter text-zinc-100 mb-1">
           {value}
         </div>
-        <div className="text-xs font-medium text-zinc-500 uppercase tracking-widest">
+        <div className="text-[10px] sm:text-xs font-medium text-zinc-500 uppercase tracking-widest">
           {label}
         </div>
         {description && (
-          <p className="text-[10px] text-zinc-400 mt-2 line-clamp-1">{description}</p>
+          <p className="text-[9px] sm:text-[10px] text-zinc-400 mt-2 line-clamp-1">{description}</p>
         )}
       </div>
 
@@ -81,7 +81,7 @@ export function StatCard({
 
 export function BentoGrid({ children, className }: { children: React.ReactNode, className?: string }) {
   return (
-    <div className={cn("grid grid-cols-1 md:grid-cols-4 gap-6", className)}>
+    <div className={cn("grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6", className)}>
       {children}
     </div>
   )

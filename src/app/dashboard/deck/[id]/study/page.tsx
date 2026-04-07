@@ -282,7 +282,7 @@ export default function StudyPage({
           <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
             PROGRESSO: {currentIndex + 1} / {cards.length}
           </span>
-          <div className="w-32 h-1.5 bg-zinc-900 border border-zinc-800 rounded-full overflow-hidden">
+          <div className="w-full max-w-[140px] sm:max-w-xs h-1 bg-zinc-900 rounded-full mt-1.5 sm:mt-2 overflow-hidden border border-zinc-800/50">
             <div
               className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-300 rounded-full"
               style={{
@@ -324,7 +324,7 @@ export default function StudyPage({
               style={{ backfaceVisibility: 'hidden' }}
             >
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <h2 className="text-3xl font-semibold text-zinc-100 leading-snug px-6 flex items-center justify-center text-center">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-zinc-100 leading-normal px-4 sm:px-6 flex items-center justify-center text-center">
                   <MarkdownDisplay content={currentCard.front} raw={true} className="text-inherit !leading-inherit" />
                 </h2>
               </div>
@@ -342,7 +342,7 @@ export default function StudyPage({
               }}
             >
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <div className="text-2xl text-zinc-300 leading-snug font-medium max-w-[95%] flex items-center justify-center text-center">
+                <div className="text-lg sm:text-2xl text-zinc-300 leading-normal font-medium max-w-[95%] flex items-center justify-center text-center">
                   <MarkdownDisplay content={currentCard.back} raw={true} className="text-inherit !leading-inherit" />
                 </div>
               </div>
@@ -357,13 +357,13 @@ export default function StudyPage({
           {!isFlipped ? (
             <Button
               size="lg"
-              className="w-full text-xs h-16 flex items-center justify-center font-black uppercase tracking-[0.4em] rounded-[2rem] bg-blue-600/10 text-blue-400 border border-blue-500/30 hover:bg-blue-600/20 shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all hover:-translate-y-1 active:scale-95 group"
+              className="w-full text-[10px] h-14 sm:h-16 flex items-center justify-center font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] rounded-[1.5rem] sm:rounded-[2rem] bg-blue-600/10 text-blue-400 border border-blue-500/30 hover:bg-blue-600/20 shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all hover:-translate-y-1 active:scale-95 group px-4"
               onClick={() => setIsFlipped(true)}
             >
-              MOSTRAR RESPOSTA <Zap className="ml-3 group-hover:animate-pulse" size={16} />
+              MOSTRAR RESPOSTA <Zap className="ml-2 sm:ml-3 group-hover:animate-pulse" size={16} />
             </Button>
           ) : (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               <button
                 disabled={saving}
                 onClick={() => handleAnswer(1)}
