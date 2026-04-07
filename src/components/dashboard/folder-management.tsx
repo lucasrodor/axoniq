@@ -18,13 +18,14 @@ interface FolderType {
   created_at: string
 }
 
-export function DroppableFolder({ id, children }: { id: string, children: React.ReactNode }) {
+export function DroppableFolder({ id, children, isCollapsed }: { id: string, children: React.ReactNode, isCollapsed?: boolean }) {
   const { isOver, setNodeRef } = useDroppable({ id })
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-2xl transition-all duration-300 p-8",
+        "rounded-2xl transition-all duration-300",
+        isCollapsed ? "p-0" : "p-4 sm:p-8",
         isOver
           ? "bg-blue-500/5 ring-1 ring-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.1)]"
           : "ring-1 ring-transparent"
@@ -61,22 +62,22 @@ export function FolderHeader({
   onDelete: () => void
 }) {
   return (
-    <div className="flex items-center gap-3 group mb-4 relative z-10">
+    <div className="flex items-center gap-2 sm:gap-3 group mb-4 relative z-10">
       <button 
         onClick={onToggleCollapse} 
         className={cn(
-          "flex items-center gap-2.5 px-3 py-1.5 rounded-xl transition-all duration-300",
+          "flex items-center gap-2.5 px-3 py-1.5 rounded-xl transition-all duration-300 min-w-0 flex-shrink flex-1",
           "hover:bg-zinc-800/50 text-zinc-100"
         )}
       >
         <div className={cn(
-          "transition-transform duration-300",
+          "transition-transform duration-300 flex-shrink-0",
           isCollapsed ? "rotate-0" : "rotate-90"
         )}>
           <ChevronRight size={16} className="text-zinc-500" />
         </div>
         
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <Folder size={18} className={cn(
             "transition-all duration-300",
             isCollapsed ? "text-amber-500/80" : "text-amber-500 fill-amber-500/20"
@@ -85,9 +86,9 @@ export function FolderHeader({
             <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border-2 border-[#09090B] animate-pulse" />
           )}
         </div>
-
+        
         {isEditing ? (
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
             <input
               type="text"
               value={editName}
@@ -96,24 +97,27 @@ export function FolderHeader({
                  if (e.key === 'Enter') onSaveEdit()
                  if (e.key === 'Escape') onCancelEdit()
               }}
-              className="px-2 py-0.5 text-sm rounded border border-blue-500/50 bg-zinc-900 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full px-2 py-0.5 text-sm rounded border border-blue-500/50 bg-zinc-900 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               autoFocus
             />
-            <button onClick={onSaveEdit} className="text-emerald-500 hover:text-emerald-400 transition-colors">
+            <button onClick={onSaveEdit} className="text-emerald-500 hover:text-emerald-400 transition-colors flex-shrink-0">
               <Check size={16} />
             </button>
-            <button onClick={onCancelEdit} className="text-zinc-500 hover:text-zinc-400 transition-colors">
+            <button onClick={onCancelEdit} className="text-zinc-500 hover:text-zinc-400 transition-colors flex-shrink-0">
               <X size={16} />
             </button>
           </div>
         ) : (
-          <span className="text-sm font-bold uppercase tracking-widest text-zinc-200 group-hover:text-white transition-colors">
+          <span 
+            className="text-sm font-bold uppercase tracking-widest text-zinc-200 group-hover:text-white transition-colors text-left flex-1"
+            title={folder.name}
+          >
             {folder.name}
           </span>
         )}
       </button>
 
-      <span className="text-[10px] font-bold text-zinc-500 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-full uppercase tracking-widest">
+      <span className="hidden sm:inline-flex items-center text-[10px] font-bold text-zinc-500 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-full uppercase tracking-widest flex-shrink-0">
         {itemCount} {itemCount === 1 ? 'item' : 'itens'}
       </span>
 
@@ -136,8 +140,8 @@ export function FolderHeader({
         </div>
       )}
       
-      {/* Visual separator line that grows on hover */}
-      <div className="flex-1 h-px bg-zinc-800/50 ml-4 group-hover:bg-zinc-700 transition-colors" />
+      {/* Visual separator line that grows on hover - hidden on mobile to give space to long names */}
+      <div className="hidden sm:block flex-1 h-px bg-zinc-800/50 ml-4 group-hover:bg-zinc-700 transition-colors" />
     </div>
   )
 }

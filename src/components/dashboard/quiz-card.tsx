@@ -55,7 +55,7 @@ export function QuizCard({
 
   return (
     <Tilt glowColor={glowColor} className="h-full w-full">
-      <div className="group/card h-full glass-panel p-4 sm:p-6 rounded-2xl aurora-border-emerald transition-all duration-500 relative min-w-0">
+      <div className="group/card h-full glass-panel p-3 sm:p-5 rounded-2xl aurora-border-emerald transition-all duration-500 relative min-w-0">
         {/* Background Clipping Container for internal glows */}
         <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
           {/* Secondary Glow */}

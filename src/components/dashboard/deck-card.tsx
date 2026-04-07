@@ -130,7 +130,7 @@ export function DeckCard({
   return (
     <Tilt glowColor={glowColor} className="h-full w-full">
       <div className={cn(
-        "group/card h-full glass-panel p-4 sm:p-6 rounded-2xl transition-all duration-500 relative min-w-0 max-w-[400px] mx-auto sm:max-w-none",
+        "group/card h-full glass-panel p-3 sm:p-5 rounded-2xl transition-all duration-500 relative min-w-0 max-w-[400px] mx-auto sm:max-w-none",
         auroraClass
       )}>
         {/* Background Clipping Container for internal glows */}

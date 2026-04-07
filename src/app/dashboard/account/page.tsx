@@ -4,7 +4,7 @@ import { useAuth } from '@/components/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
 import { useState } from 'react'
-import { ChevronLeft, User, Mail, Lock, Trash2, LogOut } from 'lucide-react'
+import { ChevronLeft, User, Mail, Lock, Trash2, LogOut, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -15,6 +15,8 @@ export default function AccountPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [message, setMessage] = useState<{
     type: 'success' | 'error'
     text: string
@@ -120,16 +122,17 @@ export default function AccountPage() {
         )}
 
         {/* Email Section */}
-        <div className="bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl p-6 shadow-sm">
+        <div className="glass-panel border border-zinc-800/50 p-6 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600">
+            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
               <Mail size={18} />
             </div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            <h2 className="text-lg font-semibold text-zinc-100">
               Email
             </h2>
           </div>
-          <p className="text-[var(--muted-foreground)] bg-zinc-50 dark:bg-zinc-800 p-3 rounded-lg font-mono text-sm">
+          <p className="text-zinc-400 bg-black/40 border border-zinc-800/50 p-3 rounded-lg font-mono text-sm">
             {user?.email}
           </p>
           <p className="text-xs text-[var(--muted-foreground)] mt-2">
@@ -138,12 +141,13 @@ export default function AccountPage() {
         </div>
 
         {/* Profile Section */}
-        <div className="bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl p-6 shadow-sm">
+        <div className="glass-panel border border-zinc-800/50 p-6 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-600">
+            <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
               <User size={18} />
             </div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            <h2 className="text-lg font-semibold text-zinc-100">
               Perfil
             </h2>
           </div>
@@ -152,13 +156,13 @@ export default function AccountPage() {
               <label className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider block mb-1.5">
                 Nome Completo
               </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Seu nome completo"
-                className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              />
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  className="w-full px-4 py-2.5 rounded-lg border border-zinc-800 bg-black/40 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-zinc-600"
+                />
             </div>
             <Button
               onClick={handleUpdateProfile}
@@ -171,12 +175,13 @@ export default function AccountPage() {
         </div>
 
         {/* Password Section */}
-        <div className="bg-white dark:bg-zinc-900 border border-[var(--border)] rounded-xl p-6 shadow-sm">
+        <div className="glass-panel border border-zinc-800/50 p-6 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-orange-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-600">
+            <div className="p-2 bg-orange-500/10 rounded-lg text-orange-400">
               <Lock size={18} />
             </div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            <h2 className="text-lg font-semibold text-zinc-100">
               Alterar Senha
             </h2>
           </div>
@@ -185,25 +190,43 @@ export default function AccountPage() {
               <label className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider block mb-1.5">
                 Nova Senha
               </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-                className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full px-4 py-2.5 pr-12 rounded-lg border border-zinc-800 bg-black/40 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-zinc-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-zinc-600 hover:text-blue-400 transition-colors"
+                >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider block mb-1.5">
                 Confirmar Senha
               </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repita a nova senha"
-                className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repita a nova senha"
+                  className="w-full px-4 py-2.5 pr-12 rounded-lg border border-zinc-800 bg-black/40 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-zinc-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-zinc-600 hover:text-blue-400 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <Button
               onClick={handleChangePassword}

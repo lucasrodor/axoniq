@@ -7,45 +7,49 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { Sparkles, Brain, Zap, Eye, EyeOff } from 'lucide-react'
+import Link from 'next/link'
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: fullName.trim(),
+          },
+        },
       })
       if (error) throw error
-      toast('Bem-vindo de volta!', 'success')
-      window.location.href = '/dashboard'
+      toast('Cadastro realizado com sucesso!', 'success')
+      router.push('/login')
     } catch (error) {
       console.error(error)
       const msg = error instanceof Error ? error.message : ''
-      if (msg.includes('Invalid login credentials')) {
-        toast('Email ou senha incorretos.', 'error')
-      } else if (msg.includes('User already registered')) {
+      if (msg.includes('User already registered')) {
         toast('Este email já está cadastrado.', 'error')
-      } else if (msg.includes('Email not confirmed')) {
-        toast('Confirme seu email antes de entrar.', 'error')
       } else {
-        toast('Ocorreu um erro. Tente novamente.', 'error')
+        toast('Ocorreu um erro ao criar conta. Tente novamente.', 'error')
       }
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignUp = async () => {
     setIsLoading(true)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -66,11 +70,39 @@ export default function LoginPage() {
           <Image src="/AxonIQ.png" alt="AxonIQ" width={140} height={40} className="h-10 w-auto object-contain" />
         </div>
 
-        <div className="relative z-10 max-w-md">
-          <blockquote className="text-xl font-medium leading-relaxed text-zinc-300">
-            &quot;A simplificação é o passo final da arte. A suprema sofisticação é a simplicidade.&quot;
-          </blockquote>
-          <cite className="mt-4 block text-sm text-zinc-500 not-italic">— Leonardo da Vinci</cite>
+        <div className="relative z-10 space-y-8">
+          <h2 className="text-2xl font-bold text-white">
+            Tudo o que você precisa para dominar a medicina.
+          </h2>
+          <div className="space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 shrink-0">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <p className="font-semibold text-white">Geração com IA</p>
+                <p className="text-sm text-zinc-400">Envie um PDF ou áudio e gere flashcards, quizzes e mapas mentais automaticamente.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
+                <Brain size={20} />
+              </div>
+              <div>
+                <p className="font-semibold text-white">Repetição Espaçada</p>
+                <p className="text-sm text-zinc-400">Algoritmo que mostra os cards na hora certa, antes de você esquecer.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 shrink-0">
+                <Zap size={20} />
+              </div>
+              <div>
+                <p className="font-semibold text-white">Análise de Desempenho</p>
+                <p className="text-sm text-zinc-400">Descubra quais especialidades dominar e onde reforçar.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="relative z-10">
@@ -86,14 +118,30 @@ export default function LoginPage() {
           </div>
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
-              Acesse a plataforma
+              Crie sua conta
             </h1>
             <p className="text-[var(--muted-foreground)]">
-              Digite suas credenciais para continuar.
+              Comece a estudar de forma inteligente.
             </p>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-4">
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="space-y-1">
+              <label htmlFor="fullName" className="text-xs font-medium uppercase text-[var(--muted-foreground)] tracking-wider">
+                Nome Completo
+              </label>
+              <input
+                id="fullName"
+                type="text"
+                placeholder="Seu nome completo"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full h-11 px-3 rounded-lg bg-[var(--background)] border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:border-transparent transition-all"
+                required
+                autoFocus
+              />
+            </div>
+
             <div className="space-y-1">
               <label htmlFor="email" className="text-xs font-medium uppercase text-[var(--muted-foreground)] tracking-wider">
                 Email
@@ -106,9 +154,9 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-11 px-3 rounded-lg bg-[var(--background)] border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:border-transparent transition-all"
                 required
-                autoFocus
               />
             </div>
+            
             <div className="space-y-1">
               <label htmlFor="password" className="text-xs font-medium uppercase text-[var(--muted-foreground)] tracking-wider">
                 Senha
@@ -117,11 +165,12 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder="Mínimo 6 caracteres"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full h-11 px-3 pr-10 rounded-lg bg-[var(--background)] border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:border-transparent transition-all"
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -134,7 +183,7 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full h-12 text-base" isLoading={isLoading}>
-              Entrar
+              Criar minha conta
             </Button>
           </form>
 
@@ -145,24 +194,21 @@ export default function LoginPage() {
           </div>
 
           <Button
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleSignUp}
             variant="outline"
             className="w-full h-12"
             isLoading={isLoading}
           >
-            Entrar com Google
+            Cadastrar com Google
           </Button>
 
           <div className="text-center text-sm space-y-2">
             <p className="text-[var(--muted-foreground)]">
-              Não tem conta?{' '}
-              <a href="/sign-up" className="font-semibold text-[var(--foreground)] hover:underline">
-                Cadastrar
-              </a>
+              Já tem conta?{' '}
+              <Link href="/login" className="font-semibold text-[var(--foreground)] hover:underline">
+                Entrar
+              </Link>
             </p>
-            <a href="/forgot-password" className="block text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors text-xs">
-              Esqueceu a senha?
-            </a>
           </div>
         </div>
       </div>

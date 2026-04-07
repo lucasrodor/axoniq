@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Axoniq <noreply@axoniq.com>'
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Axoniq <noreply@axoniq.com.br>'
 
 interface SendEmailParams {
   to: string

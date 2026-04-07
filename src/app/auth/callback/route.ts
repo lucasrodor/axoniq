@@ -38,5 +38,7 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`)
+  // Se o código falhar ou estiver ausente (comum em convites que usam fragmentos #)
+  // enviamos para o destino (ex: /reset-password) e o Supabase Client do navegador cuida do resto.
+  return NextResponse.redirect(`${origin}${next}`)
 }

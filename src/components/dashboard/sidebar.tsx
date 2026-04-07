@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/components/providers/auth-provider'
 import { cn } from '@/lib/utils'
+import { InviteModal } from './invite-modal'
 
 interface SidebarItemProps {
   href: string
@@ -67,6 +68,10 @@ export function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const { user, signOut } = useAuth()
   const pathname = usePathname()
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
+
+  const isAdmin = user?.email === 'lucasrodor@gmail.com'
 
   // Load collapse state from local storage
   useEffect(() => {
@@ -165,15 +170,29 @@ export function Sidebar() {
             ))}
             
             <button
-              onClick={() => signOut()}
+              onClick={() => setIsLogoutModalOpen(true)}
               className={cn(
-                'flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300 group w-full text-red-500/80 hover:bg-red-500/5 hover:text-red-500',
+                'flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300 group w-full text-zinc-400 hover:bg-zinc-800/50 hover:text-red-500',
                 isCollapsed && "justify-center"
               )}
             >
               <span className="material-symbols-outlined text-[24px]">logout</span>
               {!isCollapsed && <span className="text-sm font-semibold">Sair</span>}
             </button>
+
+            {/* Admin Invite Section */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsInviteModalOpen(true)}
+                className={cn(
+                  'flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300 group w-full text-emerald-500/80 hover:bg-emerald-500/5 hover:text-emerald-400 border border-transparent hover:border-emerald-500/20 shadow-sm mt-2',
+                  isCollapsed && "justify-center"
+                )}
+              >
+                <span className="material-symbols-outlined text-[24px] fill-[1]">auto_awesome</span>
+                {!isCollapsed && <span className="text-sm font-bold tracking-tight">Convidar Alpha</span>}
+              </button>
+            )}
 
             {/* Collapse Toggle (Desktop only) */}
             <button
@@ -187,6 +206,61 @@ export function Sidebar() {
           </div>
         </div>
       </aside>
+
+      <InviteModal 
+        isOpen={isInviteModalOpen} 
+        onClose={() => setIsInviteModalOpen(false)} 
+      />
+
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {isLogoutModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center z-[100] px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsLogoutModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-[360px] glass-panel border border-zinc-800/50 p-8 text-center space-y-6 shadow-2xl"
+            >
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.1)]">
+                <span className="material-symbols-outlined text-3xl">logout</span>
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-zinc-100 tracking-tight">Sair da Conta?</h2>
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  Você precisará entrar novamente para acessar seus estudos e IA.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    signOut()
+                    window.location.href = '/login'
+                  }}
+                  className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-red-600/20"
+                >
+                  Confirmar Sair
+                </button>
+                <button
+                  onClick={() => setIsLogoutModalOpen(false)}
+                  className="w-full py-3.5 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 font-semibold rounded-xl transition-all active:scale-[0.98] border border-zinc-700/50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   )
 }

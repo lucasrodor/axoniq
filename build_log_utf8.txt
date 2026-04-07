@@ -1,0 +1,51 @@
+﻿
+> axoniq@0.1.0 build
+> next build
+
+Ôû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Ô£ô Compiled successfully in 7.9s
+  Running TypeScript ...
+node.exe : Failed to compile.
+No linha:1 caractere:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (Failed to compile.:String) [], Re  
+  moteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+
+./src/app/dashboard/page.tsx:238:11
+Type error: Variable 'cardsData' 
+implicitly has type 'any[]' in some 
+locations where its type cannot be 
+determined.
+
+[0m [90m 236 |[39m         [33m.[39me
+q([32m'user_id'[39m[33m,[39m 
+user[33m.[39mid)
+ [90m 237 |[39m       [90m// Fetch ALL 
+flashcards for analytics (only if there 
+are decks)[39m
+[31m[1m>[22m[39m[90m 238 |[39m      
+ [36mlet[39m cardsData [33m=[39m []
+ [90m     |[39m           
+[31m[1m^[22m[39m
+ [90m 239 |[39m       [36mif[39m 
+(decksData [33m&&[39m 
+decksData[33m.[39mlength [33m>[39m 
+[35m0[39m) {
+ [90m 240 |[39m         [36mconst[39m 
+{ data[33m,[39m error[33m:[39m 
+cardsError } [33m=[39m [36mawait[39m 
+supabase
+ [90m 241 |[39m           [33m.[39m[3
+6mfrom[39m([32m'flashcards'[39m)[0m
+Next.js build worker exited with code: 1 
+and signal: null

@@ -38,8 +38,9 @@ export async function middleware(request: NextRequest) {
 
     const { data: { session } } = await supabase.auth.getSession()
 
-    // Regra 1: Está logado tentando acessar tela de login -> Vai direto pro dashboard
-    if ((pathname === '/login' || pathname === '/reset-password') && session) {
+    // Regra 1: Está logado tentando acessar tela de login ou cadastro -> Vai direto pro dashboard
+    // Nota: Deixamos o /reset-password passar para que convidados alfa definam a senha mesmo já estando "logados" pelo link
+    if ((pathname === '/login' || pathname === '/sign-up') && session) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
@@ -74,6 +75,7 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/login',
+    '/sign-up',
     '/reset-password'
   ],
 }
