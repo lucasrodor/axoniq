@@ -40,3 +40,5 @@ Aumentar o foco e a produtividade durante as sessões de estudo.
 - [x] Tipografia Editorial Premium.
 - [x] Dashboard "Clinical Dark" unificado.
 - [x] Scanner de Documentos/Texto (OCR básico).
+
+.teste
