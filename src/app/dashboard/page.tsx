@@ -178,6 +178,7 @@ function DashboardPageContent() {
   const [showReportLimitModal, setShowReportLimitModal] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [profile, setProfile] = useState<{ full_name: string | null } | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -229,6 +230,12 @@ function DashboardPageContent() {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
+      // Fetch User Profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single()
       // Fetch latest scores for quizzes
       const { data: attemptsData } = await supabase
         .from('quiz_attempts')
@@ -297,6 +304,7 @@ function DashboardPageContent() {
       setQuizzes(enrichedQuizzes)
       setReports(reportsData || [])
       setMindMaps(mmData || [])
+      setProfile(profileData)
     } catch (error: any) {
       console.error('Error loading dashboard full trace:', {
         message: error?.message,
@@ -640,7 +648,7 @@ function DashboardPageContent() {
                 Painel de Estudo
               </h1>
                <p className="text-xs sm:text-sm text-zinc-500 mt-0.5 truncate">
-                Bem-vindo de volta, <span className="text-zinc-100 font-medium truncate max-w-[100px] sm:max-w-none inline-block align-bottom">{user?.email?.split('@')[0]}</span>
+                Bem-vindo de volta, <span className="text-zinc-100 font-medium truncate max-w-[100px] sm:max-w-none inline-block align-bottom">{profile?.full_name || user?.email?.split('@')[0]}</span>
               </p>
             </div>
             {/* Premium Search Bar */}

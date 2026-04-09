@@ -129,15 +129,19 @@ export default function NewSourcePage() {
     }
   }
 
-  // Step 1 → Step 2: Upload and Extract
-  const handleFileSelect = async (file: File) => {
+  // Step 1 → Step 2: Upload and Extract Multiple Files
+  const handleFilesSelect = async (files: File[]) => {
     setIsExtracting(true)
     setLoadingMessage('Extraindo conteúdo e detectando especialidade...')
 
     try {
       const authHeaders = await getAuthHeaders()
       const formData = new FormData()
-      formData.append('file', file)
+      
+      // Add all files to the same FormData
+      files.forEach(file => {
+        formData.append('files', file)
+      })
 
       const response = await fetch('/api/process-document', {
         method: 'POST',
@@ -154,7 +158,7 @@ export default function NewSourcePage() {
       setTextPreview(data.preview)
       setCustomTitle(data.title)
       setStep('source-ready')
-      toast('Conteúdo extraído com sucesso!', 'success')
+      toast(`${files.length} material(is) processado(s) com sucesso!`, 'success')
 
     } catch (error) {
       console.error(error)
@@ -397,7 +401,7 @@ export default function NewSourcePage() {
               )}
 
                 {inputMode === 'file' && (
-                  <UploadZone onFileSelect={(file) => handleFileSelect(file)} isProcessing={isExtracting} />
+                  <UploadZone onFilesSelect={handleFilesSelect} isProcessing={isExtracting} />
                 )}
                 
                 {inputMode === 'text' && (
@@ -761,14 +765,14 @@ export default function NewSourcePage() {
               {genStatus.mindmapId && (
                 <button
                   onClick={() => router.push(`/dashboard/mindmap/${genStatus.mindmapId}`)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 hover:border-amber-500/60 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-amber-500/20 bg-amber-600/5 hover:border-amber-500/40 transition-all active:scale-[0.98]"
                 >
-                  <div className="p-2.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-500">
+                  <div className="p-2.5 rounded-lg bg-amber-600/10 text-amber-500">
                     <Zap size={22} />
                   </div>
                   <div className="flex-1 text-left">
-                    <span className="font-bold text-[var(--foreground)] text-base">Ver Mapa Mental</span>
-                    <p className="text-xs text-[var(--muted-foreground)]">Visão panorâmica dos conceitos</p>
+                    <span className="font-bold text-zinc-100 text-base">Ver Mapa Mental</span>
+                    <p className="text-xs text-zinc-500">Visão panorâmica dos conceitos</p>
                   </div>
                   <ArrowRight size={18} className="text-amber-500" />
                 </button>

@@ -1,0 +1,376 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { getAdminMetrics, deleteWaitlistLead } from '@/app/actions/admin-dashboard-actions'
+import { createAlphaUser } from '@/app/actions/admin-actions'
+import {
+  Users,
+  UserPlus,
+  UserMinus,
+  Clock,
+  CheckCircle2,
+  Trash2,
+  Mail,
+  RefreshCcw,
+  BarChart3,
+  ShieldCheck,
+  ChevronRight,
+  Search,
+  ArrowUpRight
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useToast } from '@/components/ui/toast'
+import Link from 'next/link'
+
+interface AdminStats {
+  totalUsers: number
+  activeProfiles: number
+  freeUsers: number
+  proUsers: number
+  closedEstimate: number
+  waitlistCount: number
+}
+
+interface WaitlistLead {
+  id: string
+  name: string
+  email: string
+  phone: string
+  created_at: string
+}
+
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [waitlist, setWaitlist] = useState<WaitlistLead[]>([])
+  const [loading, setLoading] = useState(true)
+  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const { toast } = useToast()
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'primary';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'primary',
+  })
+
+  async function loadData() {
+    setLoading(true)
+    const result = await getAdminMetrics()
+    if (result.success && result.data) {
+      setStats(result.data.metrics)
+      setWaitlist(result.data.waitlist)
+    } else {
+      toast({
+        title: 'Erro ao carregar dados',
+        description: result.error || 'Não foi possível buscar as métricas.',
+        variant: 'destructive',
+      })
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleApprove = async (lead: WaitlistLead) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Aprovar Lead Alpha',
+      message: `Deseja aprovar e enviar convite Alpha para ${lead.email}?`,
+      type: 'primary',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
+        setProcessingId(lead.id)
+        const result = await createAlphaUser(lead.email)
+        
+        if (result.success) {
+          toast({
+            title: 'Sucesso!',
+            description: `Convite enviado para ${lead.email}`,
+          })
+          await deleteWaitlistLead(lead.id)
+          loadData()
+        } else {
+          toast({
+            title: 'Erro ao convidar',
+            description: result.error,
+            variant: 'destructive',
+          })
+        }
+        setProcessingId(null)
+      }
+    })
+  }
+
+  const handleDelete = async (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remover Lead',
+      message: 'Tem certeza que deseja remover este lead da lista? Esta ação não pode ser desfeita.',
+      type: 'danger',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
+        setProcessingId(id)
+        const result = await deleteWaitlistLead(id)
+        if (result.success) {
+          toast({
+            title: 'Lead removido',
+            description: 'A lista de espera foi atualizada.',
+          })
+          loadData()
+        } else {
+          toast({
+            title: 'Erro ao remover',
+            description: result.error,
+            variant: 'destructive',
+          })
+        }
+        setProcessingId(null)
+      }
+    })
+  }
+
+  const filteredWaitlist = waitlist.filter(lead => 
+    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  return (
+    <div className="min-h-screen bg-[#0c0c0e] text-zinc-100 p-6 md:p-10">
+      {/* Custom Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl overflow-hidden"
+            >
+              <div className={`absolute top-0 right-0 w-32 h-32 ${confirmModal.type === 'danger' ? 'bg-red-500/10' : 'bg-blue-500/10'} blur-3xl -mr-16 -mt-16`} />
+              
+              <h3 className="text-xl font-bold mb-2 relative z-10">{confirmModal.title}</h3>
+              <p className="text-zinc-400 text-sm mb-8 leading-relaxed relative z-10">
+                {confirmModal.message}
+              </p>
+
+              <div className="flex items-center gap-3 relative z-10">
+                <button
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1 px-6 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-sm transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmModal.onConfirm}
+                  className={`flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-black/20 ${
+                    confirmModal.type === 'danger' 
+                      ? 'bg-red-600 hover:bg-red-500 text-white' 
+                      : 'bg-blue-600 hover:bg-blue-500 text-white'
+                  }`}
+                >
+                  Confirmar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
+      <header className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center border border-blue-500/20">
+              <ShieldCheck className="w-5 h-5 text-blue-500" />
+            </div>
+            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.2em]">Painel do Administrador</span>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight">Axoniq Command Center</h1>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
+            Dashboard <ChevronRight className="w-4 h-4" />
+          </Link>
+          <button 
+            onClick={loadData}
+            disabled={loading}
+            className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all disabled:opacity-50"
+          >
+            <RefreshCcw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {[
+            { label: 'Total Usuários', value: stats?.totalUsers || 0, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+            { label: 'Perfis Ativos', value: stats?.activeProfiles || 0, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+            { label: 'Planos Gratuitos', value: stats?.freeUsers || 0, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+            { label: 'Lista de Espera', value: stats?.waitlistCount || 0, icon: Clock, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+          ].map((card, i) => (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl p-6 relative overflow-hidden group"
+            >
+              <div className={`absolute top-0 right-0 w-24 h-24 ${card.bg} blur-3xl rounded-full -mr-12 -mt-12 opacity-50 transition-transform group-hover:scale-110`} />
+              <card.icon className={`w-8 h-8 ${card.color} mb-4`} />
+              <div>
+                <p className="text-sm text-zinc-500 font-medium uppercase tracking-wider">{card.label}</p>
+                <h3 className="text-4xl font-bold mt-1">
+                  {loading ? '...' : card.value}
+                </h3>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-10">
+          {/* Waitlist Table */}
+          <section className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl overflow-hidden">
+            <div className="p-8 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold">Leads na Lista de Espera</h2>
+                <p className="text-sm text-zinc-500 mt-1">Usuários aguardando aprovação para a fase Alpha.</p>
+              </div>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <input 
+                  type="text"
+                  placeholder="Buscar lead..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors w-full sm:w-64"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-zinc-950/50">
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">Nome</th>
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">Contato</th>
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/50">
+                  <AnimatePresence>
+                    {filteredWaitlist.map((lead) => (
+                      <motion.tr 
+                        key={lead.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="group hover:bg-zinc-800/20 transition-colors"
+                      >
+                        <td className="px-8 py-5">
+                          <div className="font-bold text-zinc-100">{lead.name}</div>
+                          <div className="text-[10px] text-zinc-500 mt-0.5">INSCRITO EM {new Date(lead.created_at).toLocaleDateString('pt-BR')}</div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-2 text-zinc-300">
+                            <Mail className="w-3.5 h-3.5 text-zinc-600" />
+                            <span className="text-sm">{lead.email}</span>
+                          </div>
+                          <div className="text-xs text-zinc-500 mt-1">{lead.phone}</div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleApprove(lead)}
+                              disabled={processingId === lead.id}
+                              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-50"
+                            >
+                              {processingId === lead.id ? (
+                                <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <>Aprovar Alpha <ArrowUpRight className="w-3.5 h-3.5" /></>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(lead.id)}
+                              disabled={processingId === lead.id}
+                              className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
+                  
+                  {filteredWaitlist.length === 0 && !loading && (
+                    <tr>
+                      <td colSpan={3} className="px-8 py-20 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <Users className="w-10 h-10 text-zinc-800" />
+                          <p className="text-zinc-500">Nenhum lead encontrado.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Secondary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <section className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl p-8">
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                <UserMinus className="w-5 h-5 text-red-500" /> Estimativa de Contas Fechadas
+              </h3>
+              <div className="flex items-end gap-4">
+                <span className="text-5xl font-bold">{stats?.closedEstimate || 0}</span>
+                <span className="text-sm text-zinc-500 mb-2">usuários cadastrados sem atividade/perfil</span>
+              </div>
+              <p className="text-xs text-zinc-600 mt-4 leading-relaxed">
+                Essa métrica reflete o número de registros no Supabase Auth que não possuem um registro correspondente na tabela de perfis (ou seja, usuários que criaram a conta mas não completaram o onboarding).
+              </p>
+            </section>
+
+            <section className="bg-gradient-to-br from-blue-900/20 to-zinc-900 border border-blue-500/20 rounded-3xl p-8 flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-bold mb-2">Acesso Alpha</h3>
+                <p className="text-sm text-zinc-400">Total de usuários com acesso privilegiado.</p>
+              </div>
+              <div className="mt-8 flex items-center justify-between">
+                <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center border border-blue-500/20">
+                  <UserPlus className="w-8 h-8 text-blue-500" />
+                </div>
+                <div className="text-right">
+                  <span className="text-5xl font-bold text-blue-500">{stats?.proUsers || 0}</span>
+                  <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Alphas Ativos</p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}

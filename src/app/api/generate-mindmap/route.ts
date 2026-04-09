@@ -3,14 +3,14 @@ import { openai, OPENAI_MODEL } from '@/lib/ai/client'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
+import { cleanupSource } from '@/lib/processing/cleanup'
 
 // Define the schema for Mind Map data
-// Using a flat array of nodes and edges is easier for ReactFlow
 const MindMapNodeSchema = z.object({
   id: z.string(),
   label: z.string(),
   type: z.enum(['root', 'branch', 'leaf']),
-  parentId: z.string().nullable() // To help with auto-layout if needed
+  parentId: z.string().nullable()
 })
 
 const MindMapSchema = z.object({
@@ -38,10 +38,10 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabaseAdmin.auth.getUser(token)
     if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-    // Read source
+    // 1. Read source (including multimodal URLs)
     const { data: source, error: sourceError } = await supabaseAdmin
       .from('sources')
-      .select('raw_content, title, specialty_tag')
+      .select('raw_content, title, specialty_tag, image_urls')
       .eq('id', sourceId)
       .single()
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Fonte não encontrada' }, { status: 404 })
     }
 
-    // Create record with 'generating' status
+    // 2. Create record with 'generating' status
     const { data: mindMap, error: mmError } = await supabaseAdmin
       .from('mind_maps')
       .insert({
@@ -65,29 +65,37 @@ export async function POST(req: NextRequest) {
 
     if (mmError) throw mmError
 
-    // AI Generation
+    // 3. AI Generation (Multimodal Vision)
+    const text = source.raw_content
+    const imageUrls = (source.image_urls as string[]) || []
+
+    const userMessageContent: any[] = [
+      {
+        type: 'text',
+        text: `Crie um mapa mental estratégico baseado no texto e nas imagens fornecidas. Capture a hierarquia correta (root -> branch -> leaf).
+        
+CONTEÚDO TEXTUAL:
+${text.substring(0, 50000)}`
+      }
+    ]
+
+    imageUrls.forEach(url => {
+      userMessageContent.push({
+        type: 'image_url',
+        image_url: { url }
+      })
+    })
+
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
         {
           role: 'system',
-          content: `Você é um especialista em educação médica e design instrucional.
-Sua tarefa é criar um MAPA MENTAL estruturado para um estudante de medicina baseado no texto fornecido.
-
-ESTRUTURA:
-1. 'root': O tema central do texto (apenas 1).
-2. 'branch': As grandes divisões ou tópicos principais (ex: Fisiopatologia, Diagnóstico, Tratamento).
-3. 'leaf': Detalhes específicos, sinais clínicos, nomes de drogas, etc.
-
-REGRAS:
-- IDs devem ser curtos e únicos (ex: 'root', 'b1', 'l1').
-- Crie conexões LÓGICAS entre parent e child nos 'edges'.
-- Use Português do Brasil com terminologia médica correta.
-- O mapa deve ser abrangente mas não poluído visualmente (aprox. 15-25 nós no total).`
+          content: `Você é um especialista em educação médica e design instrucional. Sua tarefa é criar um MAPA MENTAL estruturado para um estudante de medicina baseado no texto e imagens fornecidas. Português do Brasil.`
         },
         {
           role: 'user',
-          content: `Gere um mapa mental estratégico para o seguinte conteúdo:\n\n${source.raw_content.substring(0, 100000)}`
+          content: userMessageContent
         }
       ],
       response_format: zodResponseFormat(MindMapSchema, 'mind_map'),
@@ -98,7 +106,7 @@ REGRAS:
     
     const generatedData = JSON.parse(content)
 
-    // Update record
+    // 4. Update record to ready
     const { error: updateError } = await supabaseAdmin
       .from('mind_maps')
       .update({
@@ -108,6 +116,9 @@ REGRAS:
       .eq('id', mindMap.id)
 
     if (updateError) throw updateError
+
+    // 5. Cleanup ephemeral source
+    await cleanupSource(sourceId)
 
     return NextResponse.json({ success: true, mindMapId: mindMap.id })
 

@@ -51,6 +51,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
+    // Regra 3: Proteção da rota de ADMIN
+    if (pathname.startsWith('/admin')) {
+      if (!session || session.user.email !== 'lucasrodor@gmail.com') {
+        console.warn(`🚫 [Middleware] Unauthorized admin access attempt to ${pathname} by ${session?.user?.email || 'anonymous'}`)
+        return NextResponse.redirect(new URL('/', request.url))
+      }
+    }
+
     // Tudo certo, segue o fluxo normal
     return response
 
@@ -61,7 +69,7 @@ export async function middleware(request: NextRequest) {
     // A prioridade #1 é NUNCA dar tela branca 500 para o visitante
     // Se quebrou ao abrir o Dashboard, manda pro Login por segurança.
     // Qualquer outra rota deixamos passar (as páginas do Next lidam com o erro localmente).
-    if (pathname.startsWith('/dashboard')) {
+    if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
     return NextResponse.next()
@@ -74,6 +82,7 @@ export const config = {
   // Colocamos o pedágio APENAS na porta das rotas que realmente precisam de auth.
   matcher: [
     '/dashboard/:path*',
+    '/admin/:path*',
     '/login',
     '/sign-up',
     '/reset-password'

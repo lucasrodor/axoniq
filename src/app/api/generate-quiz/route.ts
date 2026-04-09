@@ -3,6 +3,7 @@ import { openai, OPENAI_MODEL } from '@/lib/ai/client'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
+import { cleanupSource } from '@/lib/processing/cleanup'
 
 // Define quiz question structure
 const QuizQuestionSchema = z.object({
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     // Read source content from DB
     const { data: source, error: sourceError } = await supabaseAdmin
       .from('sources')
-      .select('raw_content, title, specialty_tag')
+      .select('raw_content, title, specialty_tag, image_urls')
       .eq('id', sourceId)
       .single()
 
@@ -75,6 +76,26 @@ export async function POST(req: NextRequest) {
     const trueFalseCount = quantity - multipleChoiceCount - clozeCount
 
     const text = source.raw_content
+    const imageUrls = (source.image_urls as string[]) || []
+
+    // Prepare message content (Text + Images)
+    const userMessageContent: any[] = [
+      {
+        type: 'text',
+        text: `Generate ${quantity} quiz questions based on the following text and images. Analyze identifying features in images and text to create high-quality residency-style questions.
+        
+TEXT CONTENT:
+${text.substring(0, 50000)}`
+      }
+    ]
+
+    // Add images if present
+    imageUrls.forEach(url => {
+      userMessageContent.push({
+        type: 'image_url',
+        image_url: { url }
+      })
+    })
 
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
@@ -82,28 +103,20 @@ export async function POST(req: NextRequest) {
         {
           role: 'system',
           content: `You are an expert medical exam question creator, specialized in creating questions similar to Brazilian medical residency exams (provas de residência médica).
-
-Your task is to generate ${quantity} quiz questions based on the provided text.
-
-QUESTION DISTRIBUTION:
-- ${multipleChoiceCount} multiple_choice questions (5 options each, lettered A-E)
-- ${clozeCount} cloze questions (fill-in-the-blank with 4-5 options)
-- ${trueFalseCount} true_false questions (2 options: "Verdadeiro" and "Falso")
-
+ 
+Your task is to generate ${quantity} quiz questions based on the provided text and images.
+ 
 STRICT RULES:
-1. Generate questions ONLY based on the provided text. Do not hallucinate or use external knowledge.
-2. For multiple_choice: 5 options (A through E). THERE MUST BE EXACTLY ONE UNEQUIVOCALLY CORRECT ANSWER. ALL incorrect options (distractors) must be completely and verifiably wrong. Avoid situations where two or more options are partially or technically correct (e.g., if a muscle has two functions, do not put both functions as separate options unless asking "Which of the following is NOT...").
-3. For cloze: Use ___ in the question for the blank. Provide 4-5 options to fill the blank.
-4. For true_false: The question is a statement. Options are ["Verdadeiro", "Falso"].
-5. Each question MUST have an explanation justifying the correct answer and why the others are incorrect.
-6. Vary difficulty: ~30% easy, ~50% medium, ~20% hard.
-7. correct_answer is the ZERO-BASED INDEX of the correct option.
-8. Language: Portuguese (same as source text).
-9. Focus on clinically relevant and conceptually important content.`
+1. Generate questions ONLY based on the provided text and images.
+2. For multiple_choice: 5 options (A-E). EXACTLY ONE correct answer.
+3. For cloze: Use ___ in the question. 4-5 options.
+4. For true_false: Options are ["Verdadeiro", "Falso"].
+5. Language: Portuguese.
+6. Provide detailed explanations justifying the correct answer based on the visual or textual evidence.`
         },
         {
           role: 'user',
-          content: `Generate ${quantity} quiz questions based on the following text:\n\n${text.substring(0, 100000)}`
+          content: userMessageContent
         }
       ],
       response_format: zodResponseFormat(QuizListSchema, 'quiz_list'),
@@ -164,6 +177,9 @@ STRICT RULES:
       .from('quizzes')
       .update({ status: 'ready' })
       .eq('id', quiz.id)
+
+    // Finalize generation and cleanup ephemeral source
+    await cleanupSource(sourceId)
 
     return NextResponse.json({
       success: true,

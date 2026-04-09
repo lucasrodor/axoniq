@@ -3,6 +3,7 @@ import { openai, OPENAI_MODEL } from '@/lib/ai/client'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
+import { cleanupSource } from '@/lib/processing/cleanup'
 
 // Define the output structure strictly
 const FlashcardSchema = z.object({
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
     // Read source content from DB
     const { data: source, error: sourceError } = await supabaseAdmin
       .from('sources')
-      .select('raw_content, title, specialty_tag')
+      .select('raw_content, title, specialty_tag, image_urls')
       .eq('id', sourceId)
       .single()
 
@@ -47,29 +48,48 @@ export async function POST(req: NextRequest) {
     }
 
     const text = source.raw_content
+    const imageUrls = (source.image_urls as string[]) || []
     const clozeRatio = Math.round(quantity * 0.2) // ~20% cloze cards
     const standardCount = quantity - clozeRatio
+
+    // Prepare message content (Text + Images)
+    const userMessageContent: any[] = [
+      {
+        type: 'text',
+        text: `Generate ${quantity} flashcards based strictly on the following text and images provided. If there are images, analyze them to extract relevant medical concepts, labels, or visual findings.
+        
+TEXT CONTENT:
+${text.substring(0, 50000)}` // Limit text for safety
+      }
+    ]
+
+    // Add images if present
+    imageUrls.forEach(url => {
+      userMessageContent.push({
+        type: 'image_url',
+        image_url: { url }
+      })
+    })
 
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
         {
           role: 'system',
-          content: `You are an expert educational content creator specialized in medical education. Your task is to extract key concepts from the provided text and turn them into flashcards.
+          content: `You are an expert educational content creator specialized in medical education. Your task is to extract key concepts from the provided text and images and turn them into flashcards.
           
 STRICT RULES:
 1. Generate exactly ${quantity} flashcards (${standardCount} standard + ${clozeRatio} cloze).
-2. Generate flashcards ONLY based on the provided text. Do not use external knowledge.
+2. Generate flashcards ONLY based on the provided text and images.
 3. For "standard" cards: front = question, back = answer.
-4. For "cloze" cards: front = sentence with blanks using "___" (e.g., "O principal neurotransmissor do sistema ___ é a ___"), back = complete sentence with answers filled in.
-5. Keep questions concise and answers clear and accurate.
-6. Focus on the most important concepts, definitions, and relationships.
-7. Language: Generate in the same language as the source text (likely Portuguese).
-8. Set the "type" field to "standard" or "cloze" accordingly.`
+4. For "cloze" cards: front = sentence with blanks using "___", back = complete sentence.
+5. Focus on identifying anatomical structures, clinical findings in images (if any), and core medical concepts.
+6. Language: Portuguese.
+7. Set the "type" field to "standard" or "cloze" accordingly.`
         },
         {
           role: 'user',
-          content: `Generate ${quantity} flashcards based strictly on the following text:\n\n${text.substring(0, 100000)}`
+          content: userMessageContent
         }
       ],
       response_format: zodResponseFormat(FlashcardListSchema, 'flashcard_list'),
@@ -134,6 +154,9 @@ STRICT RULES:
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1)
+
+    // Finalize generation and cleanup ephemeral source
+    await cleanupSource(sourceId)
 
     return NextResponse.json({
       success: true,

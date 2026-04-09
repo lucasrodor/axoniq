@@ -154,12 +154,6 @@ export default function LoginPage() {
           </Button>
 
           <div className="text-center text-sm space-y-2">
-            <p className="text-[var(--muted-foreground)]">
-              Não tem conta?{' '}
-              <a href="/sign-up" className="font-semibold text-[var(--foreground)] hover:underline">
-                Cadastrar
-              </a>
-            </p>
             <a href="/forgot-password" className="block text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors text-xs">
               Esqueceu a senha?
             </a>

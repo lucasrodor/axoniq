@@ -6,15 +6,15 @@ import { openai, OPENAI_MODEL } from '@/lib/ai/client'
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
-    const file = formData.get('file') as File | null
+    const files = formData.getAll('files') as File[]
     const textData = formData.get('text') as string | null
     const titleData = formData.get('title') as string | null
 
-    if (!file && !textData) {
+    if (files.length === 0 && !textData) {
       return NextResponse.json({ error: 'Nenhum arquivo ou texto fornecido.' }, { status: 400 })
     }
 
-    // 1. Identify User (via Authorization header token)
+    // 1. Identify User
     const supabaseAdmin = createAdminClient()
     const token = req.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
@@ -26,92 +26,150 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
     }
 
-    // 2. Extract Text or Use Raw Text
-    let safeText = ''
-    let sourceFileName = 'Texto Colado.txt'
-    let sourceFileType = 'text/plain'
+    // 2. Process Files (Loop)
+    let combinedText = ''
+    const imageUrls: string[] = []
+    const processedMetadata: any[] = []
+    let primaryFileName = titleData || 'Coleção de Materiais'
 
-    if (file && file.size > 0) {
-      const arrayBuffer = await file.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
-      const text = await extractTextFromBuffer(buffer, file.type)
-      safeText = String(text ?? '')
-      sourceFileName = file.name
-      sourceFileType = file.type
-    } else if (textData && textData.trim().length > 0) {
-      safeText = textData.trim()
-      if (titleData && titleData.trim() !== '') {
-        sourceFileName = `${titleData.trim()}.txt`
-      }
-    }
+    // Handle uploaded files
+    for (const file of files) {
+      if (file.size === 0) continue
 
-    if (!safeText || safeText.length < 50) {
-      return NextResponse.json({ error: 'Conteúdo insuficiente para processar. Forneça pelo menos 50 caracteres.' }, { status: 400 })
-    }
+      const isImage = file.type.startsWith('image/')
+      
+      if (isImage) {
+        // Upload image to Supabase Storage
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+        const { data, error: uploadError } = await supabaseAdmin
+          .storage
+          .from('sources')
+          .upload(fileName, file, {
+            contentType: file.type,
+            upsert: false
+          })
 
-    // 3. Detect Specialty Tag via AI
-    let specialtyTag = 'Outros'
-    try {
-      const tagCompletion = await openai.chat.completions.create({
-        model: OPENAI_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a content classifier for a medical study platform. Analyze the text and determine if it belongs to a medical specialty. 
-            
-If the content is medical, respond with EXACTLY ONE of these specialty names:
-Anatomia, Fisiologia, Bioquímica, Farmacologia, Patologia, Microbiologia, Imunologia, Parasitologia, Histologia, Embriologia, Genética, Cardiologia, Neurologia, Pneumologia, Gastroenterologia, Nefrologia, Endocrinologia, Hematologia, Reumatologia, Infectologia, Dermatologia, Oftalmologia, Otorrinolaringologia, Urologia, Ortopedia, Ginecologia, Obstetrícia, Pediatria, Psiquiatria, Cirurgia Geral, Clínica Médica, Medicina de Emergência, Radiologia, Saúde Pública, Epidemiologia, Medicina Legal
+        if (uploadError) {
+          console.error(`Upload error for ${file.name}:`, uploadError)
+          continue
+        }
 
-If the content is NOT medical (e.g., engineering, law, programming, etc.), respond with exactly: Outros
+        // Generate Public URL
+        const { data: { publicUrl } } = supabaseAdmin
+          .storage
+          .from('sources')
+          .getPublicUrl(fileName)
 
-Respond with ONLY the specialty name, nothing else.`
-          },
-          {
-            role: 'user',
-            content: `Classify this content:\n\n${safeText.substring(0, 3000)}`
+        imageUrls.push(publicUrl)
+        processedMetadata.push({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: publicUrl,
+          category: 'image'
+        })
+      } else {
+        // Extract text from document
+        try {
+          const arrayBuffer = await file.arrayBuffer()
+          const buffer = Buffer.from(arrayBuffer)
+          const text = await extractTextFromBuffer(buffer, file.type)
+          const extractedText = String(text ?? '')
+          
+          combinedText += `\n\n--- INÍCIO DO ARQUIVO: ${file.name} ---\n${extractedText}\n--- FIM DO ARQUIVO: ${file.name} ---\n`
+          
+          processedMetadata.push({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            category: 'document',
+            textLength: extractedText.length
+          })
+
+          if (primaryFileName === 'Coleção de Materiais' || primaryFileName === 'Texto Colado') {
+            primaryFileName = file.name
           }
-        ],
-        max_tokens: 30,
-        temperature: 0,
-      })
-
-      const detectedTag = tagCompletion.choices[0].message.content?.trim()
-      if (detectedTag) {
-        specialtyTag = detectedTag
+        } catch (err) {
+          console.error(`Extraction error for ${file.name}:`, err)
+        }
       }
-    } catch (tagError) {
-      console.error('Tag detection error (non-fatal):', tagError)
-      // Keep default 'Outros' if classification fails
+    }
+
+    // Handle raw text input if provided
+    if (textData && textData.trim().length > 0) {
+      combinedText += `\n\n--- TEXTO COLADO ---\n${textData.trim()}\n`
+      processedMetadata.push({
+        name: titleData || 'Texto Colado',
+        type: 'text/plain',
+        size: textData.length,
+        category: 'raw_text'
+      })
+    }
+
+    const safeText = combinedText.trim()
+
+    // Validate that we have SOMETHING
+    if (!safeText && imageUrls.length === 0) {
+      return NextResponse.json({ error: 'Nenhum conteúdo válido extraído dos arquivos.' }, { status: 400 })
+    }
+
+    // 3. Detect Specialty Tag via AI (using a sample of combined text)
+    let specialtyTag = 'Outros'
+    if (safeText) {
+      try {
+        const tagCompletion = await openai.chat.completions.create({
+          model: OPENAI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a content classifier for a medical study platform. Analyze the text and determine if it belongs to a medical specialty. 
+Respond with EXACTLY ONE of the specialized medical specialty names or 'Outros'.`
+            },
+            {
+              role: 'user',
+              content: `Classify this content:\n\n${safeText.substring(0, 3000)}`
+            }
+          ],
+          max_tokens: 30,
+          temperature: 0,
+        })
+        specialtyTag = tagCompletion.choices[0].message.content?.trim() || 'Outros'
+      } catch (tagError) {
+        console.error('Tag detection error:', tagError)
+      }
     }
 
     // 4. Save Source to DB
-    const title = sourceFileName.split('.').slice(0, -1).join('.') || sourceFileName
+    const finalTitle = (primaryFileName.includes('.') ? primaryFileName.split('.').slice(0, -1).join('.') : primaryFileName) || 'Novo Material'
 
     const { data: source, error: sourceError } = await supabaseAdmin
       .from('sources')
       .insert({
         user_id: user.id,
-        title,
+        title: files.length > 1 ? `${finalTitle} (+${files.length - 1} itens)` : finalTitle,
         raw_content: safeText,
-        file_name: sourceFileName,
-        file_type: sourceFileType,
+        file_name: files.length === 1 ? files[0].name : 'Múltiplos Arquivos',
+        file_type: files.length === 1 ? files[0].type : 'mixed/collection',
         specialty_tag: specialtyTag,
         status: 'extracted',
+        metadata: processedMetadata,
+        image_urls: imageUrls
       })
       .select()
       .single()
 
     if (sourceError) {
       console.error('Source save error:', sourceError)
-      return NextResponse.json({ error: 'Erro ao salvar fonte.' }, { status: 500 })
+      return NextResponse.json({ error: 'Erro ao salvar fonte no banco de dados.' }, { status: 500 })
     }
 
-    // 5. Also create document record for history (backwards compat)
+    // 5. Backwards compat record for history
     await supabaseAdmin
       .from('documents')
       .insert({
         user_id: user.id,
-        name: sourceFileName,
+        name: source.title,
         status: 'processing',
         num_flashcards: 0
       })
@@ -122,13 +180,14 @@ Respond with ONLY the specialty name, nothing else.`
       title: source.title,
       specialtyTag,
       textLength: safeText.length,
+      imageCount: imageUrls.length,
       preview: safeText.length > 300 ? safeText.slice(0, 300) + '...' : safeText,
     })
 
   } catch (error) {
-    console.error('Processing error:', error)
+    console.error('API Processing error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: error instanceof Error ? error.message : 'Erro interno no processamento' },
       { status: 500 }
     )
   }
