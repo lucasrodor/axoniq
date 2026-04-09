@@ -68,11 +68,7 @@ export default function AdminDashboard() {
       setStats(result.data.metrics)
       setWaitlist(result.data.waitlist)
     } else {
-      toast({
-        title: 'Erro ao carregar dados',
-        description: result.error || 'Não foi possível buscar as métricas.',
-        variant: 'destructive',
-      })
+      toast(result.error || 'Não foi possível buscar as métricas.', 'error')
     }
     setLoading(false)
   }
@@ -93,18 +89,11 @@ export default function AdminDashboard() {
         const result = await createAlphaUser(lead.email)
         
         if (result.success) {
-          toast({
-            title: 'Sucesso!',
-            description: `Convite enviado para ${lead.email}`,
-          })
+          toast(`Convite enviado para ${lead.email}`, 'success')
           await deleteWaitlistLead(lead.id)
           loadData()
         } else {
-          toast({
-            title: 'Erro ao convidar',
-            description: result.error,
-            variant: 'destructive',
-          })
+          toast(result.error || 'Erro ao convidar lead.', 'error')
         }
         setProcessingId(null)
       }
@@ -122,17 +111,10 @@ export default function AdminDashboard() {
         setProcessingId(id)
         const result = await deleteWaitlistLead(id)
         if (result.success) {
-          toast({
-            title: 'Lead removido',
-            description: 'A lista de espera foi atualizada.',
-          })
+          toast('Lead removido com sucesso!', 'success')
           loadData()
         } else {
-          toast({
-            title: 'Erro ao remover',
-            description: result.error,
-            variant: 'destructive',
-          })
+          toast(result.error || 'Erro ao remover lead.', 'error')
         }
         setProcessingId(null)
       }
