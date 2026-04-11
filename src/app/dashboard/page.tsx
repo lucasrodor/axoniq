@@ -148,7 +148,14 @@ function DashboardPageContent() {
   const router = useRouter()
   const [decks, setDecks] = useState<DeckWithStats[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
-  const [allCards, setAllCards] = useState<Flashcard[]>([])
+  const [allCardsStats, setAllCardsStats] = useState<{
+    total_cards: number;
+    due_today: number;
+    mastered: number;
+    learning: number;
+    new: number;
+    studied_total: number;
+  } | null>(null)
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<DashboardTab>((searchParams.get('tab') as DashboardTab) || 'decks')
@@ -193,126 +200,66 @@ function DashboardPageContent() {
   async function loadDashboard() {
     if (!user) return
     try {
-      // Fetch Decks
-      const { data: decksData, error: decksError } = await supabase
-        .from('decks')
-        .select('*, flashcards(count)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-      if (decksError) throw decksError
-      // Fetch Folders
-      const { data: foldersData } = await supabase
-        .from('folders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-      // Fetch Documents History
-      const { data: docsData } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5)
-      const { data: quizzesData } = await supabase
-        .from('quizzes')
-        .select('*, quiz_questions(count)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-      // Fetch Mind Maps
-      const { data: mmData } = await supabase
-        .from('mind_maps')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-      // Fetch Reports
-      const { data: reportsData } = await supabase
-        .from('performance_reports')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-      // Fetch User Profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single()
-      // Fetch latest scores for quizzes
-      const { data: attemptsData } = await supabase
-        .from('quiz_attempts')
-        .select('quiz_id, score, total_questions, completed_at')
-        .eq('user_id', user.id)
-      // Fetch ALL flashcards for analytics (only if there are decks)
-      let cardsData: any[] = []
-      if (decksData && decksData.length > 0) {
-        const { data, error: cardsError } = await supabase
-          .from('flashcards')
-          .select('id, ease_factor, interval, repetition, due_date, deck_id')
-          .in(
-            'deck_id',
-            decksData.map((d: Deck) => d.id)
-          )
-        if (cardsError) throw cardsError
-        cardsData = data || []
-      }
+      setLoading(true)
       
-      const cards = cardsData
-      const now = new Date()
-      // Build deck stats
-      const enrichedDecks = (decksData || []).map((deck: Deck) => {
-        const deckCards = cards.filter((c: Flashcard) => c.deck_id === deck.id)
-        const dueCards = deckCards.filter(
-          (c: Flashcard) => new Date(c.due_date) <= now
-        ).length
-        const masteredCards = deckCards.filter(
-          (c: Flashcard) => getCardStage(c) === 'mastered'
-        ).length
-        const studiedCards = deckCards.filter(
-          (c: Flashcard) => getCardStage(c) !== 'new'
-        ).length
-        const totalCards = deckCards.length
-        return {
-          ...deck,
-          totalCards,
-          dueCards,
-          masteredCards,
-          progressPercent:
-            totalCards > 0
-              ? Math.round((studiedCards / totalCards) * 100)
-              : 0,
-        }
-      })
-      // Build quiz stats
-      const attempts = attemptsData || []
-      const enrichedQuizzes = (quizzesData || []).map((quiz: any) => {
-        const totalQuestions = quiz.quiz_questions?.[0]?.count || 0
-        const quizAttempts = attempts.filter((a: any) => a.quiz_id === quiz.id)
-        // Find the LATEST attempt using completed_at
-        const lastAttempt = quizAttempts.length > 0
-          ? quizAttempts.sort((a: any, b: any) => new Date(b.completed_at || 0).getTime() - new Date(a.completed_at || 0).getTime())[0]
-          : null
-        return {
-          ...quiz,
-          totalQuestions,
-          lastScoreHit: lastAttempt ? lastAttempt.score : undefined,
-          lastScoreTotal: lastAttempt ? lastAttempt.total_questions : undefined,
-        }
-      })
+      // Parallel fetches for base entities using optimized views where possible
+      const [
+        { data: decksData, error: decksError },
+        { data: foldersData },
+        { data: docsData },
+        { data: quizzesData },
+        { data: mmData },
+        { data: reportsData },
+        { data: profileData },
+        { data: progressSummary }
+      ] = await Promise.all([
+        supabase.from('deck_stats_view').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('folders').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('documents').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+        supabase.from('quiz_stats_view').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('mind_maps').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('performance_reports').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+        supabase.rpc('get_user_progress_summary', { p_user_id: user.id })
+      ])
+
+      if (decksError) throw decksError
+      
+      // Map deck stats directly from optimized view
+      const enrichedDecks = (decksData || []).map((deck: any) => ({
+        ...deck,
+        totalCards: Number(deck.total_cards || 0),
+        dueCards: Number(deck.due_cards || 0),
+        masteredCards: Number(deck.mastered_cards || 0),
+        progressPercent: Number(deck.total_cards) > 0 
+          ? Math.round((Number(deck.studied_cards) / Number(deck.total_cards)) * 100) 
+          : 0
+      }))
+
+      // Map quiz stats directly from optimized view
+      const enrichedQuizzes = (quizzesData || []).map((quiz: any) => ({
+        ...quiz,
+        totalQuestions: Number(quiz.total_questions || 0),
+        lastScoreHit: quiz.last_score_hit,
+        lastScoreTotal: quiz.last_score_total,
+      }))
+
       setDecks(enrichedDecks)
       setDocuments(docsData || [])
       setFolders(foldersData || [])
-      setAllCards(cards)
       setQuizzes(enrichedQuizzes)
       setReports(reportsData || [])
       setMindMaps(mmData || [])
       setProfile(profileData)
+      
+      // Set global stats from summary RPC
+      if (progressSummary) {
+        setAllCardsStats(progressSummary)
+      }
+
     } catch (error: any) {
-      console.error('Error loading dashboard full trace:', {
-        message: error?.message,
-        details: error?.details,
-        hint: error?.hint,
-        code: error?.code,
-        raw: error
-      })
+      console.error('Error loading dashboard:', error)
+      toast('Erro ao carregar dashboard.', 'error')
     } finally {
       setLoading(false)
     }
@@ -384,20 +331,14 @@ function DashboardPageContent() {
       }
     }
   }
-  // Global stats
-  const now = new Date()
-  const totalCards = allCards.length
-  const totalDue = allCards.filter((c) => new Date(c.due_date) <= now).length
-  const totalMastered = allCards.filter(
-    (c) => getCardStage(c) === 'mastered'
-  ).length
-  const totalLearning = allCards.filter(
-    (c) => getCardStage(c) === 'learning'
-  ).length
-  const totalNew = allCards.filter((c) => getCardStage(c) === 'new').length
-  const studiedTotal = allCards.filter((c) => getCardStage(c) !== 'new').length
-  const masteryRate =
-    totalCards > 0 ? Math.round((studiedTotal / totalCards) * 100) : 0
+  // Global stats from optimized RPC summary
+  const totalCards = allCardsStats?.total_cards || 0
+  const totalDue = allCardsStats?.due_today || 0
+  const totalMastered = allCardsStats?.mastered || 0
+  const totalLearning = allCardsStats?.learning || 0
+  const totalNew = allCardsStats?.new || 0
+  const studiedTotal = allCardsStats?.studied_total || 0
+  const masteryRate = totalCards > 0 ? Math.round((studiedTotal / totalCards) * 100) : 0
   async function handleCreateDeck() {
     if (!newDeckTitle.trim()) return
     const { data, error } = await supabase.from('decks').insert({
@@ -492,8 +433,8 @@ function DashboardPageContent() {
     const { error } = await supabase.from('decks').delete().eq('id', deckId)
     if (!error) {
       setDecks(prev => prev.filter(d => d.id !== deckId))
-      setAllCards(prev => prev.filter(c => c.deck_id !== deckId))
       toast('Deck excluído.', 'success')
+      loadDashboard()
     } else {
       toast('Erro ao excluir deck.', 'error')
     }
@@ -515,6 +456,7 @@ function DashboardPageContent() {
     if (!error) {
       setQuizzes(prev => prev.filter(q => q.id !== quizId))
       toast('Quiz excluído.', 'success')
+      loadDashboard()
     } else {
       toast('Erro ao excluir quiz.', 'error')
     }
