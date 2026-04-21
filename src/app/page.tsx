@@ -1072,8 +1072,8 @@ export default function LandingPage() {
           <div>
             <h4 className="text-zinc-100 font-bold mb-6">Jurídico</h4>
             <ul className="space-y-4 text-sm">
-              <li><a className="hover:text-zinc-100 transition-colors" href="#">Termos de Uso</a></li>
-              <li><a className="hover:text-zinc-100 transition-colors" href="#">Privacidade</a></li>
+              <li><Link className="hover:text-zinc-100 transition-colors" href="/terms">Termos de Uso</Link></li>
+              <li><Link className="hover:text-zinc-100 transition-colors" href="/privacy">Privacidade</Link></li>
               <li><a className="hover:text-zinc-100 transition-colors" href="#">Cookies</a></li>
             </ul>
           </div>

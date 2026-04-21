@@ -18,7 +18,7 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined)
 
-const TOAST_DURATION = 4000
+const TOAST_DURATION = 6000
 const EXIT_DURATION = 400
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {

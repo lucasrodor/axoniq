@@ -122,7 +122,7 @@ export function FolderHeader({
       </span>
 
       {!isEditing && (
-        <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 flex gap-1 ml-auto">
+        <div className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all duration-300 flex gap-1 ml-auto">
           <button 
             onClick={onStartEdit} 
             className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-200 transition-all"

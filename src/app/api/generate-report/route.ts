@@ -3,6 +3,7 @@ import { openai, OPENAI_MODEL } from '@/lib/ai/client'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
+import { reportLimiter } from '@/lib/rate-limit'
 
 // Define the schema for AI analysis
 const PerformanceAnalysisSchema = z.object({
@@ -29,6 +30,14 @@ export async function POST(req: NextRequest) {
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !user) return NextResponse.json({ error: 'Sessão expirada' }, { status: 401 })
+
+    // 1.1 Rate Limiting (P0.3)
+    const { success } = await reportLimiter.limit(user.id)
+    if (!success) {
+      return NextResponse.json({ 
+        error: 'Limite de relatórios atingido (15/hora). Tente novamente em breve!' 
+      }, { status: 429 })
+    }
 
     // 1. Fetch Quiz Attempts
     const { data: quizAttempts, error: quizError } = await supabaseAdmin

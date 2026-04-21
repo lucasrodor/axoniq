@@ -202,6 +202,13 @@ export default function SignUpPage() {
             Cadastrar com Google
           </Button>
 
+          <p className="text-[10px] text-center text-zinc-500 max-w-xs mx-auto leading-relaxed">
+            Ao criar uma conta, você concorda com nossos{" "}
+            <Link href="/terms" className="text-blue-500 hover:outline-none hover:underline">Termos de Uso</Link>{" "}
+            e nossa{" "}
+            <Link href="/privacy" className="text-blue-500 hover:outline-none hover:underline">Política de Privacidade</Link>.
+          </p>
+
           <div className="text-center text-sm space-y-2">
             <p className="text-[var(--muted-foreground)]">
               Já tem conta?{' '}

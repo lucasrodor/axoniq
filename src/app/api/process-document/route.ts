@@ -2,6 +2,45 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractTextFromBuffer } from '@/lib/processing/text-extractor'
 import { createAdminClient } from '@/lib/supabase/server'
 import { openai, OPENAI_MODEL } from '@/lib/ai/client'
+import { documentLimiter } from '@/lib/rate-limit'
+
+// Helper: Process Image with GPT-4o Vision
+async function processImageWithVision(base64Image: string, mimeType: string, fileName: string) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: OPENAI_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um assistente médico especializado em transcrição e análise de materiais de estudo. Sua tarefa é extrair todo o texto visível da imagem e descrever em detalhes quaisquer diagramas, tabelas, ilustrações anatômicas ou achados clínicos. Seja técnico e preciso.'
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: `Analise esta imagem médica (${fileName}): Extraia o texto e descreva elementos visuais relevantes para o estudo.` },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1500,
+    })
+
+    return response.choices[0].message.content || ''
+  } catch (err) {
+    console.error(`Vision error for ${fileName}:`, err)
+    return `[Erro ao processar imagem ${fileName}]`
+  }
+}
+
+// Helper: Sanitize Filename (P1.6)
+export function sanitizeFilename(name: string): string {
+  return name.replace(/[^a-zA-Z0-9.\-_]/g, '_')
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +53,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nenhum arquivo ou texto fornecido.' }, { status: 400 })
     }
 
+    if (files.length > 5) {
+      return NextResponse.json({ 
+        error: 'Para garantir a melhor qualidade de análise, o limite é de 5 documentos por vez. Por favor, remova alguns arquivos e tente novamente.' 
+      }, { status: 400 })
+    }
+
     // 1. Identify User
     const supabaseAdmin = createAdminClient()
     const token = req.headers.get('Authorization')?.replace('Bearer ', '')
@@ -24,6 +69,14 @@ export async function POST(req: NextRequest) {
 
     if (userError || !user) {
       return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+    }
+
+    // 1.1 Rate Limiting (P0.3)
+    const { success } = await documentLimiter.limit(user.id)
+    if (!success) {
+      return NextResponse.json({ 
+        error: 'Limite de processamento atingido (30/hora). Nosso cérebro também precisa respirar! Tente novamente em alguns minutos.' 
+      }, { status: 429 })
     }
 
     // 2. Process Files (Loop)
@@ -41,11 +94,12 @@ export async function POST(req: NextRequest) {
       if (isImage) {
         // Upload image to Supabase Storage
         const fileExt = file.name.split('.').pop()
-        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+        const safeFileName = sanitizeFilename(file.name)
+        const storagePath = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
         const { data, error: uploadError } = await supabaseAdmin
           .storage
           .from('sources')
-          .upload(fileName, file, {
+          .upload(storagePath, file, {
             contentType: file.type,
             upsert: false
           })
@@ -59,15 +113,24 @@ export async function POST(req: NextRequest) {
         const { data: { publicUrl } } = supabaseAdmin
           .storage
           .from('sources')
-          .getPublicUrl(fileName)
+          .getPublicUrl(storagePath)
 
         imageUrls.push(publicUrl)
+        
+        // Process with Vision (OCR + Description)
+        const arrayBuffer = await file.arrayBuffer()
+        const base64 = Buffer.from(arrayBuffer).toString('base64')
+        const imageAnalysis = await processImageWithVision(base64, file.type, file.name)
+        
+        combinedText += `\n\n--- CONTEÚDO DA IMAGEM: ${file.name} ---\n${imageAnalysis}\n--- FIM DA IMAGEM: ${file.name} ---\n`
+        
         processedMetadata.push({
           name: file.name,
           type: file.type,
           size: file.size,
           url: publicUrl,
-          category: 'image'
+          category: 'image',
+          textLength: imageAnalysis.length
         })
       } else {
         // Extract text from document

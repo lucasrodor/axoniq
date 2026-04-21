@@ -14,7 +14,9 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 
 // Specialty Icons Mapping
 const specialtyIcons: Record<string, any> = {
@@ -37,6 +39,7 @@ const specialtyIcons: Record<string, any> = {
 
 export default function RetentionDashboard() {
   const { user } = useAuth()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<RetentionStats | null>(null)
 
@@ -100,38 +103,54 @@ export default function RetentionDashboard() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
         
         {/* STATS OVERVIEW */}
-        <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
-          <StatMiniCard 
-            label="Conteúdo Total" 
-            value={stats?.totalCards || 0} 
-            icon={Target} 
-            color="blue" 
-            subLabel="Cards Gerados"
-          />
-          <StatMiniCard 
-            label="Revisões Concluídas" 
-            value={stats?.totalReviews || 0} 
-            icon={Zap} 
-            color="emerald" 
-            subLabel="Total na Vida"
-          />
-          <StatMiniCard 
-            label="Domínio Atual" 
-            value={stats?.masteryBySpecialty.filter(s => s.score > 70).length || 0} 
-            icon={Award} 
-            color="amber" 
-            subLabel="Especialidades Pro"
-          />
-          <StatMiniCard 
-            label="Pico de Estudo" 
-            value={Math.max(...(stats?.heatmapData.map(d => d.count) || [0]))} 
-            icon={Activity} 
-            color="red" 
-            subLabel="Máx Revisões/Dia"
-          />
-        </div>
+        {!stats || stats.totalCards === 0 ? (
+          <div className="md:col-span-12">
+            <DashboardEmptyState
+              title="Análise Neural Indisponível"
+              description="Ainda não há dados suficientes para mapear seu desempenho. Comece a criar e revisar seus flashcards para visualizar suas estatísticas de retenção e maestria."
+              icon={Brain}
+              actionLabel="CRIAR PRIMEIRO DECK"
+              onAction={() => router.push('/dashboard/new')}
+              color="blue"
+              className="py-20"
+            />
+          </div>
+        ) : (
+          <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
+            <StatMiniCard 
+              label="Conteúdo Total" 
+              value={stats?.totalCards || 0} 
+              icon={Target} 
+              color="blue" 
+              subLabel="Cards Gerados"
+            />
+            <StatMiniCard 
+              label="Revisões Concluídas" 
+              value={stats?.totalReviews || 0} 
+              icon={Zap} 
+              color="emerald" 
+              subLabel="Total na Vida"
+            />
+            <StatMiniCard 
+              label="Domínio Atual" 
+              value={stats?.masteryBySpecialty.filter(s => s.score > 70).length || 0} 
+              icon={Award} 
+              color="amber" 
+              subLabel="Especialidades Pro"
+            />
+            <StatMiniCard 
+              label="Pico de Estudo" 
+              value={Math.max(...(stats?.heatmapData.map(d => d.count) || [0]))} 
+              icon={Activity} 
+              color="red" 
+              subLabel="Máx Revisões/Dia"
+            />
+          </div>
+        )}
 
-        {/* WORKLOAD FORECAST */}
+        {stats && stats.totalCards > 0 && (
+          <>
+            {/* WORKLOAD FORECAST */}
         <div className="md:col-span-8 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-6 lg:p-8 backdrop-blur-sm overflow-hidden relative">
           <div className="absolute top-0 right-0 p-8 opacity-5">
              <Calendar size={120} />
@@ -256,6 +275,8 @@ export default function RetentionDashboard() {
                <span>Muito</span>
             </div>
         </div>
+          </>
+        )}
 
       </div>
     </div>

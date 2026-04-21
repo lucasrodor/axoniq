@@ -258,6 +258,7 @@ export default function NewSourcePage() {
           .catch(err => {
             console.error('Flashcard generation error:', err)
             setGenStatus(prev => ({ ...prev, flashcards: 'error' }))
+            toast(`Flashcards: ${err.message || 'Erro inesperado'}`, 'error')
           })
       )
     }
@@ -289,6 +290,7 @@ export default function NewSourcePage() {
           .catch(err => {
             console.error('Quiz generation error:', err)
             setGenStatus(prev => ({ ...prev, quiz: 'error' }))
+            toast(`Quiz: ${err.message || 'Erro inesperado'}`, 'error')
           })
       )
     }
@@ -318,6 +320,7 @@ export default function NewSourcePage() {
           .catch(err => {
             console.error('Mindmap generation error:', err)
             setGenStatus(prev => ({ ...prev, mindmap: 'error' }))
+            toast(`Mapa Mental: ${err.message || 'Erro inesperado'}`, 'error')
           })
       )
     }
@@ -422,8 +425,9 @@ export default function NewSourcePage() {
                     <Button 
                       className="w-full h-14 text-base shadow-lg hover:shadow-xl transition-shadow" 
                       onClick={handleTextSubmit}
-                      disabled={rawText.trim().length < 50}
+                      disabled={rawText.trim().length < 50 || isExtracting}
                     >
+                      {isExtracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Processar Texto
                     </Button>
                   </div>
@@ -629,8 +633,9 @@ export default function NewSourcePage() {
                 size="lg"
                 className="w-full h-14 text-base shadow-lg hover:shadow-xl transition-shadow"
                 onClick={handleStartGeneration}
+                disabled={step !== 'source-ready'}
               >
-                <Zap size={18} className="mr-2" />
+                {step !== 'source-ready' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap size={18} className="mr-2" />}
                 Gerar {[generateFlashcards && 'Flashcards', generateQuiz && 'Quiz', generateMindMap && 'Mapa Mental'].filter(Boolean).join(' + ')}
               </Button>
             </div>
@@ -688,12 +693,32 @@ export default function NewSourcePage() {
         {step === 'done' && (
           <>
             <div className="space-y-2 mb-8">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-                Tudo pronto! 🎉
-              </h1>
-              <p className="text-[var(--muted-foreground)] text-base md:text-lg">
-                Seu material de estudo foi gerado com sucesso.
-              </p>
+              {(() => {
+                const successCount = [genStatus.flashcards, genStatus.quiz, genStatus.mindmap].filter(s => s === 'done').length
+                const hasError = [genStatus.flashcards, genStatus.quiz, genStatus.mindmap].some(s => s === 'error')
+                
+                let title = "Tudo pronto!"
+                let desc = "Seu material de estudo foi gerado com sucesso."
+                
+                if (successCount === 0) {
+                  title = "Ops! Algo deu errado"
+                  desc = "Não foi possível gerar seu material. Verifique os alertas acima."
+                } else if (hasError) {
+                  title = "Geração Parcial"
+                  desc = "Alguns materiais foram gerados, mas outros atingiram o limite ou deram erro."
+                }
+
+                return (
+                  <>
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--foreground)]">
+                      {title}
+                    </h1>
+                    <p className="text-[var(--muted-foreground)] text-base md:text-lg">
+                      {desc}
+                    </p>
+                  </>
+                )
+              })()}
             </div>
 
             <div className="space-y-3 mb-8">

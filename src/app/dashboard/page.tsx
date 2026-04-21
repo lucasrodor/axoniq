@@ -30,7 +30,8 @@ import {
   BarChart3,
   FileText,
   AlertCircle,
-  User
+  User,
+  Search
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -59,6 +60,7 @@ import { NeuronBackground } from '@/components/dashboard/neuron-background'
 import { DeckCard, DraggableDeck } from '@/components/dashboard/deck-card'
 import { QuizCard, DraggableQuiz } from '@/components/dashboard/quiz-card'
 import { MindMapCard, DraggableMindMap } from '@/components/dashboard/mind-map-card'
+import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import { FolderHeader, DroppableFolder } from '@/components/dashboard/folder-management'
 import { 
   RenameItemModal, 
@@ -787,21 +789,14 @@ function DashboardPageContent() {
                 </div>)}
               </div>
             ) : decks.length === 0 ? (
-              <div className="text-center py-24 glass-panel border-zinc-800/50 rounded-[2rem] relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05)_0%,transparent_70%)]" />
-                <div className="w-20 h-20 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                   <HelpCircle size={32} className="text-zinc-700" />
-                </div>
-                <h3 className="text-xl font-bold text-zinc-100 mb-3 tracking-tight">Protocolo de Decks Inexistente</h3>
-                <p className="text-zinc-500 mb-10 max-w-sm mx-auto text-sm leading-relaxed">Sua biblioteca neural está vazia. Comece criando um novo deck ou importe materiais via IA.</p>
-                <Button 
-                  type="button"
-                  onClick={() => router.push('/dashboard/new')}
-                  className="relative z-50 cursor-pointer pointer-events-auto h-12 px-8 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-blue-600/20 transition-all hover:scale-105 active:scale-95 border-none"
-                >
-                  <Plus size={16} className="mr-2" /> NOVO DECK
-                </Button>
-              </div>
+              <DashboardEmptyState
+                title="Protocolo de Decks Inexistente"
+                description="Sua biblioteca neural está vazia. Comece criando um novo deck ou importe materiais via IA para acelerar seu aprendizado."
+                icon={BookOpen}
+                actionLabel="NOVO DECK"
+                onAction={() => router.push('/dashboard/new')}
+                color="blue"
+              />
             ) : (
               <div className="space-y-4">
                 {folderedDecks.map(({ folder, decks: folderDecks }) => (
@@ -884,21 +879,14 @@ function DashboardPageContent() {
                 </div>)}
               </div>
             ) : quizzes.length === 0 ? (
-              <div className="text-center py-24 glass-panel border-zinc-800/50 rounded-[2rem] relative overflow-hidden">
-                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.05)_0%,transparent_70%)]" />
-                 <div className="w-20 h-20 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                    <HelpCircle size={32} className="text-zinc-700" />
-                 </div>
-                 <h3 className="text-xl font-bold text-zinc-100 mb-3 tracking-tight">Faltam Simulações de Quiz</h3>
-                 <p className="text-zinc-500 mb-10 max-w-sm mx-auto text-sm leading-relaxed">Sincronize seu conhecimento através de testes práticos. Utilize nossa IA para gerar questões agora.</p>
-                 <Button 
-                   type="button"
-                   onClick={() => router.push('/dashboard/new')}
-                   className="relative z-50 cursor-pointer pointer-events-auto h-12 px-8 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 border-none"
-                 >
-                   <Plus size={16} className="mr-2" /> NOVO QUIZ
-                 </Button>
-               </div>
+              <DashboardEmptyState
+                title="Faltam Simulações de Quiz"
+                description="Sincronize seu conhecimento através de testes práticos. Utilize nossa IA para gerar questões a partir do material que você subiu."
+                icon={HelpCircle}
+                actionLabel="NOVO QUIZ"
+                onAction={() => router.push('/dashboard/new')}
+                color="emerald"
+              />
             ) : (
               <div className="space-y-4">
                 {/* Quizzes in folders */}
@@ -1020,10 +1008,20 @@ function DashboardPageContent() {
                   <div className="flex items-center gap-3 mb-6 relative z-10 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800/50 w-fit">
                     <Layers size={14} className="text-zinc-500" />
                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Mapas Mentais</span>
-                    <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">{unassignedMindMaps.length}</span>
+                    <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">{filteredMindMaps.length}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 min-h-[60px]">
-                    {unassignedMindMaps.length === 0 ? (
+                    {filteredMindMaps.length === 0 ? (
+                      <DashboardEmptyState
+                        title={searchTerm ? "Nenhum Mapa Encontrado" : "Visualize Conexões Clínicas"}
+                        description={searchTerm ? `Não encontramos mapas correspondentes a "${searchTerm}". Tente outros termos ou limpe a busca.` : "Gere mapas mentais automáticos para conectar sintomas, diagnósticos e tratamentos de forma visual."}
+                        icon={searchTerm ? Search : Zap}
+                        actionLabel={searchTerm ? "LIMPAR BUSCA" : "NOVA FONTE"}
+                        onAction={searchTerm ? () => setSearchTerm('') : () => router.push('/dashboard/new')}
+                        color="amber"
+                        className="col-span-full"
+                      />
+                    ) : unassignedMindMaps.length === 0 ? (
                       folders.length > 0 && <p className="text-[9px] text-zinc-600 font-bold col-span-full py-10 uppercase tracking-[0.2em] opacity-30 text-center border border-dashed border-zinc-800/50 rounded-2xl">Arraste seus itens para cá para organizar</p>
                     ) : (
                       unassignedMindMaps.map((mm) => (
@@ -1074,21 +1072,14 @@ function DashboardPageContent() {
                 </Button>
               </div>
               {reports.length === 0 ? (
-                <div className="text-center py-20 glass-panel border-zinc-800/50 rounded-2xl">
-                  <BarChart3 size={48} className="mx-auto text-zinc-700 dark:text-zinc-800 mb-4" />
-                  <h3 className="text-lg font-semibold text-zinc-100 mb-2 tracking-tight">Pronto para sua primeira análise?</h3>
-                  <p className="text-zinc-500 mb-8 max-w-sm mx-auto text-sm leading-relaxed">
-                    Nossa IA vai analisar seus erros e acertos para dizer exatamente onde você deve focar seus estudos.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleGenerateReport} 
-                    disabled={generatingReport}
-                    className="border-blue-500/30 text-blue-400 hover:bg-blue-500/5"
-                  >
-                    Gerar Primeiro Relatório
-                  </Button>
-                </div>
+                <DashboardEmptyState
+                  title="Pronto para sua primeira análise?"
+                  description="Nossa IA vai analisar seus erros e acertos para dizer exatamente quais tópicos você deve focar nos seus estudos hoje."
+                  icon={BarChart3}
+                  actionLabel="GERAR ANÁLISE"
+                  onAction={handleGenerateReport}
+                  color="blue"
+                />
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {reports.map((report) => (
@@ -1107,7 +1098,7 @@ function DashboardPageContent() {
                             </div>
                           </div>
                         </div>
-                          <div className="hidden md:flex gap-2">
+                        <div className="hidden md:flex gap-2">
                             {report.analysis_json?.recommended_topics?.slice(0, 2).map((topic: string, i: number) => (
                               <span key={topic + i} className="text-[9px] font-black text-zinc-400 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-lg uppercase tracking-[0.2em]">
                                 {topic}

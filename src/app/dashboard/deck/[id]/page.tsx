@@ -15,11 +15,13 @@ import {
   X,
   Folder,
   Plus,
+  Loader2,
 } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { CustomSelect } from '@/components/ui/select'
 import { RichEditor } from '@/components/editor/RichEditor'
+import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import MarkdownDisplay from '@/components/ui/markdown-display'
 
 interface Deck {
@@ -65,6 +67,7 @@ export default function DeckDetailPage() {
 
   // Card creation
   const [isAddingCard, setIsAddingCard] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [newFront, setNewFront] = useState('')
   const [newBack, setNewBack] = useState('')
 
@@ -187,7 +190,7 @@ export default function DeckDetailPage() {
   }
 
   const handleCreateCard = async () => {
-    if (!newFront.trim() || !newBack.trim()) return
+    setIsSubmitting(true)
 
     const { data, error } = await supabase
       .from('flashcards')
@@ -209,6 +212,7 @@ export default function DeckDetailPage() {
       setIsAddingCard(false)
       toast('Flashcard criado!', 'success')
     }
+    setIsSubmitting(false)
   }
 
   const handleDeleteCard = async (cardId: string) => {
@@ -442,7 +446,12 @@ export default function DeckDetailPage() {
             </div>
             <div className="flex justify-end gap-3">
               <Button variant="ghost" className="text-zinc-500 hover:text-zinc-100" onClick={() => setIsAddingCard(false)}>Cancelar</Button>
-              <Button onClick={handleCreateCard} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-10 font-bold shadow-lg shadow-blue-500/20" disabled={!newFront.trim() || !newBack.trim()}>
+              <Button 
+                onClick={handleCreateCard} 
+                className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-10 font-bold shadow-lg shadow-blue-500/20" 
+                disabled={!newFront.trim() || !newBack.trim() || isSubmitting}
+              >
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Criar Flashcard
               </Button>
             </div>
@@ -451,11 +460,15 @@ export default function DeckDetailPage() {
 
         {/* Flashcards */}
         {flashcards.length === 0 ? (
-          <div className="bg-zinc-900/30 border border-dashed border-zinc-800 rounded-3xl p-20 text-center backdrop-blur-sm">
-            <p className="text-zinc-500 font-bold uppercase tracking-[0.2em] text-xs">
-              Este deck ainda não possui unidades de conhecimento.
-            </p>
-          </div>
+          <DashboardEmptyState
+            title="Sua Unidade de Conhecimento está Vazia"
+            description="Este deck ainda não possui flashcards. Adicione cards manualmente ou use o menu de criação para importar do seu material de estudo."
+            icon={Layers}
+            actionLabel="CRIAR PRIMEIRO CARD"
+            onAction={() => setIsAddingCard(true)}
+            color="blue"
+            className="border-dashed"
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {flashcards.map((card) => (

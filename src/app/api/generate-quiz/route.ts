@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
 import { cleanupSource } from '@/lib/processing/cleanup'
+import { quizLimiter } from '@/lib/rate-limit'
 
 // Define quiz question structure
 const QuizQuestionSchema = z.object({
@@ -37,6 +38,14 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+    }
+
+    // 1.1 Rate Limiting (P0.3)
+    const { success } = await quizLimiter.limit(user.id)
+    if (!success) {
+      return NextResponse.json({ 
+        error: 'Limite de gerações atingido (15/hora). Nosso cérebro digital também precisa de um descanso! Tente novamente em alguns minutos.' 
+      }, { status: 429 })
     }
 
     // Read source content from DB

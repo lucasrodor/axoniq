@@ -12,6 +12,7 @@ import {
   Settings2, ListChecks, MessageSquare, Play
 } from 'lucide-react'
 import { RichEditor } from '@/components/editor/RichEditor'
+import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import { CustomSelect } from '@/components/ui/select'
 import MarkdownDisplay from '@/components/ui/markdown-display'
 
@@ -67,6 +68,7 @@ export default function QuizPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showExplanation, setShowExplanation] = useState(false)
   const [answers, setAnswers] = useState<UserAnswer[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [endTime, setEndTime] = useState<Date | null>(null)
 
@@ -162,6 +164,7 @@ export default function QuizPage() {
 
   const handleSaveQuestion = async () => {
     if (!qText.trim()) return
+    setIsSubmitting(true)
     
     const validOptions = qType === 'true_false' ? ['Verdadeiro', 'Falso'] : qOptions.filter(o => o.trim() !== '')
     
@@ -214,6 +217,7 @@ export default function QuizPage() {
         toast('Questão adicionada!', 'success')
       }
     }
+    setIsSubmitting(false)
   }
 
   const handleEditQuestion = (q: QuizQuestion) => {
@@ -611,15 +615,17 @@ export default function QuizPage() {
                         <Button 
                           variant="ghost" 
                           onClick={() => { setIsAddingQuestion(false); setEditingQuestionId(null); }}
+                          disabled={isSubmitting}
                           className="text-zinc-500 hover:text-zinc-300 font-bold uppercase tracking-widest text-[10px]"
                         >
                           Descartar
                         </Button>
                         <Button 
                           onClick={handleSaveQuestion} 
-                          disabled={!qText.trim() || (qType !== 'true_false' && qOptions.filter(o => o.trim() !== '').length < 2)}
+                          disabled={isSubmitting || !qText.trim() || (qType !== 'true_false' && qOptions.filter(o => o.trim() !== '').length < 2)}
                           className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-10 h-12 font-black uppercase tracking-widest text-[11px] shadow-[0_0_30px_rgba(37,99,235,0.2)] disabled:opacity-30"
                         >
+                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                           {editingQuestionId ? 'Confirmar Atualização' : 'Efetivar Questão'}
                         </Button>
                       </div>
@@ -631,13 +637,15 @@ export default function QuizPage() {
               {/* Questions List Render */}
               <div className="grid grid-cols-1 gap-4">
                 {questions.length === 0 && !isAddingQuestion ? (
-                  <div className="p-20 text-center border-2 border-dashed border-zinc-800 rounded-[2.5rem] bg-zinc-950/50">
-                    <div className="w-16 h-16 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <ListChecks className="text-zinc-700" size={24} />
-                    </div>
-                    <p className="text-zinc-500 font-bold uppercase tracking-[0.2em] text-xs">Simulação sem unidades cadastradas</p>
-                    <p className="text-zinc-600 text-[10px] mt-2">Arraste seus Decks ou crie questões manuais para começar.</p>
-                  </div>
+                  <DashboardEmptyState
+                    title="Simulação sem Unidades"
+                    description="Esta seção está aguardando suas questões. Você pode criar manualmente abaixo ou gerar a partir de um material de estudo."
+                    icon={ListChecks}
+                    actionLabel="CRIAR QUESTÃO"
+                    onAction={() => { resetQuestionForm(); setIsAddingQuestion(true); }}
+                    color="emerald"
+                    className="border-dashed"
+                  />
                 ) : (
                   questions.map((q, idx) => (
                     <div key={q.id} className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 flex items-start justify-between group hover:border-blue-500/30 transition-all hover:bg-zinc-900/60 shadow-lg hover:shadow-blue-500/5">

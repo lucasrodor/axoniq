@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
 import { cleanupSource } from '@/lib/processing/cleanup'
+import { mindmapLimiter } from '@/lib/rate-limit'
 
 // Define the schema for Mind Map data
 const MindMapNodeSchema = z.object({
@@ -37,6 +38,14 @@ export async function POST(req: NextRequest) {
     
     const { data: { user } } = await supabaseAdmin.auth.getUser(token)
     if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+    // 1.1 Rate Limiting (P0.3)
+    const { success } = await mindmapLimiter.limit(user.id)
+    if (!success) {
+      return NextResponse.json({ 
+        error: 'Limite de gerações atingido (15/hora). Nosso cérebro digital também precisa de um descanso! Tente novamente em alguns minutos.' 
+      }, { status: 429 })
+    }
 
     // 1. Read source (including multimodal URLs)
     const { data: source, error: sourceError } = await supabaseAdmin

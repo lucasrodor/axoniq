@@ -70,16 +70,21 @@ export function CardKebabMenu({ onRename, onDelete }: { onRename: () => void, on
   }, [open])
 
   return (
-    <div ref={menuRef} className="relative">
+    <div ref={menuRef} className="relative" style={{ zIndex: open ? 100 : 1 }}>
       <button
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(!open) }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors opacity-0 group-hover/card:opacity-100"
+        className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors opacity-100 sm:opacity-0 group-hover/card:opacity-100"
       >
         <MoreVertical size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-150">
+        <div 
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{ transform: 'translateZ(100px)' }}
+          className="absolute right-0 top-full mt-2 z-[100] bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-150"
+        >
           <button
             onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(false); onRename() }}
             onPointerDown={(e) => e.stopPropagation()}
@@ -142,7 +147,7 @@ export function DeckCard({
           )} />
         </div>
 
-        <div className="flex justify-between items-start mb-4 sm:mb-6 relative z-10 min-w-0 w-full">
+        <div className="flex justify-between items-start mb-4 sm:mb-6 relative z-40 min-w-0 w-full">
           <div className={cn(
             "p-2 sm:p-3 rounded-xl transition-all duration-500 group-hover/card:scale-110 shrink-0",
             isDue ? "bg-amber-500/10 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]" : 

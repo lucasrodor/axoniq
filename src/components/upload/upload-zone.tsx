@@ -23,10 +23,14 @@ export function UploadZone({ onFilesSelect, isProcessing }: UploadZoneProps) {
     }
 
     if (acceptedFiles.length > 0) {
+      if (selectedFiles.length + acceptedFiles.length > 5) {
+        setError('O limite máximo é de 5 arquivos por vez. Por favor, remova alguns para adicionar novos.')
+        return
+      }
       // Allow merging new files into the current selection
       setSelectedFiles(prev => [...prev, ...acceptedFiles])
     }
-  }, [])
+  }, [selectedFiles])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -37,7 +41,7 @@ export function UploadZone({ onFilesSelect, isProcessing }: UploadZoneProps) {
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png']
     },
-    maxFiles: 10,
+    maxFiles: 5,
     maxSize: 10 * 1024 * 1024, // 10MB per file
     disabled: isProcessing
   })
@@ -116,7 +120,7 @@ export function UploadZone({ onFilesSelect, isProcessing }: UploadZoneProps) {
             ? 'border-blue-500 bg-blue-500/5 scale-[1.01]' 
             : 'border-zinc-300 dark:border-zinc-700 hover:border-blue-500/50 dark:hover:border-blue-500/50 hover:bg-zinc-950/40 dark:hover:bg-zinc-950/40'}
           ${error ? 'border-red-500 bg-red-500/5' : ''}
-          ${selectedFiles.length >= 10 ? 'opacity-50 pointer-events-none' : ''}
+          ${selectedFiles.length >= 5 ? 'opacity-50 pointer-events-none' : ''}
         `}
       >
         <input {...getInputProps()} />
@@ -130,7 +134,7 @@ export function UploadZone({ onFilesSelect, isProcessing }: UploadZoneProps) {
             {isDragActive ? 'Solte os arquivos aqui...' : 'Clique ou arraste documentos/imagens'}
           </p>
           <p className="text-xs text-[var(--muted-foreground)]">
-            PDF, DOCX, TXT ou Imagens (Max 10 arquivos)
+            PDF, DOCX, TXT ou Imagens (Max 5 arquivos)
           </p>
         </div>
 

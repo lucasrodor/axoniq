@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { openai, OPENAI_MODEL } from '@/lib/ai/client'
 import { createAdminClient } from '@/lib/supabase/server'
 import { Readable } from 'stream'
+import { audioLimiter } from '@/lib/rate-limit'
 
 // OpenAI Whisper limit is 25MB. We use 24MB to be safe.
 const MAX_FILE_SIZE = 24 * 1024 * 1024 
@@ -24,6 +25,14 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
     if (userError || !user) {
        return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+    }
+
+    // 1.1 Rate Limiting (P0.3)
+    const { success } = await audioLimiter.limit(user.id)
+    if (!success) {
+      return NextResponse.json({ 
+        error: 'Limite de transcrição atingido (5/hora). Áudios longos exigem muito processamento. Tente novamente em 1 hora!' 
+      }, { status: 429 })
     }
 
     // 2. Transcription Process
@@ -69,7 +78,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (!fullTranscription || fullTranscription.length < 50) {
-      return NextResponse.json({ error: 'Transcrição muito curta ou vazia.' }, { status: 400 })
+      return NextResponse.json({ 
+        error: 'Não foi possível detectar fala inteligível neste áudio. Verifique se o arquivo contém áudio gravado e tente novamente.' 
+      }, { status: 400 })
     }
 
     // 3. Detect Specialty Tag (Reusing specialty detection logic)
