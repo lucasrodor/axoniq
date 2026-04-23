@@ -201,7 +201,7 @@ function DashboardPageContent() {
     await signOut()
   }
   // Map and enrich data from SWR
-  const decks = (decksData || []).map((deck: any) => ({
+  const decks: DeckWithStats[] = (decksData || []).map((deck: any) => ({
     ...deck,
     totalCards: Number(deck.total_cards || 0),
     dueCards: Number(deck.due_cards || 0),
@@ -211,16 +211,16 @@ function DashboardPageContent() {
       : 0
   }))
 
-  const quizzes = (quizzesData || []).map((quiz: any) => ({
+  const quizzes: Quiz[] = (quizzesData || []).map((quiz: any) => ({
     ...quiz,
     totalQuestions: Number(quiz.total_questions || 0),
     lastScoreHit: quiz.last_score_hit,
     lastScoreTotal: quiz.last_score_total,
   }))
 
-  const folders = foldersData || []
-  const reports = reportsData || []
-  const mindMaps = mmData || []
+  const folders: FolderType[] = foldersData || []
+  const reports: PerformanceReport[] = reportsData || []
+  const mindMaps: MindMap[] = mmData || []
   const profile = profileData
   const allCardsStats = summaryData
   const documents = docsData || []
@@ -264,10 +264,13 @@ function DashboardPageContent() {
     // Detect if it's a quiz or deck being dragged
     if (itemId.startsWith('quiz-')) {
       const quizId = itemId.replace('quiz-', '')
-      const quizBeingMoved = quizzes.find(q => q.id === quizId)
+      const quizBeingMoved = quizzes.find((q: Quiz) => q.id === quizId)
       if (!quizBeingMoved || quizBeingMoved.folder_id === resolvedFolderId) return
       // Optimistic update
-      setQuizzes(prev => prev.map(q => q.id === quizId ? { ...q, folder_id: resolvedFolderId } : q))
+      mutate(`quizzes:${user?.id}`, (current: any) => 
+        (current || []).map((q: any) => q.id === quizId ? { ...q, folder_id: resolvedFolderId } : q), 
+        false
+      )
       const { error } = await supabase.from('quizzes').update({ folder_id: resolvedFolderId }).eq('id', quizId)
       if (error) {
         toast('Erro ao mover quiz.', 'error')
@@ -277,10 +280,13 @@ function DashboardPageContent() {
       }
     } else if (itemId.startsWith('deck-')) {
       const deckId = itemId.replace('deck-', '')
-      const deckBeingMoved = decks.find(d => d.id === deckId)
+      const deckBeingMoved = decks.find((d: DeckWithStats) => d.id === deckId)
       if (!deckBeingMoved || deckBeingMoved.folder_id === resolvedFolderId) return
       // Optimistic update
-      setDecks(prev => prev.map(d => d.id === deckId ? { ...d, folder_id: resolvedFolderId } : d))
+      mutate(`decks:${user?.id}`, (current: any) => 
+        (current || []).map((d: any) => d.id === deckId ? { ...d, folder_id: resolvedFolderId } : d), 
+        false
+      )
       const { error } = await supabase.from('decks').update({ folder_id: resolvedFolderId }).eq('id', deckId)
       if (error) {
         toast('Erro ao mover deck.', 'error')
@@ -290,9 +296,12 @@ function DashboardPageContent() {
       }
     } else if (itemId.startsWith('mindmap-')) {
       const mmId = itemId.replace('mindmap-', '')
-      const mmBeingMoved = mindMaps.find(m => m.id === mmId)
+      const mmBeingMoved = mindMaps.find((m: MindMap) => m.id === mmId)
       if (!mmBeingMoved || mmBeingMoved.folder_id === resolvedFolderId) return
-      setMindMaps(prev => prev.map(m => m.id === mmId ? { ...m, folder_id: resolvedFolderId } : m))
+      mutate(`mind_maps:${user?.id}`, (current: any) => 
+        (current || []).map((m: any) => m.id === mmId ? { ...m, folder_id: resolvedFolderId } : m), 
+        false
+      )
       const { error } = await supabase.from('mind_maps').update({ folder_id: resolvedFolderId }).eq('id', mmId)
       if (error) {
         toast('Erro ao mover mapa mental.', 'error')
@@ -319,7 +328,7 @@ function DashboardPageContent() {
     if (error) {
       toast('Erro ao criar deck.', 'error')
     } else {
-      setDecks(prev => [{ ...data, totalCards: 0, dueCards: 0, progressPercent: 0 }, ...prev])
+      mutate(`decks:${user?.id}`)
       setNewDeckTitle('')
       setShowNewDeckModal(false)
       toast('Deck criado!', 'success')
@@ -337,7 +346,7 @@ function DashboardPageContent() {
     if (error) {
       toast('Erro ao criar quiz.', 'error')
     } else {
-      setQuizzes(prev => [data, ...prev])
+      mutate(`quizzes:${user?.id}`)
       setNewQuizTitle('')
       setShowNewQuizModal(false)
       toast('Quiz criado!', 'success')
@@ -355,7 +364,7 @@ function DashboardPageContent() {
     if (error) {
       toast('Erro ao criar pasta.', 'error')
     } else if (data) {
-      setFolders(prev => [...prev, data])
+      mutate(`folders:${user.id}`)
       setNewFolderName('')
       setShowNewFolder(false)
       toast('Pasta criada!', 'success')
@@ -366,9 +375,9 @@ function DashboardPageContent() {
     await supabase.from('quizzes').update({ folder_id: null }).eq('folder_id', folderId)
     const { error } = await supabase.from('folders').delete().eq('id', folderId)
     if (!error) {
-      setFolders(prev => prev.filter(f => f.id !== folderId))
-      setDecks(prev => prev.map(d => d.folder_id === folderId ? { ...d, folder_id: null } : d))
-      setQuizzes(prev => prev.map(q => q.folder_id === folderId ? { ...q, folder_id: null } : q))
+      mutate(`folders:${user?.id}`)
+      mutate(`decks:${user?.id}`)
+      mutate(`quizzes:${user?.id}`)
       toast('Pasta removida.', 'success')
     }
   }
@@ -376,7 +385,7 @@ function DashboardPageContent() {
     if (!editFolderName.trim()) return
     const { error } = await supabase.from('folders').update({ name: editFolderName.trim() }).eq('id', folderId)
     if (!error) {
-      setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: editFolderName.trim() } : f))
+      mutate(`folders:${user?.id}`)
       setEditingFolderId(null)
       toast('Pasta renomeada!', 'success')
     }
@@ -393,7 +402,7 @@ function DashboardPageContent() {
     if (!newTitle.trim()) return
     const { error } = await supabase.from('decks').update({ title: newTitle.trim() }).eq('id', deckId)
     if (!error) {
-      setDecks(prev => prev.map(d => d.id === deckId ? { ...d, title: newTitle.trim() } : d))
+      mutate(`decks:${user?.id}`)
       toast('Deck renomeado!', 'success')
     } else {
       toast('Erro ao renomear deck.', 'error')
@@ -403,7 +412,7 @@ function DashboardPageContent() {
   const handleDeleteDeck = async (deckId: string) => {
     const { error } = await supabase.from('decks').delete().eq('id', deckId)
     if (!error) {
-      setDecks(prev => prev.filter(d => d.id !== deckId))
+      mutate(`decks:${user?.id}`)
       toast('Deck excluído.', 'success')
       loadDashboard()
     } else {
@@ -415,7 +424,7 @@ function DashboardPageContent() {
     if (!newTitle.trim()) return
     const { error } = await supabase.from('quizzes').update({ title: newTitle.trim() }).eq('id', quizId)
     if (!error) {
-      setQuizzes(prev => prev.map(q => q.id === quizId ? { ...q, title: newTitle.trim() } : q))
+      mutate(`quizzes:${user?.id}`)
       toast('Quiz renomeado!', 'success')
     } else {
       toast('Erro ao renomear quiz.', 'error')
@@ -425,7 +434,7 @@ function DashboardPageContent() {
   const handleDeleteQuiz = async (quizId: string) => {
     const { error } = await supabase.from('quizzes').delete().eq('id', quizId)
     if (!error) {
-      setQuizzes(prev => prev.filter(q => q.id !== quizId))
+      mutate(`quizzes:${user?.id}`)
       toast('Quiz excluído.', 'success')
       loadDashboard()
     } else {
@@ -483,7 +492,7 @@ function DashboardPageContent() {
     if (!newTitle.trim()) return
     const { error } = await supabase.from('mind_maps').update({ title: newTitle.trim() }).eq('id', mmId)
     if (!error) {
-      setMindMaps(prev => prev.map(m => m.id === mmId ? { ...m, title: newTitle.trim() } : m))
+      mutate(`mind_maps:${user?.id}`)
       toast('Mapa mental renomeado!', 'success')
     } else {
       toast('Erro ao renomear mapa mental.', 'error')
@@ -493,7 +502,7 @@ function DashboardPageContent() {
   const handleDeleteMindMap = async (mmId: string) => {
     const { error } = await supabase.from('mind_maps').delete().eq('id', mmId)
     if (!error) {
-      setMindMaps(prev => prev.filter(m => m.id !== mmId))
+      mutate(`mind_maps:${user?.id}`)
       toast('Mapa mental excluído.', 'success')
     } else {
       toast('Erro ao excluir mapa mental.', 'error')
@@ -512,7 +521,7 @@ function DashboardPageContent() {
     if (error) {
       toast('Erro ao criar mapa mental.', 'error')
     } else {
-      setMindMaps(prev => [data, ...prev])
+      mutate(`mind_maps:${user?.id}`)
       setNewMindMapTitle('')
       setShowNewMindMapModal(false)
       toast('Mapa mental criado!', 'success')
@@ -525,30 +534,30 @@ function DashboardPageContent() {
     setEditingItemType(type)
   }
   // Search Filtering Logic
-  const filteredDecks = decks.filter(d => 
+  const filteredDecks = decks.filter((d: DeckWithStats) => 
     d.title.toLowerCase().includes(searchTerm.toLowerCase())
   )
-  const filteredQuizzes = quizzes.filter(q => 
+  const filteredQuizzes = quizzes.filter((q: Quiz) => 
     q.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
     q.specialty_tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     q.quiz_questions?.[0]?.count?.toString().includes(searchTerm)
   )
-  const filteredMindMaps = mindMaps.filter(m => 
+  const filteredMindMaps = mindMaps.filter((m: MindMap) => 
     m.title.toLowerCase().includes(searchTerm.toLowerCase())
   )
-  const folderedDecks = folders.map(folder => ({
+  const folderedDecks = folders.map((folder: FolderType) => ({
     folder,
-    decks: filteredDecks.filter(d => d.folder_id === folder.id)
+    decks: filteredDecks.filter((d: DeckWithStats) => d.folder_id === folder.id)
   }))
-  const unassignedDecks = filteredDecks.filter(d => !d.folder_id)
-  const folderedMindMaps = folders.map(folder => ({
+  const unassignedDecks = filteredDecks.filter((d: DeckWithStats) => !d.folder_id)
+  const folderedMindMaps = folders.map((folder: FolderType) => ({
     folder,
-    mindMaps: filteredMindMaps.filter(m => m.folder_id === folder.id)
+    mindMaps: filteredMindMaps.filter((m: MindMap) => m.folder_id === folder.id)
   }))
-  const unassignedMindMaps = filteredMindMaps.filter(m => !m.folder_id)
+  const unassignedMindMaps = filteredMindMaps.filter((m: MindMap) => !m.folder_id)
   const activeIdString = activeId || ''
-  const activeDeck = activeIdString.startsWith('deck-') ? filteredDecks.find(d => d.id === activeIdString.replace('deck-', '')) : null
-  const activeQuiz = activeIdString.startsWith('quiz-') ? filteredQuizzes.find(q => q.id === activeIdString.replace('quiz-', '')) : null
+  const activeDeck = activeIdString.startsWith('deck-') ? filteredDecks.find((d: DeckWithStats) => d.id === activeIdString.replace('deck-', '')) : null
+  const activeQuiz = activeIdString.startsWith('quiz-') ? filteredQuizzes.find((q: Quiz) => q.id === activeIdString.replace('quiz-', '')) : null
     return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="min-h-screen relative clinical-grid overflow-x-hidden">
