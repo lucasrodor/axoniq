@@ -701,7 +701,7 @@ P1 — CRÍTICOS (fazer antes ou na primeira semana)
 ├── [ ] P1.3 Responsividade mobile validada nas telas críticas
 ├── [ ] P1.4 Estratégia de backup definida
 ├── [ ] P1.5 Emails de autenticação personalizados
-└── [ ] P1.6 Edge cases testados e tratados
+└── [x] P1.6 Edge cases testados e tratados
 
 P2 — IMPORTANTES (primeiras 2 semanas pós-lançamento)
 ├── [ ] P2.1 Analytics implementado (PostHog ou Vercel Analytics)

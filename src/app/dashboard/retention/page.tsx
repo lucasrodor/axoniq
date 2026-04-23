@@ -17,6 +17,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { DashboardEmptyState } from '@/components/dashboard/empty-state'
+import useSWR from 'swr'
+import { dashboardFetcher } from '@/lib/dashboard/fetchers'
+import { RetentionSkeleton } from '@/components/dashboard/skeleton'
 
 // Specialty Icons Mapping
 const specialtyIcons: Record<string, any> = {
@@ -40,23 +43,10 @@ const specialtyIcons: Record<string, any> = {
 export default function RetentionDashboard() {
   const { user } = useAuth()
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<RetentionStats | null>(null)
-
-  useEffect(() => {
-    async function loadData() {
-      if (!user?.id) return
-      try {
-        const data = await getRetentionStats(user.id)
-        setStats(data)
-      } catch (error) {
-        console.error('Error loading retention stats:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadData()
-  }, [user?.id])
+  
+  const { data: stats, isLoading } = useSWR(user ? `retention:${user.id}` : null, dashboardFetcher)
+  
+  const loading = isLoading && !stats
 
   // Custom colors for specialties
   const getSpecialtyColor = (score: number) => {
@@ -67,10 +57,9 @@ export default function RetentionDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#09090B] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-          <p className="text-zinc-400 font-medium animate-pulse">Sincronizando Banco de Memória...</p>
+      <div className="min-h-screen bg-[#09090B] p-6 md:p-10">
+        <div className="max-w-7xl mx-auto">
+          <RetentionSkeleton />
         </div>
       </div>
     )

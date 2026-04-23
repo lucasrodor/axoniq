@@ -135,16 +135,30 @@ export function Sidebar() {
         )}
       >
         <div className="flex flex-col h-full p-3 pt-6">
-          <Link href="/dashboard" className={cn(
-            "flex items-center mb-12 mt-2 transition-all duration-500",
+          {/* Logo Section */}
+          <div className={cn(
+            "flex items-center mb-10 mt-2 transition-all duration-500 relative",
             isCollapsed ? "justify-center" : "justify-start px-4"
           )}>
-            <img 
-              src="/AxonIQ.png" 
-              alt="Axoniq Logo" 
-              className={cn("transition-all duration-500 hover:scale-105 active:scale-95", isCollapsed ? "w-10" : "w-32")} 
-            />
-          </Link>
+            <Link href="/dashboard" className="flex items-center">
+              <img 
+                src="/AxonIQ.png" 
+                alt="Axoniq Logo" 
+                className={cn("transition-all duration-500 hover:scale-105 active:scale-95", isCollapsed ? "w-10" : "w-28")} 
+              />
+            </Link>
+          </div>
+
+          {/* Floating Collapse Toggle (Desktop only) */}
+          <button
+            onClick={toggleCollapse}
+            className="hidden lg:flex absolute top-1/2 -right-3 -translate-y-1/2 items-center justify-center w-6 h-6 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-all z-[60] shadow-xl group"
+            title={isCollapsed ? "Expandir" : "Recolher"}
+          >
+            <span className="material-symbols-outlined text-[16px] transition-transform duration-300 group-hover:scale-125">
+              {isCollapsed ? 'chevron_right' : 'chevron_left'}
+            </span>
+          </button>
 
           {/* Navigation Items */}
           <nav className="flex-1 space-y-2">
@@ -193,16 +207,6 @@ export function Sidebar() {
                 {!isCollapsed && <span className="text-sm font-bold tracking-tight">Convidar Alpha</span>}
               </button>
             )}
-
-            {/* Collapse Toggle (Desktop only) */}
-            <button
-              onClick={toggleCollapse}
-              className="hidden lg:flex items-center justify-center w-full py-2 text-zinc-500 hover:text-zinc-100 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px] animate-pulse">
-                {isCollapsed ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'}
-              </span>
-            </button>
           </div>
         </div>
       </aside>

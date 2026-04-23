@@ -373,7 +373,7 @@ export default function DeckDetailPage() {
               >
                 <Trash2 size={14} className="mr-1.5" /> Deletar
               </Button>
-              <Link href={`/dashboard/deck/${deckId}/study`} className="col-span-2 sm:col-span-1">
+              <Link href={`/dashboard/study?decks=${deckId}`} className="col-span-2 sm:col-span-1">
                 <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl h-14 sm:h-10 sm:px-6 font-black uppercase tracking-[0.1em] text-[10px] shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95">
                   <Play size={14} className="mr-2 fill-current" /> ESTUDAR AGORA
                 </Button>

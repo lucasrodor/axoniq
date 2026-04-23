@@ -81,6 +81,9 @@ import {
   Brain as BrainIcon,
   CircleDot
 } from 'lucide-react'
+import useSWR, { mutate } from 'swr'
+import { dashboardFetcher } from '@/lib/dashboard/fetchers'
+import { ListSkeleton, StatSkeleton, CardSkeleton } from '@/components/dashboard/skeleton'
 interface Flashcard {
   id: string
   ease_factor: number
@@ -148,21 +151,20 @@ function DashboardPageContent() {
   const { user, signOut } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
-  const [decks, setDecks] = useState<DeckWithStats[]>([])
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [allCardsStats, setAllCardsStats] = useState<{
-    total_cards: number;
-    due_today: number;
-    mastered: number;
-    learning: number;
-    new: number;
-    studied_total: number;
-  } | null>(null)
-  const [quizzes, setQuizzes] = useState<Quiz[]>([])
+
+  // SWR Hooks for data fetching with background revalidation
+  const { data: decksData, isLoading: decksLoading } = useSWR(user ? `decks:${user.id}` : null, dashboardFetcher)
+  const { data: foldersData } = useSWR(user ? `folders:${user.id}` : null, dashboardFetcher)
+  const { data: quizzesData, isLoading: quizzesLoading } = useSWR(user ? `quizzes:${user.id}` : null, dashboardFetcher)
+  const { data: mmData, isLoading: mmLoading } = useSWR(user ? `mind_maps:${user.id}` : null, dashboardFetcher)
+  const { data: reportsData, isLoading: reportsLoading } = useSWR(user ? `reports:${user.id}` : null, dashboardFetcher)
+  const { data: summaryData } = useSWR(user ? `summary:${user.id}` : null, dashboardFetcher)
+  const { data: profileData } = useSWR(user ? `profile:${user.id}` : null, dashboardFetcher)
+  const { data: docsData } = useSWR(user ? `documents:${user.id}` : null, dashboardFetcher)
+
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<DashboardTab>((searchParams.get('tab') as DashboardTab) || 'decks')
-  const [folders, setFolders] = useState<FolderType[]>([])
-  const [loading, setLoading] = useState(true)
+  const loading = (decksLoading && !decksData) || (quizzesLoading && !quizzesData) || (mmLoading && !mmData) || (reportsLoading && !reportsData)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -181,13 +183,11 @@ function DashboardPageContent() {
   const [showCreateChoice, setShowCreateChoice] = useState(false)
   const [showNewMindMapModal, setShowNewMindMapModal] = useState(false)
   const [newMindMapTitle, setNewMindMapTitle] = useState('')
-  const [reports, setReports] = useState<PerformanceReport[]>([])
-  const [mindMaps, setMindMaps] = useState<MindMap[]>([])
   const [generatingReport, setGeneratingReport] = useState(false)
   const [showReportLimitModal, setShowReportLimitModal] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [profile, setProfile] = useState<{ full_name: string | null } | null>(null)
+  
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -195,82 +195,51 @@ function DashboardPageContent() {
       },
     })
   )
+
   const handleSignOut = async () => {
     toast('Você saiu da sua conta.', 'info')
     await signOut()
   }
-  async function loadDashboard() {
-    if (!user) return
-    try {
-      setLoading(true)
-      
-      // Parallel fetches for base entities using optimized views where possible
-      const [
-        { data: decksData, error: decksError },
-        { data: foldersData },
-        { data: docsData },
-        { data: quizzesData },
-        { data: mmData },
-        { data: reportsData },
-        { data: profileData },
-        { data: progressSummary }
-      ] = await Promise.all([
-        supabase.from('deck_stats_view').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-        supabase.from('folders').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-        supabase.from('documents').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-        supabase.from('quiz_stats_view').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-        supabase.from('mind_maps').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-        supabase.from('performance_reports').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-        supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-        supabase.rpc('get_user_progress_summary', { p_user_id: user.id })
-      ])
+  // Map and enrich data from SWR
+  const decks = (decksData || []).map((deck: any) => ({
+    ...deck,
+    totalCards: Number(deck.total_cards || 0),
+    dueCards: Number(deck.due_cards || 0),
+    masteredCards: Number(deck.mastered_cards || 0),
+    progressPercent: Number(deck.total_cards) > 0 
+      ? Math.round((Number(deck.studied_cards) / Number(deck.total_cards)) * 100) 
+      : 0
+  }))
 
-      if (decksError) throw decksError
-      
-      // Map deck stats directly from optimized view
-      const enrichedDecks = (decksData || []).map((deck: any) => ({
-        ...deck,
-        totalCards: Number(deck.total_cards || 0),
-        dueCards: Number(deck.due_cards || 0),
-        masteredCards: Number(deck.mastered_cards || 0),
-        progressPercent: Number(deck.total_cards) > 0 
-          ? Math.round((Number(deck.studied_cards) / Number(deck.total_cards)) * 100) 
-          : 0
-      }))
+  const quizzes = (quizzesData || []).map((quiz: any) => ({
+    ...quiz,
+    totalQuestions: Number(quiz.total_questions || 0),
+    lastScoreHit: quiz.last_score_hit,
+    lastScoreTotal: quiz.last_score_total,
+  }))
 
-      // Map quiz stats directly from optimized view
-      const enrichedQuizzes = (quizzesData || []).map((quiz: any) => ({
-        ...quiz,
-        totalQuestions: Number(quiz.total_questions || 0),
-        lastScoreHit: quiz.last_score_hit,
-        lastScoreTotal: quiz.last_score_total,
-      }))
+  const folders = foldersData || []
+  const reports = reportsData || []
+  const mindMaps = mmData || []
+  const profile = profileData
+  const allCardsStats = summaryData
+  const documents = docsData || []
 
-      setDecks(enrichedDecks)
-      setDocuments(docsData || [])
-      setFolders(foldersData || [])
-      setQuizzes(enrichedQuizzes)
-      setReports(reportsData || [])
-      setMindMaps(mmData || [])
-      setProfile(profileData)
-      
-      // Set global stats from summary RPC
-      if (progressSummary) {
-        setAllCardsStats(progressSummary)
-      }
-
-    } catch (error: any) {
-      console.error('Error loading dashboard:', error)
-      toast('Erro ao carregar dashboard.', 'error')
-    } finally {
-      setLoading(false)
+  // Backward compatibility with loadDashboard for manual refreshes if needed
+  const loadDashboard = () => {
+    if (user) {
+      mutate(`decks:${user.id}`)
+      mutate(`folders:${user.id}`)
+      mutate(`quizzes:${user.id}`)
+      mutate(`mind_maps:${user.id}`)
+      mutate(`reports:${user.id}`)
+      mutate(`summary:${user.id}`)
+      mutate(`profile:${user.id}`)
     }
   }
+
   useEffect(() => {
-    loadDashboard()
-  }, [user])
-  // Sync activeTab with URL search params
-  useEffect(() => {
+    // Sync activeTab with URL search params
     const tab = searchParams.get('tab') as DashboardTab
     if (tab && ['decks', 'quizzes', 'reports', 'mindmaps'].includes(tab) && tab !== activeTab) {
       setActiveTab(tab)
@@ -648,19 +617,23 @@ function DashboardPageContent() {
             </div>
           </header>
           {/* Bento Command Center */}
-          <BentoGrid>
-            <StatCard 
-              className="md:col-span-2"
-              icon={<Zap size={24} />} 
-              label="Devido Hoje" 
-              value={totalDue} 
-              description={totalDue > 0 ? "Você tem revisões pendentes. Mantenha o streak!" : "Tudo em dia! Ótimo trabalho."}
-              color={totalDue > 0 ? "amber" : "emerald"}
-              trend={{ value: 12, positive: true }}
-            />
-            <StatCard icon={<Layers size={20} />} label="Decks" value={decks.length} color="blue" />
-            <StatCard icon={<Target size={20} />} label="Estudado" value={`${masteryRate}%`} color="emerald" />
-          </BentoGrid>
+          {loading ? (
+            <StatSkeleton />
+          ) : (
+            <BentoGrid>
+              <StatCard 
+                className="md:col-span-2"
+                icon={<Zap size={24} />} 
+                label="Devido Hoje" 
+                value={totalDue} 
+                description={totalDue > 0 ? "Você tem revisões pendentes. Mantenha o streak!" : "Tudo em dia! Ótimo trabalho."}
+                color={totalDue > 0 ? "amber" : "emerald"}
+                trend={{ value: 12, positive: true }}
+              />
+              <StatCard icon={<Layers size={20} />} label="Decks" value={decks.length} color="blue" />
+              <StatCard icon={<Target size={20} />} label="Estudado" value={`${masteryRate}%`} color="emerald" />
+            </BentoGrid>
+          )}
           {/* Learning Progress Bar */}
           {totalCards > 0 && (
             <div className="glass-panel p-4 sm:p-6 rounded-3xl border-zinc-800/50 relative overflow-hidden w-full min-w-0">
@@ -783,11 +756,7 @@ function DashboardPageContent() {
               </Button>
             </div>
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-10">
-                {[1, 2, 3].map((i) => <div key={i} className="h-56 bg-zinc-900 border border-zinc-800 rounded-3xl animate-pulse relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                </div>)}
-              </div>
+              <ListSkeleton count={3} />
             ) : decks.length === 0 ? (
               <DashboardEmptyState
                 title="Protocolo de Decks Inexistente"
@@ -873,11 +842,7 @@ function DashboardPageContent() {
               </Button>
             </div>
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                {[1, 2, 3].map((i) => <div key={i} className="h-56 bg-zinc-900 border border-zinc-800 rounded-3xl animate-pulse relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                </div>)}
-              </div>
+              <ListSkeleton count={3} />
             ) : quizzes.length === 0 ? (
               <DashboardEmptyState
                 title="Faltam Simulações de Quiz"
