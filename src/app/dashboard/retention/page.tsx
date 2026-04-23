@@ -44,7 +44,7 @@ export default function RetentionDashboard() {
   const { user } = useAuth()
   const router = useRouter()
   
-  const { data: stats, isLoading } = useSWR(user ? `retention:${user.id}` : null, dashboardFetcher)
+  const { data: stats, isLoading } = useSWR<RetentionStats>(user ? `retention:${user.id}` : null, dashboardFetcher)
   
   const loading = isLoading && !stats
 
@@ -122,14 +122,14 @@ export default function RetentionDashboard() {
             />
             <StatMiniCard 
               label="Domínio Atual" 
-              value={stats?.masteryBySpecialty.filter(s => s.score > 70).length || 0} 
+              value={stats?.masteryBySpecialty.filter((s: any) => s.score > 70).length || 0} 
               icon={Award} 
               color="amber" 
               subLabel="Especialidades Pro"
             />
             <StatMiniCard 
               label="Pico de Estudo" 
-              value={Math.max(...(stats?.heatmapData.map(d => d.count) || [0]))} 
+              value={Math.max(...(stats?.heatmapData.map((d: any) => d.count) || [0]))} 
               icon={Activity} 
               color="red" 
               subLabel="Máx Revisões/Dia"
@@ -207,7 +207,7 @@ export default function RetentionDashboard() {
         <div className="md:col-span-12 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-8">
            <h2 className="text-xl font-bold mb-8">Especialidades e Retenção</h2>
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {stats?.masteryBySpecialty.map((item, idx) => {
+              {stats?.masteryBySpecialty.map((item: any, idx: number) => {
                 const Icon = specialtyIcons[item.specialty] || Zap
                 const color = getSpecialtyColor(item.score)
                 return (
@@ -296,11 +296,11 @@ function StatMiniCard({ label, value, icon: Icon, color, subLabel }: any) {
 
 function HeatmapGrid({ data }: { data: { date: string, count: number }[] }) {
   // Simple Mock/Logic for 90 days
-  const days = Array.from({ length: 91 }, (_, i) => {
+  const days = Array.from({ length: 91 }, (_, i: number) => {
     const date = new Date()
     date.setDate(date.getDate() - (90 - i))
     const dateStr = date.toISOString().split('T')[0]
-    const count = data.find(d => d.date === dateStr)?.count || 0
+    const count = data.find((d: any) => d.date === dateStr)?.count || 0
     return { date, count }
   })
 

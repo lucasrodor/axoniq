@@ -210,7 +210,7 @@ function StudySession() {
                 { label: 'Difícil', val: stats.hard, color: 'text-orange-400', bg: 'bg-orange-500/5', border: 'border-orange-500/20' },
                 { label: 'Acertei', val: stats.good, color: 'text-emerald-400', bg: 'bg-emerald-500/5', border: 'border-emerald-500/20' },
                 { label: 'Fácil', val: stats.easy, color: 'text-blue-400', bg: 'bg-blue-500/5', border: 'border-blue-500/20' },
-              ].map(s => (
+              ].map((s: any) => (
                 <div key={s.label} className={cn("text-center p-6 rounded-2xl border backdrop-blur-md", s.bg, s.border)}>
                   <p className={cn("text-3xl font-black mb-1", s.color)}>{s.val}</p>
                   <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500">{s.label}</p>
@@ -222,7 +222,7 @@ function StudySession() {
           {cards.length === 0 && allDecks.length > 0 && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full mb-8">
-                {paginatedDecks.map((deck) => (
+                {paginatedDecks.map((deck: any) => (
                   <button
                     key={deck.id}
                     onClick={() => router.push(`/dashboard/study?decks=${deck.id}`)}
