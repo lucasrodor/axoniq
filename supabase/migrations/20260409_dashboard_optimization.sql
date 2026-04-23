@@ -2,7 +2,8 @@
 -- Execute este script no SQL Editor do Supabase
 
 -- 1. View para estatísticas de cada Deck
-CREATE OR REPLACE VIEW deck_stats_view AS
+CREATE OR REPLACE VIEW deck_stats_view 
+WITH (security_invoker = true) AS
 SELECT 
     d.id,
     d.user_id,
@@ -18,7 +19,8 @@ LEFT JOIN flashcards f ON d.id = f.deck_id
 GROUP BY d.id, d.user_id, d.title, d.folder_id, d.created_at;
 
 -- 2. View para estatísticas de Quizzes (com o último score)
-CREATE OR REPLACE VIEW quiz_stats_view AS
+CREATE OR REPLACE VIEW quiz_stats_view 
+WITH (security_invoker = true) AS
 WITH latest_attempts AS (
     SELECT DISTINCT ON (quiz_id, user_id)
         quiz_id,

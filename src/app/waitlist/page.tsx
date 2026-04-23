@@ -112,18 +112,49 @@ export default function WaitlistPage() {
     return () => { unsub1(); unsub2() }
   }, [smoothX, smoothY, blob1Left, blob1Top, blob2Left, blob2Top])
 
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '')
+    if (digits.length <= 11) {
+      return digits
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .replace(/(-\d{4})\d+?$/, '$1')
+    }
+    return digits.slice(0, 11)
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+  }
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value)
+    setPhone(formatted)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validar formato (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+    const phoneDigits = phone.replace(/\D/g, '')
+    if (phoneDigits.length < 10) {
+      alert('Por favor, insira um telefone válido com DDD.')
+      return
+    }
+
     setStatus('loading')
     
     const { error } = await supabase.from('waitlist_leads').insert({
-      name, email, phone
+      name, email, phone: phoneDigits
     })
 
     if (error) {
-      console.error('Erro ao salvar lead:', error)
+      console.error('Erro detalhado do Supabase:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      })
       if (error.code !== '23505') {
-        alert('Ocorreu um erro ao salvar suas informações. Tente novamente.')
+        alert(`Erro (${error.code}): ${error.message}`)
         setStatus('idle')
         return
       }
@@ -253,9 +284,11 @@ export default function WaitlistPage() {
                   <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1">WhatsApp</label>
                   <input 
                     type="tel" required
-                    value={phone} onChange={(e) => setPhone(e.target.value)}
+                    value={phone} onChange={handlePhoneChange}
                     placeholder="(11) 99999-9999"
-                    className="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:outline-none focus:border-blue-500 transition-all text-base"
+                    pattern="\(\d{2}\)\s\d{4,5}-\d{4}"
+                    title="Formato esperado: (11) 99999-9999"
+                    className="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-700 focus:outline-none focus:border-blue-500 transition-all text-base font-medium font-mono"
                   />
                 </div>
                 
