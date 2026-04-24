@@ -180,7 +180,8 @@ export function Sidebar() {
               limit={credits.limit}
               remaining={credits.remaining}
               isPremium={isPremium}
-              className={cn(isCollapsed && "justify-center px-1")}
+              isCollapsed={isCollapsed}
+              className={cn(isCollapsed && "justify-center")}
             />
           </div>
 
