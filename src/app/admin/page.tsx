@@ -86,9 +86,9 @@ export default function AdminDashboard() {
   async function loadWaitlist(page: number) {
     setWaitlistLoading(true)
     const result = await getWaitlistLeads(page)
-    if (result.success) {
-      setWaitlist(result.data)
-      setWaitlistTotalPages(result.totalPages)
+    if (result.success && result.data) {
+      setWaitlist(result.data as WaitlistLead[])
+      setWaitlistTotalPages(result.totalPages || 1)
     }
     setWaitlistLoading(false)
   }
@@ -96,9 +96,9 @@ export default function AdminDashboard() {
   async function loadUsers(page: number, search: string = '') {
     setUsersLoading(true)
     const result = await getUsersList(page, 10, search)
-    if (result.success) {
+    if (result.success && result.data) {
       setUsers(result.data)
-      setUsersTotalPages(result.totalPages)
+      setUsersTotalPages(result.totalPages || 1)
     }
     setUsersLoading(false)
   }
