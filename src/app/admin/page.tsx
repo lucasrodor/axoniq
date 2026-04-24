@@ -131,7 +131,8 @@ export default function AdminDashboard() {
         if (result.success) {
           toast(`Convite enviado para ${lead.email}`, 'success')
           await deleteWaitlistLead(lead.id)
-          loadData()
+          loadMetrics()
+          loadWaitlist(waitlistPage)
         } else {
           toast(result.error || 'Erro ao convidar lead.', 'error')
         }
@@ -152,7 +153,8 @@ export default function AdminDashboard() {
         const result = await deleteWaitlistLead(id)
         if (result.success) {
           toast('Lead removido com sucesso!', 'success')
-          loadData()
+          loadMetrics()
+          loadWaitlist(waitlistPage)
         } else {
           toast(result.error || 'Erro ao remover lead.', 'error')
         }
