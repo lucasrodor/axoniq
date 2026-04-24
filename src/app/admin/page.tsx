@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getAdminMetrics, deleteWaitlistLead } from '@/app/actions/admin-dashboard-actions'
+import { getAdminMetrics, deleteWaitlistLead, getWaitlistLeads } from '@/app/actions/admin-dashboard-actions'
 import { createAlphaUser } from '@/app/actions/admin-actions'
 import { getUsersList, toggleWhitelist } from '@/app/actions/admin-user-actions'
 import {
@@ -64,27 +64,58 @@ export default function AdminDashboard() {
     type: 'primary',
   })
 
-  async function loadData() {
+  // Pagination States
+  const [waitlistPage, setWaitlistPage] = useState(1)
+  const [waitlistTotalPages, setWaitlistTotalPages] = useState(1)
+  const [usersPage, setUsersPage] = useState(1)
+  const [usersTotalPages, setUsersTotalPages] = useState(1)
+  const [waitlistLoading, setWaitlistLoading] = useState(false)
+  const [usersLoading, setUsersLoading] = useState(false)
+
+  async function loadMetrics() {
     setLoading(true)
-    const [metricsResult, usersResult] = await Promise.all([
-      getAdminMetrics(),
-      getUsersList(),
-    ])
-    if (metricsResult.success && metricsResult.data) {
-      setStats(metricsResult.data.metrics)
-      setWaitlist(metricsResult.data.waitlist)
+    const result = await getAdminMetrics()
+    if (result.success && result.data) {
+      setStats(result.data.metrics)
     } else {
-      toast(metricsResult.error || 'Não foi possível buscar as métricas.', 'error')
-    }
-    if (usersResult.success && usersResult.data) {
-      setUsers(usersResult.data)
+      toast(result.error || 'Não foi possível buscar as métricas.', 'error')
     }
     setLoading(false)
   }
 
+  async function loadWaitlist(page: number) {
+    setWaitlistLoading(true)
+    const result = await getWaitlistLeads(page)
+    if (result.success) {
+      setWaitlist(result.data)
+      setWaitlistTotalPages(result.totalPages)
+    }
+    setWaitlistLoading(false)
+  }
+
+  async function loadUsers(page: number, search: string = '') {
+    setUsersLoading(true)
+    const result = await getUsersList(page, 10, search)
+    if (result.success) {
+      setUsers(result.data)
+      setUsersTotalPages(result.totalPages)
+    }
+    setUsersLoading(false)
+  }
+
   useEffect(() => {
-    loadData()
+    loadMetrics()
+    loadWaitlist(1)
+    loadUsers(1)
   }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadUsers(1, userSearchTerm)
+      setUsersPage(1)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [userSearchTerm])
 
   const handleApprove = async (lead: WaitlistLead) => {
     setConfirmModal({
@@ -201,11 +232,17 @@ export default function AdminDashboard() {
             Dashboard <ChevronRight className="w-4 h-4" />
           </Link>
           <button 
-            onClick={loadData}
-            disabled={loading}
+            onClick={() => {
+              loadMetrics()
+              loadWaitlist(1)
+              loadUsers(1)
+              setWaitlistPage(1)
+              setUsersPage(1)
+            }}
+            disabled={loading || waitlistLoading || usersLoading}
             className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all disabled:opacity-50"
           >
-            <RefreshCcw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`w-5 h-5 ${loading || waitlistLoading || usersLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </header>
@@ -258,7 +295,12 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
+              {waitlistLoading && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                  <RefreshCcw className="w-6 h-6 text-blue-500 animate-spin" />
+                </div>
+              )}
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-zinc-950/50">
@@ -269,7 +311,7 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-zinc-800/50">
                   <AnimatePresence>
-                    {filteredWaitlist.map((lead) => (
+                    {(waitlist || []).filter((lead: any) => lead.email.toLowerCase().includes(searchTerm.toLowerCase()) || lead.name.toLowerCase().includes(searchTerm.toLowerCase())).map((lead) => (
                       <motion.tr 
                         key={lead.id}
                         initial={{ opacity: 0 }}
@@ -314,7 +356,7 @@ export default function AdminDashboard() {
                     ))}
                   </AnimatePresence>
                   
-                  {filteredWaitlist.length === 0 && !loading && (
+                  {(!waitlist || waitlist.length === 0) && !waitlistLoading && (
                     <tr>
                       <td colSpan={3} className="px-8 py-20 text-center">
                         <div className="flex flex-col items-center gap-3">
@@ -326,6 +368,35 @@ export default function AdminDashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Waitlist Pagination */}
+            <div className="px-8 py-4 border-t border-zinc-800 flex items-center justify-between bg-zinc-900/30">
+              <span className="text-xs text-zinc-500">Página {waitlistPage} de {waitlistTotalPages}</span>
+              <div className="flex gap-2">
+                <button 
+                  disabled={waitlistPage === 1 || waitlistLoading}
+                  onClick={() => {
+                    const newPage = waitlistPage - 1
+                    setWaitlistPage(newPage)
+                    loadWaitlist(newPage)
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
+                >
+                  Anterior
+                </button>
+                <button 
+                  disabled={waitlistPage >= waitlistTotalPages || waitlistLoading}
+                  onClick={() => {
+                    const newPage = waitlistPage + 1
+                    setWaitlistPage(newPage)
+                    loadWaitlist(newPage)
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
+                >
+                  Próximo
+                </button>
+              </div>
             </div>
           </section>
           {/* Secondary Stats - User Management */}
@@ -347,7 +418,12 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
+              {usersLoading && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                  <RefreshCcw className="w-6 h-6 text-blue-500 animate-spin" />
+                </div>
+              )}
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-zinc-950/50">
@@ -357,9 +433,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/50">
-                  {users
-                    .filter((u: any) => u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) || u.fullName.toLowerCase().includes(userSearchTerm.toLowerCase()))
-                    .map((u: any) => (
+                  {(users || []).map((u: any) => (
                     <tr key={u.id} className="group hover:bg-zinc-800/20 transition-colors">
                       <td className="px-8 py-5">
                         <div className="font-bold text-zinc-100 text-sm">{u.fullName}</div>
@@ -400,7 +474,7 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
-                  {users.length === 0 && !loading && (
+                  {(!users || users.length === 0) && !usersLoading && (
                     <tr>
                       <td colSpan={3} className="px-8 py-20 text-center">
                         <p className="text-zinc-500">Nenhum usuário encontrado.</p>
@@ -409,6 +483,35 @@ export default function AdminDashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Users Pagination */}
+            <div className="px-8 py-4 border-t border-zinc-800 flex items-center justify-between bg-zinc-900/30">
+              <span className="text-xs text-zinc-500">Página {usersPage} de {usersTotalPages}</span>
+              <div className="flex gap-2">
+                <button 
+                  disabled={usersPage === 1 || usersLoading}
+                  onClick={() => {
+                    const newPage = usersPage - 1
+                    setUsersPage(newPage)
+                    loadUsers(newPage, userSearchTerm)
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
+                >
+                  Anterior
+                </button>
+                <button 
+                  disabled={usersPage >= usersTotalPages || usersLoading}
+                  onClick={() => {
+                    const newPage = usersPage + 1
+                    setUsersPage(newPage)
+                    loadUsers(newPage, userSearchTerm)
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
+                >
+                  Próximo
+                </button>
+              </div>
             </div>
           </section>
 

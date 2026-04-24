@@ -7,12 +7,10 @@ export async function getAdminMetrics() {
   try {
     const supabase = createAdminClient()
 
-    // 1. Fetch Waitlist
-    // We assume the table is waitlist_leads based on earlier landing page inspection
-    const { data: waitlist, error: waitlistError } = await supabase
+    // 1. Fetch Waitlist Count only (fast)
+    const { count: waitlistCount, error: waitlistError } = await supabase
       .from('waitlist_leads')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .select('*', { count: 'exact', head: true })
 
     if (waitlistError) {
       console.warn('Waitlist fetch error or table missing:', waitlistError.message)
@@ -48,13 +46,37 @@ export async function getAdminMetrics() {
           freeUsers,
           proUsers,
           closedEstimate,
-          waitlistCount: waitlist?.length || 0
-        },
-        waitlist: waitlist || []
+          waitlistCount: waitlistCount || 0
+        }
       }
     }
   } catch (err: any) {
     console.error('Error in getAdminMetrics:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function getWaitlistLeads(page: number = 1, limit: number = 10) {
+  try {
+    const supabase = createAdminClient()
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
+    const { data, error, count } = await supabase
+      .from('waitlist_leads')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to)
+
+    if (error) throw error
+
+    return { 
+      success: true, 
+      data: data || [], 
+      totalCount: count || 0,
+      totalPages: Math.ceil((count || 0) / limit)
+    }
+  } catch (err: any) {
     return { success: false, error: err.message }
   }
 }
