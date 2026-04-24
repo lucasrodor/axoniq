@@ -8,25 +8,67 @@ export interface UserPlan {
   hasFullAccess: boolean
   daysRemaining: number | null
   isTrialActive: boolean
+  isAdmin: boolean
+  isWhitelisted: boolean
+  subscriptionStatus: string | null
+  planInterval: string | null
+  credits: {
+    used: number
+    limit: number
+    remaining: number
+  }
 }
 
 /**
  * Verifica o plano do usuário e se ele tem acesso total.
- * Acesso total = plan 'pro' OU trial ativo (trial_ends_at > agora)
+ * Acesso total = is_admin OR is_whitelisted OR subscription active/trialing OR trial ativo
  */
 export async function getUserPlan(userId: string): Promise<UserPlan> {
+  // 1. Fetch profile
   const { data: profile } = await supabase
     .from('profiles')
-    .select('plan, trial_ends_at')
+    .select('plan, trial_ends_at, is_admin, is_whitelisted')
     .eq('id', userId)
     .single()
 
   const plan = (profile?.plan || 'free') as PlanType
   const trialEndsAt = profile?.trial_ends_at ? new Date(profile.trial_ends_at) : null
+  const isAdmin = profile?.is_admin || false
+  const isWhitelisted = profile?.is_whitelisted || false
 
+  // 2. Fetch subscription
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('status, plan_interval')
+    .eq('user_id', userId)
+    .single()
+
+  const subscriptionStatus = subscription?.status || null
+  const planInterval = subscription?.plan_interval || null
+
+  // 3. Fetch credits
+  const { data: credits } = await supabase
+    .from('user_credits')
+    .select('credits_used, credits_limit, period_start')
+    .eq('user_id', userId)
+    .single()
+
+  // Auto-reset if new month
+  let creditsUsed = credits?.credits_used || 0
+  const creditsLimit = credits?.credits_limit || 10
+  if (credits?.period_start) {
+    const periodStart = new Date(credits.period_start)
+    const now = new Date()
+    if (periodStart.getMonth() !== now.getMonth() || periodStart.getFullYear() !== now.getFullYear()) {
+      creditsUsed = 0
+    }
+  }
+
+  // 4. Determine access
   const now = new Date()
   const isTrialActive = trialEndsAt !== null && trialEndsAt > now
-  const hasFullAccess = plan === 'pro' || isTrialActive
+  const isSubscriptionActive = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
+  const hasFullAccess = isAdmin || isWhitelisted || isSubscriptionActive || isTrialActive
 
   let daysRemaining: number | null = null
   if (isTrialActive && trialEndsAt) {
@@ -34,11 +76,20 @@ export async function getUserPlan(userId: string): Promise<UserPlan> {
   }
 
   return {
-    plan,
+    plan: hasFullAccess ? 'pro' : 'free',
     trialEndsAt,
     hasFullAccess,
     daysRemaining,
     isTrialActive,
+    isAdmin,
+    isWhitelisted,
+    subscriptionStatus,
+    planInterval,
+    credits: {
+      used: creditsUsed,
+      limit: creditsLimit,
+      remaining: Math.max(0, creditsLimit - creditsUsed),
+    },
   }
 }
 
@@ -47,20 +98,16 @@ export async function getUserPlan(userId: string): Promise<UserPlan> {
  */
 export const PLAN_LIMITS = {
   free: {
-    maxSourcesPerMonth: 3,
-    maxFlashcardsPerGeneration: 15,
-    maxQuizQuestionsPerGeneration: 10,
-    canUseMindmap: false,
-    canUseAudio: false,
-    maxFolders: 3,
+    creditsPerMonth: 10,
+    canGenerateReport: false,
+    canAccessRetention: false,
+    canUseAudio: true,
   },
   full: {
-    maxSourcesPerMonth: 999,
-    maxFlashcardsPerGeneration: 50,
-    maxQuizQuestionsPerGeneration: 30,
-    canUseMindmap: true,
+    creditsPerMonth: 999,
+    canGenerateReport: true,
+    canAccessRetention: true,
     canUseAudio: true,
-    maxFolders: 999,
   },
 } as const
 

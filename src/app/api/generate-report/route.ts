@@ -39,6 +39,29 @@ export async function POST(req: NextRequest) {
       }, { status: 429 })
     }
 
+    // 1.2 Premium Gate (Monetization) — Reports are Premium only
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('is_admin, is_whitelisted')
+      .eq('id', user.id)
+      .single()
+
+    const { data: subscription } = await supabaseAdmin
+      .from('subscriptions')
+      .select('status')
+      .eq('user_id', user.id)
+      .single()
+
+    const isPremium = profile?.is_admin || profile?.is_whitelisted || 
+                      subscription?.status === 'active' || subscription?.status === 'trialing'
+    
+    if (!isPremium) {
+      return NextResponse.json({
+        error: 'Relatórios de desempenho são exclusivos do plano Pro. Faça upgrade para acessar análises avançadas!',
+        code: 'PREMIUM_REQUIRED',
+      }, { status: 403 })
+    }
+
     // 1. Fetch Quiz Attempts
     const { data: quizAttempts, error: quizError } = await supabaseAdmin
       .from('quiz_attempts')

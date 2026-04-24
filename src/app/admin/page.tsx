@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getAdminMetrics, deleteWaitlistLead } from '@/app/actions/admin-dashboard-actions'
 import { createAlphaUser } from '@/app/actions/admin-actions'
+import { getUsersList, toggleWhitelist } from '@/app/actions/admin-user-actions'
 import {
   Users,
   UserPlus,
@@ -41,10 +42,12 @@ interface WaitlistLead {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null)
-  const [waitlist, setWaitlist] = useState<WaitlistLead[]>([])
+  const [waitlist, setWaitlist] = useState<WaitlistLead[]>(null as any)
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [users, setUsers] = useState<any[]>([])
+  const [userSearchTerm, setUserSearchTerm] = useState('')
   const { toast } = useToast()
 
   const [confirmModal, setConfirmModal] = useState<{
@@ -63,12 +66,18 @@ export default function AdminDashboard() {
 
   async function loadData() {
     setLoading(true)
-    const result = await getAdminMetrics()
-    if (result.success && result.data) {
-      setStats(result.data.metrics)
-      setWaitlist(result.data.waitlist)
+    const [metricsResult, usersResult] = await Promise.all([
+      getAdminMetrics(),
+      getUsersList(),
+    ])
+    if (metricsResult.success && metricsResult.data) {
+      setStats(metricsResult.data.metrics)
+      setWaitlist(metricsResult.data.waitlist)
     } else {
-      toast(result.error || 'Não foi possível buscar as métricas.', 'error')
+      toast(metricsResult.error || 'Não foi possível buscar as métricas.', 'error')
+    }
+    if (usersResult.success && usersResult.data) {
+      setUsers(usersResult.data)
     }
     setLoading(false)
   }
@@ -121,7 +130,7 @@ export default function AdminDashboard() {
     })
   }
 
-  const filteredWaitlist = waitlist.filter(lead => 
+  const filteredWaitlist = (waitlist || []).filter((lead: any) => 
     lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -312,6 +321,89 @@ export default function AdminDashboard() {
                           <Users className="w-10 h-10 text-zinc-800" />
                           <p className="text-zinc-500">Nenhum lead encontrado.</p>
                         </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          {/* Secondary Stats - User Management */}
+          <section className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl overflow-hidden">
+            <div className="p-8 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold">Gestão de Usuários</h2>
+                <p className="text-sm text-zinc-500 mt-1">Gerencie planos e whitelist dos usuários registrados.</p>
+              </div>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <input 
+                  type="text"
+                  placeholder="Buscar por email..."
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors w-full sm:w-64"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-zinc-950/50">
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">Usuário</th>
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">Plano</th>
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest text-center">Whitelist</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/50">
+                  {users
+                    .filter((u: any) => u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) || u.fullName.toLowerCase().includes(userSearchTerm.toLowerCase()))
+                    .map((u: any) => (
+                    <tr key={u.id} className="group hover:bg-zinc-800/20 transition-colors">
+                      <td className="px-8 py-5">
+                        <div className="font-bold text-zinc-100 text-sm">{u.fullName}</div>
+                        <div className="text-xs text-zinc-500 mt-0.5">{u.email}</div>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
+                          u.isAdmin 
+                            ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
+                            : u.isWhitelisted || u.subscription?.status === 'active' || u.subscription?.status === 'trialing'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
+                        }`}>
+                          {u.isAdmin ? 'ADMIN' : u.isWhitelisted ? 'WHITELIST' : u.subscription?.status === 'active' ? 'PRO' : u.subscription?.status === 'trialing' ? 'TRIAL' : 'FREE'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 text-center">
+                        {!u.isAdmin && (
+                          <button
+                            onClick={async () => {
+                              const result = await toggleWhitelist(u.id, u.isWhitelisted)
+                              if (result.success) {
+                                setUsers(prev => prev.map((p: any) => p.id === u.id ? { ...p, isWhitelisted: result.newValue } : p))
+                                toast(`Whitelist ${result.newValue ? 'ativada' : 'removida'} para ${u.email}`, 'success')
+                              } else {
+                                toast(result.error || 'Erro ao atualizar whitelist.', 'error')
+                              }
+                            }}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                              u.isWhitelisted
+                                ? 'bg-blue-600 text-white hover:bg-blue-500'
+                                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 border border-zinc-700/50'
+                            }`}
+                          >
+                            {u.isWhitelisted ? '✓ Ativo' : 'Ativar'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {users.length === 0 && !loading && (
+                    <tr>
+                      <td colSpan={3} className="px-8 py-20 text-center">
+                        <p className="text-zinc-500">Nenhum usuário encontrado.</p>
                       </td>
                     </tr>
                   )}

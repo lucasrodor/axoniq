@@ -1,81 +1,22 @@
 'use client'
 
-import React, { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import React from 'react'
 
 export function NeuronBackground() {
-  const points = useMemo(() => {
-    return Array.from({ length: 40 }).map((_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 2 + 1,
-      duration: Math.random() * 5 + 5,
-      delay: Math.random() * 5,
-    }))
-  }, [])
-
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#09090b]">
-      {/* Aurora Ambient Glows */}
+      {/* Aurora Ambient Glows — CSS only, no framer-motion */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/5 blur-[120px] animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-600/5 blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
       
-      {/* Neural Synapse Points */}
-      <svg className="w-full h-full opacity-20" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <defs>
-          <radialGradient id="dotGradient" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        
-        {points.map((point) => (
-          <motion.circle
-            key={point.id}
-            cx={point.x}
-            cy={point.y}
-            r={point.size * 0.15}
-            className="text-blue-500/30"
-            fill="url(#dotGradient)"
-            animate={{
-              opacity: [0.1, 0.5, 0.1],
-              scale: [1, 1.5, 1],
-            }}
-            transition={{
-              duration: point.duration,
-              repeat: Infinity,
-              delay: point.delay,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-
-        {/* Connecting Lines (Simulated Synapses) */}
-        {points.slice(0, 15).map((point, i) => {
-          const nextPoint = points[(i + 1) % points.length]
-          return (
-            <motion.line
-              key={`line-${i}`}
-              x1={point.x}
-              y1={point.y}
-              x2={nextPoint.x}
-              y2={nextPoint.y}
-              stroke="currentColor"
-              strokeWidth="0.05"
-              className="text-blue-500/10"
-              animate={{
-                opacity: [0.05, 0.15, 0.05],
-              }}
-              transition={{
-                duration: point.duration * 1.2,
-                repeat: Infinity,
-                delay: point.delay,
-              }}
-            />
-          )
-        })}
-      </svg>
+      {/* Static Neural Grid — CSS dots instead of 55 animated SVG elements */}
+      <div 
+        className="absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }}
+      />
       
       {/* Scanline Effect */}
       <div 

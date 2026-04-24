@@ -47,6 +47,17 @@ export async function POST(req: NextRequest) {
       }, { status: 429 })
     }
 
+    // 1.2 Credit Check (Monetization)
+    const { consumeCredit } = await import('@/lib/credits')
+    const creditResult = await consumeCredit(user.id)
+    if (!creditResult.allowed) {
+      return NextResponse.json({
+        error: 'Seus créditos gratuitos acabaram este mês. Faça upgrade para o plano Pro para gerações ilimitadas!',
+        code: 'CREDITS_EXHAUSTED',
+        remaining: 0,
+      }, { status: 403 })
+    }
+
     // 1. Read source (including multimodal URLs)
     const { data: source, error: sourceError } = await supabaseAdmin
       .from('sources')

@@ -31,41 +31,20 @@ const blurFade = {
 function NeuronBackground() {
   return (
     <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none opacity-[0.03]">
-      {/* Neuron 1 - Superior Esquerdo */}
-      <motion.div 
-        animate={{ y: [0, -30, 0], rotate: [0, 10, 0], scale: [1, 1.05, 1] }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[8%] left-[5%] w-[400px] h-[400px] opacity-80"
+      {/* Only show static neurons - CSS animations instead of framer-motion */}
+      <div 
+        className="absolute top-[8%] left-[5%] w-[300px] h-[300px] md:w-[400px] md:h-[400px] opacity-80"
+        style={{ animation: 'float-slow 15s ease-in-out infinite' }}
       >
-        <Image src="/neuronio.svg" alt="Neuron Asset" fill className="object-contain brightness-125 grayscale invert" />
-      </motion.div>
+        <Image src="/neuronio.svg" alt="" fill className="object-contain brightness-125 grayscale invert" />
+      </div>
 
-      {/* Neuron 2 - Inferior Direito */}
-      <motion.div 
-        animate={{ y: [0, 40, 0], rotate: [0, -15, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-[10%] right-[3%] w-[500px] h-[500px] opacity-60"
+      <div 
+        className="hidden md:block absolute bottom-[10%] right-[3%] w-[500px] h-[500px] opacity-60"
+        style={{ animation: 'float-slow 20s ease-in-out infinite reverse' }}
       >
-        <Image src="/neuronio.svg" alt="Neuron Asset" fill className="object-contain brightness-150 grayscale invert" />
-      </motion.div>
-
-      {/* Neuron 3 - Meio Esquerdo (Pequeno/Rápido) */}
-      <motion.div 
-        animate={{ x: [-20, 20, -20], y: [0, -15, 0] }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[40%] left-[2%] w-[250px] h-[250px] opacity-40 blur-[1px]"
-      >
-        <Image src="/neuronio.svg" alt="Neuron Asset" fill className="object-contain grayscale invert" />
-      </motion.div>
-
-      {/* Neuron 4 - Meio Direito (Grande/Lento/Fundo) */}
-      <motion.div 
-        animate={{ scale: [0.9, 1.1, 0.9], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[20%] right-[15%] w-[600px] h-[600px] blur-[3px]"
-      >
-        <Image src="/neuronio.svg" alt="Neuron Asset" fill className="object-contain grayscale invert opacity-50" />
-      </motion.div>
+        <Image src="/neuronio.svg" alt="" fill className="object-contain brightness-150 grayscale invert" />
+      </div>
 
       {/* Sparse Neural Grid */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(24,24,27,0)_0%,rgba(9,9,11,1)_100%)] mix-blend-overlay opacity-50" />
@@ -85,66 +64,33 @@ function MaterialIcon({ name, className = '', fill = false }: { name: string; cl
 }
 
 function OrbitPill({ angle, radius, label, icon, delay = 0 }: { angle: number, radius: number, label: string, icon: string, delay?: number }) {
-  // Converte ângulo para radianos e calcula x/y com base no raio
   const radian = angle * (Math.PI / 180);
   const x = Math.cos(radian) * radius;
   const y = Math.sin(radian) * radius;
 
   return (
     <div 
-      className="absolute"
+      className="absolute hidden md:block"
       style={{ 
         left: `calc(50% + ${x}px)`, 
         top: `calc(50% + ${y}px)`,
         transform: 'translate(-50%, -50%)' 
       }}
     >
-      <motion.div
-        animate={{ y: [-8, 8, -8] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay }}
-        className="flex items-center gap-2 px-4 py-2 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 rounded-full shadow-2xl whitespace-nowrap z-20 hover:border-blue-500/50 transition-colors"
+      <div
+        className="flex items-center gap-2 px-4 py-2 bg-zinc-900/90 border border-zinc-800 rounded-full shadow-2xl whitespace-nowrap z-20"
+        style={{ animation: `float-slow ${4 + delay}s ease-in-out infinite` }}
       >
         <MaterialIcon name={icon} className="text-blue-500 text-sm" />
         <span className="text-[10px] font-bold text-zinc-100 uppercase tracking-widest">{label}</span>
-      </motion.div>
+      </div>
     </div>
   )
 }
 
-
 function Tilt({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const rotateX = useSpring(useMotionValue(0), { stiffness: 100, damping: 30 })
-  const rotateY = useSpring(useMotionValue(0), { stiffness: 100, damping: 30 })
-
-  function handleMouse(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const width = rect.width
-    const height = rect.height
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-    const xPct = (mouseX / width - 0.5) * 20
-    const yPct = (mouseY / height - 0.5) * -20
-    rotateX.set(yPct)
-    rotateY.set(xPct)
-  }
-
-  function handleMouseLeave() {
-    rotateX.set(0)
-    rotateY.set(0)
-  }
-
-  return (
-    <motion.div
-      onMouseMove={handleMouse}
-      onMouseLeave={handleMouseLeave}
-      style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  )
+  // Tilt is desktop-only (no hover on mobile = useless overhead)
+  return <div className={className}>{children}</div>
 }
 
 function FAQItem({ question, answer, defaultOpen = false }: { question: string; answer: string; defaultOpen?: boolean }) {
@@ -538,33 +484,33 @@ function AuroraHero({ onJoinWaitlist }: { onJoinWaitlist: () => void }) {
         style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} 
       />
 
-      {/* Aurora blob 1 — azul */}
-      <motion.div
-        className="pointer-events-none absolute rounded-full opacity-25 blur-[130px]"
+      {/* Aurora blob — static on mobile, cursor-following on desktop */}
+      <div className="md:hidden pointer-events-none absolute rounded-full opacity-20 blur-[80px]"
         style={{
-          width: 650,
-          height: 650,
+          width: 400, height: 400,
           background: 'radial-gradient(circle, #2563EB 0%, transparent 65%)',
-          zIndex: -1,
-          left: blob1Left,
-          top: blob1Top,
-          translateX: '-50%',
-          translateY: '-50%',
+          zIndex: -1, left: '50%', top: '30%',
+          transform: 'translate(-50%, -50%)',
         }}
       />
-
-      {/* Aurora blob 2 — índigo */}
       <motion.div
-        className="pointer-events-none absolute rounded-full opacity-15 blur-[160px]"
+        className="pointer-events-none absolute rounded-full opacity-25 blur-[130px] hidden md:block"
         style={{
-          width: 520,
-          height: 520,
+          width: 650, height: 650,
+          background: 'radial-gradient(circle, #2563EB 0%, transparent 65%)',
+          zIndex: -1,
+          left: blob1Left, top: blob1Top,
+          translateX: '-50%', translateY: '-50%',
+        }}
+      />
+      <motion.div
+        className="pointer-events-none absolute rounded-full opacity-15 blur-[160px] hidden md:block"
+        style={{
+          width: 520, height: 520,
           background: 'radial-gradient(circle, #6366F1 0%, transparent 65%)',
           zIndex: -1,
-          left: blob2Left,
-          top: blob2Top,
-          translateX: '-50%',
-          translateY: '-50%',
+          left: blob2Left, top: blob2Top,
+          translateX: '-50%', translateY: '-50%',
         }}
       />
 

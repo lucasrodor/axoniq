@@ -20,6 +20,8 @@ import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import useSWR from 'swr'
 import { dashboardFetcher } from '@/lib/dashboard/fetchers'
 import { RetentionSkeleton } from '@/components/dashboard/skeleton'
+import { useSubscription } from '@/hooks/useSubscription'
+import { UpgradeGate } from '@/components/dashboard/upgrade-gate'
 
 // Specialty Icons Mapping
 const specialtyIcons: Record<string, any> = {
@@ -45,8 +47,9 @@ export default function RetentionDashboard() {
   const router = useRouter()
   
   const { data: stats, isLoading } = useSWR<RetentionStats>(user ? `retention:${user.id}` : null, dashboardFetcher)
+  const { isPremium, isLoading: planLoading } = useSubscription()
   
-  const loading = isLoading && !stats
+  const loading = (isLoading && !stats) || planLoading
 
   // Custom colors for specialties
   const getSpecialtyColor = (score: number) => {
@@ -60,6 +63,23 @@ export default function RetentionDashboard() {
       <div className="min-h-screen bg-[#09090B] p-6 md:p-10">
         <div className="max-w-7xl mx-auto">
           <RetentionSkeleton />
+        </div>
+      </div>
+    )
+  }
+
+  if (!isPremium) {
+    return (
+      <div className="min-h-screen bg-[#09090B] text-zinc-100 p-6 md:p-10">
+        <div className="max-w-7xl mx-auto">
+          <Link href="/dashboard" className="flex items-center text-zinc-400 hover:text-white transition-colors mb-8 group">
+            <ChevronLeft size={18} className="mr-1 group-hover:-translate-x-1 transition-transform" />
+            Voltar ao Painel
+          </Link>
+          <UpgradeGate
+            feature="Análise de Desempenho Neural"
+            description="Acesse gráficos avançados de retenção, mapeamento por especialidade, heatmaps de estudo e previsão de carga. Exclusivo para assinantes Pro."
+          />
         </div>
       </div>
     )

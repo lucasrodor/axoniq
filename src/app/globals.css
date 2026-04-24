@@ -167,3 +167,18 @@ html {
   animation: wave-anim 1s ease-in-out infinite;
   transform-origin: center;
 }
+
+/* Landing Page — lightweight CSS float (replaces framer-motion on mobile) */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/components/providers/auth-provider'
 import { cn } from '@/lib/utils'
 import { InviteModal } from './invite-modal'
+import { useSubscription } from '@/hooks/useSubscription'
+import { CreditsIndicator } from './credits-indicator'
 
 interface SidebarItemProps {
   href: string
@@ -70,8 +72,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
-
-  const isAdmin = user?.email === 'lucasrodor@gmail.com'
+  const { isPremium, isAdmin, credits } = useSubscription()
 
   // Load collapse state from local storage
   useEffect(() => {
@@ -171,6 +172,17 @@ export function Sidebar() {
               />
             ))}
           </nav>
+
+          {/* Plan Badge & Credits */}
+          <div className={cn("py-4 border-t border-zinc-800/50", isCollapsed ? "px-1" : "px-1")}>
+            <CreditsIndicator
+              used={credits.used}
+              limit={credits.limit}
+              remaining={credits.remaining}
+              isPremium={isPremium}
+              className={cn(isCollapsed && "justify-center px-1")}
+            />
+          </div>
 
           {/* Bottom Controls */}
           <div className="space-y-2 pt-4 border-t border-zinc-800/50">
