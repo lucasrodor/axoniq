@@ -436,6 +436,15 @@ function WaitlistModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
 function AuroraHero({ onJoinWaitlist }: { onJoinWaitlist: () => void }) {
   const sectionRef = useRef<HTMLElement>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    // Detect password recovery from hash and redirect
+    if (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token')) {
+      router.push('/reset-password' + window.location.hash)
+    }
+  }, [router])
+
   const rawX = useMotionValue(0.5)
   const rawY = useMotionValue(0.5)
 
