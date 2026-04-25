@@ -48,8 +48,8 @@ export async function POST(request: Request) {
         const priceId = subscription.items.data[0].price.id
         const interval = getPlanIntervalFromPriceId(priceId)
 
-        // Update database
-        await supabaseAdmin.from('subscriptions').upsert({
+        // 1. Vincular assinatura ao usuário no banco
+        const { error: subError } = await supabaseAdmin.from('subscriptions').upsert({
           user_id: userId,
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: session.subscription as string,
@@ -60,7 +60,9 @@ export async function POST(request: Request) {
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
         })
 
-        // Give unlimited credits or update plan in profile
+        if (subError) throw subError
+
+        // 2. Mudar plano no perfil
         await supabaseAdmin.from('profiles').update({ plan: 'pro' }).eq('id', userId)
         break
       }
@@ -70,7 +72,6 @@ export async function POST(request: Request) {
         const priceId = subscription.items.data[0].price.id
         const interval = getPlanIntervalFromPriceId(priceId)
         
-        // Find user by stripe_customer_id
         const { data: subData } = await supabaseAdmin
           .from('subscriptions')
           .select('user_id')
@@ -78,6 +79,8 @@ export async function POST(request: Request) {
           .single()
 
         if (subData) {
+          const isPro = ['active', 'trialing'].includes(subscription.status)
+          
           await supabaseAdmin.from('subscriptions').update({
             status: subscription.status,
             plan_interval: interval,
@@ -87,8 +90,6 @@ export async function POST(request: Request) {
             cancel_at_period_end: subscription.cancel_at_period_end,
           }).eq('user_id', subData.user_id)
 
-          // Update profile plan if active
-          const isPro = ['active', 'trialing'].includes(subscription.status)
           await supabaseAdmin.from('profiles').update({ plan: isPro ? 'pro' : 'free' }).eq('id', subData.user_id)
         }
         break
@@ -104,10 +105,7 @@ export async function POST(request: Request) {
           .single()
 
         if (subData) {
-          await supabaseAdmin.from('subscriptions').update({
-            status: 'canceled',
-          }).eq('user_id', subData.user_id)
-
+          await supabaseAdmin.from('subscriptions').update({ status: 'canceled' }).eq('user_id', subData.user_id)
           await supabaseAdmin.from('profiles').update({ plan: 'free' }).eq('id', subData.user_id)
         }
         break
