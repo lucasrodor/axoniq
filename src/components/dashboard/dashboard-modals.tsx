@@ -10,10 +10,13 @@ import {
   LogOut, 
   Zap, 
   Plus, 
-  FolderPlus 
+  FolderPlus,
+  Crown,
+  CheckCircle2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
+import { UpgradeGate } from './upgrade-gate'
 
 interface ModalProps {
   onClose: () => void
@@ -29,7 +32,7 @@ export function RenameItemModal({
   const [newValue, setNewValue] = React.useState(name)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -78,7 +81,7 @@ export function CreateChoiceModal({
   onChoice 
 }: ModalProps & { activeTab: 'decks' | 'quizzes', onChoice: (choice: 'ai' | 'manual') => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xl animate-in fade-in duration-300" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -136,7 +139,7 @@ export function DeleteConfirmationModal({
   onConfirm 
 }: ModalProps & { title: string, type: string, onConfirm: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -164,7 +167,7 @@ export function DeleteConfirmationModal({
 
 export function LogoutModal({ onClose, onConfirm }: ModalProps & { onConfirm: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -191,7 +194,7 @@ export function LogoutModal({ onClose, onConfirm }: ModalProps & { onConfirm: ()
 
 export function ReportLimitModal({ onClose, onConfirm, loading }: ModalProps & { onConfirm: () => void, loading: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -268,7 +271,7 @@ export function NewDeckModal({
   disabled 
 }: ModalProps & { title: string, onChange: (v: string) => void, onConfirm: () => void, disabled: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -312,7 +315,7 @@ export function NewQuizModal({
   disabled 
 }: ModalProps & { title: string, onChange: (v: string) => void, onConfirm: () => void, disabled: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -350,3 +353,80 @@ export function NewQuizModal({
 
 // React import needed for React.useState in RenameItemModal
 import React from 'react'
+
+export function UpgradeModal({ onClose }: ModalProps) {
+  // Lock body scroll when modal is open
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = 'unset' }
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-3 sm:p-4" onClick={onClose}>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 40 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-5xl relative max-h-[90vh] overflow-y-auto rounded-[2rem] sm:rounded-[3rem] hide-scrollbar" 
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button 
+          onClick={onClose}
+          className="fixed top-6 right-6 p-3 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-full text-zinc-500 hover:text-white transition-all z-[70] shadow-xl"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="bg-zinc-950 border border-white/5 shadow-[0_0_100px_rgba(59,130,246,0.15)]">
+          <UpgradeGate 
+            feature="Acesso Ilimitado ao AxonIQ Pro"
+            description="Seus créditos gratuitos acabaram, mas sua jornada de aprendizado não precisa parar. Desbloqueie gerações ilimitadas e muito mais."
+          />
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+export function LowCreditModal({ onClose, onConfirm, onUpgrade, available }: ModalProps & { onConfirm: () => void, onUpgrade: () => void, available: number }) {
+  // Lock body scroll when modal is open
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = 'unset' }
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 40 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-6 sm:p-10 w-full max-w-sm mx-4 shadow-2xl relative max-h-[90vh] overflow-y-auto" 
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 bg-zinc-800 border border-zinc-700 rounded-full text-zinc-500 hover:text-white transition-all z-10"
+        >
+          <X size={16} />
+        </button>
+
+        <div className="flex flex-col items-center text-center">
+          <div className="p-4 bg-amber-500/10 rounded-3xl text-amber-500 mb-6 shadow-[0_0_30px_rgba(245,158,11,0.1)]">
+            <Zap size={32} />
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-zinc-100 mb-3 tracking-tight">Créditos Insuficientes</h3>
+          <p className="text-xs sm:text-sm text-zinc-500 mb-8 leading-relaxed">
+            Você tem apenas <strong className="text-amber-500">{available} {available === 1 ? 'crédito' : 'créditos'}</strong> restantes. Talvez não consiga gerar todos os materiais selecionados.
+          </p>
+          <div className="flex flex-col w-full gap-3">
+            <Button variant="primary" className="w-full py-6 sm:py-7 rounded-2xl text-base sm:text-lg shadow-lg shadow-amber-500/20" onClick={onUpgrade}>
+              Fazer Upgrade (Ilimitado)
+            </Button>
+            <Button variant="outline" className="w-full py-6 sm:py-7 rounded-2xl text-zinc-400" onClick={onConfirm}>
+              Tentar com o que tenho
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}

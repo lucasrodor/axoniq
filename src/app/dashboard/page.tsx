@@ -31,7 +31,8 @@ import {
   FileText,
   AlertCircle,
   User,
-  Search
+  Search,
+  Crown
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -61,6 +62,8 @@ import { DeckCard, DraggableDeck } from '@/components/dashboard/deck-card'
 import { QuizCard, DraggableQuiz } from '@/components/dashboard/quiz-card'
 import { MindMapCard, DraggableMindMap } from '@/components/dashboard/mind-map-card'
 import { DashboardEmptyState } from '@/components/dashboard/empty-state'
+import { UpgradeGate } from '@/components/dashboard/upgrade-gate'
+import { useSubscription } from '@/hooks/useSubscription'
 import { FolderHeader, DroppableFolder } from '@/components/dashboard/folder-management'
 import { 
   RenameItemModal, 
@@ -70,7 +73,8 @@ import {
   ReportLimitModal,
   NewFolderModal,
   NewDeckModal,
-  NewQuizModal
+  NewQuizModal,
+  UpgradeModal
 } from '@/components/dashboard/dashboard-modals'
 import { 
   Heart, 
@@ -149,6 +153,7 @@ interface MindMap {
 type DashboardTab = 'decks' | 'quizzes' | 'reports' | 'mindmaps'
 function DashboardPageContent() {
   const { user, signOut } = useAuth()
+  const { isPremium } = useSubscription()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -187,6 +192,8 @@ function DashboardPageContent() {
   const [showReportLimitModal, setShowReportLimitModal] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -236,6 +243,41 @@ function DashboardPageContent() {
       mutate(`summary:${user.id}`)
       mutate(`profile:${user.id}`)
     }
+  }
+
+  // Fetch available credits
+  useEffect(() => {
+    const fetchCredits = async () => {
+      if (!user || isPremium) return
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const res = await fetch('/api/user/credits', {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        })
+        const data = await res.json()
+        setAvailableCredits(data.remaining)
+      } catch (err) {
+        console.error('Error fetching credits:', err)
+      }
+    }
+    fetchCredits()
+  }, [user, isPremium])
+
+  const checkCreditsAndNavigate = (path: string) => {
+    if (!isPremium && availableCredits === 0) {
+      setShowUpgradeModal(true)
+      return
+    }
+    router.push(path)
+  }
+
+  const checkCreditsAndAction = (action: () => void) => {
+    if (!isPremium && availableCredits === 0) {
+      setShowUpgradeModal(true)
+      return
+    }
+    action()
   }
 
   useEffect(() => {
@@ -601,11 +643,8 @@ function DashboardPageContent() {
                   activeTab === 'mindmaps' && "!bg-amber-500 hover:!bg-amber-600"
                 )} 
                 onClick={() => {
-                  if (activeTab === 'mindmaps' || activeTab === 'reports') {
-                    router.push('/dashboard/new')
-                  } else {
-                    setShowCreateChoice(true)
-                  }
+                  if (availableCredits === 0) window.dispatchEvent(new Event('open-upgrade-modal'))
+                  else setShowCreateChoice(true)
                 }}
               >
                 <Plus size={16} className="mr-1" /> Criar {activeTab === 'decks' ? 'Deck' : activeTab === 'quizzes' ? 'Quiz' : 'Mapa'}
@@ -740,12 +779,13 @@ function DashboardPageContent() {
               onClick={() => handleTabChange('reports')}
               className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] border-b-2 transition-all duration-300 ${
                 activeTab === 'reports'
-                  ? 'border-blue-600 text-blue-600 bg-blue-600/5'
+                  ? (isPremium ? 'border-blue-600 text-blue-600 bg-blue-600/5' : 'border-amber-500 text-amber-500 bg-amber-500/5')
                   : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50'
               }`}
             >
-              <BarChart3 size={14} />
+              <BarChart3 size={14} className={!isPremium ? "text-amber-500" : ""} />
               RELATÓRIOS
+              {!isPremium && <Crown size={10} className="text-amber-500 ml-1" />}
               <span className="text-[10px] bg-zinc-950 text-blue-600/70 px-2 py-0.5 rounded-md border border-zinc-800">{reports.length}</span>
             </button>
           </div>
@@ -759,7 +799,7 @@ function DashboardPageContent() {
                 size="icon" 
                 className="text-zinc-500 hover:text-blue-500 transition-all hover:bg-blue-500/5 rounded-xl"
                 title="Novo Deck" 
-                onClick={() => router.push('/dashboard/new?type=deck')}
+                onClick={() => checkCreditsAndNavigate('/dashboard/new?type=deck')}
               >
                 <Plus size={20} />
               </Button>
@@ -772,7 +812,7 @@ function DashboardPageContent() {
                 description="Sua biblioteca neural está vazia. Comece criando um novo deck ou importe materiais via IA para acelerar seu aprendizado."
                 icon={BookOpen}
                 actionLabel="NOVO DECK"
-                onAction={() => router.push('/dashboard/new')}
+                onAction={() => checkCreditsAndNavigate('/dashboard/new')}
                 color="blue"
               />
             ) : (
@@ -1021,71 +1061,11 @@ function DashboardPageContent() {
           )}
           {/* Reports Tab */}
           {activeTab === 'reports' && (
-            <div className="space-y-12 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Suas Análises</h2>
-                  <p className="text-sm text-[var(--muted-foreground)]">Visão detalhada do seu progresso e pontos focais.</p>
-                </div>
-                <Button 
-                  onClick={handleGenerateReport} 
-                  disabled={generatingReport}
-                  className="w-full sm:w-auto shadow-xl hover:shadow-blue-500/10 transition-all whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white border-none"
-                >
-                  {generatingReport ? (
-                    <span className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Analisando...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Zap size={16} />
-                      Gerar Nova Análise
-                    </span>
-                  )}
-                </Button>
-              </div>
-              {reports.length === 0 ? (
-                <DashboardEmptyState
-                  title="Pronto para sua primeira análise?"
-                  description="Nossa IA vai analisar seus erros e acertos para dizer exatamente quais tópicos você deve focar nos seus estudos hoje."
-                  icon={BarChart3}
-                  actionLabel="GERAR ANÁLISE"
-                  onAction={handleGenerateReport}
-                  color="blue"
-                />
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {reports.map((report) => (
-                    <Link key={report.id} href={`/dashboard/reports/${report.id}`}>
-                      <div className="group glass-panel border-zinc-800/50 p-6 rounded-2xl hover:border-blue-500/50 transition-all flex items-center justify-between backdrop-blur-md">
-                        <div className="flex items-center gap-4">
-                           <div className="p-3 bg-blue-500/5 rounded-xl text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all border border-blue-500/10">
-                            <FileText size={24} />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-[var(--foreground)] group-hover:text-blue-500 transition-colors uppercase tracking-tight">{report.title}</h3>
-                            <div className="flex items-center gap-3 mt-1">
-                              <span className="text-xs text-[var(--muted-foreground)] flex items-center gap-1">
-                                <Clock size={12} /> {new Date(report.created_at).toLocaleDateString('pt-BR')} às {new Date(report.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="hidden md:flex gap-2">
-                            {report.analysis_json?.recommended_topics?.slice(0, 2).map((topic: string, i: number) => (
-                              <span key={topic + i} className="text-[9px] font-black text-zinc-400 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-lg uppercase tracking-[0.2em]">
-                                {topic}
-                              </span>
-                            ))}
-                          </div>
-                          <ChevronRight size={20} className="text-zinc-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
-                        </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ReportsTab 
+              isPremium={isPremium} 
+              onUpgrade={() => window.dispatchEvent(new Event('open-upgrade-modal'))} 
+              onGenerateReport={() => setShowReportLimitModal(true)}
+            />
           )}
         </div>
       </div>
@@ -1108,10 +1088,11 @@ function DashboardPageContent() {
           </div>
         ) : null}
       </DragOverlay>
-      {/* Modals Refactored */}
-      <AnimatePresence>
+
+      <AnimatePresence mode="wait">
         {editingItemId && (
           <RenameItemModal
+            key="rename-item-modal"
             id={editingItemId}
             name={editingItemName}
             type={editingItemType}
@@ -1125,6 +1106,7 @@ function DashboardPageContent() {
         )}
         {showCreateChoice && (
           <CreateChoiceModal
+            key="create-choice-modal"
             activeTab={activeTab === 'decks' || activeTab === 'quizzes' ? activeTab : 'decks'}
             onClose={() => setShowCreateChoice(false)}
             onChoice={(choice) => {
@@ -1140,6 +1122,7 @@ function DashboardPageContent() {
         )}
         {deletingItem && (
           <DeleteConfirmationModal
+            key="delete-item-modal"
             title={deletingItem.title}
             type={deletingItem.type === 'deck' ? 'Deck' : deletingItem.type === 'quiz' ? 'Quiz' : 'Mapa Mental'}
             onClose={() => setDeletingItem(null)}
@@ -1152,6 +1135,7 @@ function DashboardPageContent() {
         )}
         {showNewDeckModal && (
           <NewDeckModal
+            key="new-deck-modal"
             title={newDeckTitle}
             onChange={setNewDeckTitle}
             disabled={!newDeckTitle.trim()}
@@ -1161,6 +1145,7 @@ function DashboardPageContent() {
         )}
         {showNewQuizModal && (
           <NewQuizModal
+            key="new-quiz-modal"
             title={newQuizTitle}
             onChange={setNewQuizTitle}
             disabled={!newQuizTitle.trim()}
@@ -1168,14 +1153,21 @@ function DashboardPageContent() {
             onConfirm={handleCreateQuiz}
           />
         )}
+        {showUpgradeModal && (
+          <UpgradeModal 
+            onClose={() => setShowUpgradeModal(false)} 
+          />
+        )}
         {showLogoutModal && (
           <LogoutModal
+            key="logout-modal"
             onClose={() => setShowLogoutModal(false)}
             onConfirm={() => { handleSignOut(); setShowLogoutModal(false); }}
           />
         )}
         {showReportLimitModal && (
           <ReportLimitModal
+            key="report-limit-modal"
             loading={generatingReport}
             onClose={() => setShowReportLimitModal(false)}
             onConfirm={executeReportGeneration}
@@ -1200,6 +1192,135 @@ function LegendItem({ color, label }: { color: string, label: string }) {
     </span>
   )
 }
+function ReportsTab({ isPremium, onUpgrade, onGenerateReport }: { isPremium: boolean, onUpgrade: () => void, onGenerateReport: () => void }) {
+  const { data: reportsData } = useSWR('reports', dashboardFetcher)
+  const reports = reportsData || []
+
+  if (!isPremium) {
+    return (
+      <div className="space-y-12 animate-in slide-in-from-bottom-4 duration-500">
+        <UpgradeGate 
+          feature="Análise Neural de Desempenho"
+          description="Desbloqueie relatórios gerados por IA que analisam seus padrões de estudo e recomendam os tópicos exatos que você deve revisar hoje."
+        />
+        <div className="flex justify-center">
+          <Button onClick={onUpgrade} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 rounded-2xl font-bold gap-2">
+            <Crown size={20} />
+            Desbloquear Agora
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-zinc-100 uppercase tracking-widest">Suas Análises</h2>
+          <p className="text-sm text-zinc-500 mt-1">Visão detalhada do seu progresso e pontos focais.</p>
+        </div>
+        <Button 
+          onClick={onGenerateReport} 
+          className="shadow-xl hover:shadow-blue-500/10 transition-all bg-blue-600 hover:bg-blue-700 text-white border-none font-bold gap-2 py-6 rounded-2xl"
+        >
+          <Zap size={16} />
+          Nova Análise
+        </Button>
+      </div>
+      
+      {reports.length === 0 ? (
+        <DashboardEmptyState
+          title="Pronto para sua primeira análise?"
+          description="Nossa IA vai analisar seus erros e acertos para dizer exatamente quais tópicos você deve focar."
+          icon={BarChart3}
+          actionLabel="GERAR ANÁLISE"
+          onAction={onGenerateReport}
+          color="blue"
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {reports.map((report: any) => (
+            <Link key={report.id} href={`/dashboard/reports/${report.id}`}>
+              <div className="group glass-panel border-zinc-800/50 p-6 rounded-3xl hover:border-blue-500/50 transition-all flex items-center justify-between backdrop-blur-md">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500/5 rounded-2xl text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all border border-blue-500/10">
+                    <FileText size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-zinc-100 group-hover:text-blue-500 transition-colors uppercase tracking-tight">{report.title}</h3>
+                    <div className="flex items-center gap-3 mt-1 text-zinc-500 text-xs">
+                      <Clock size={12} /> {new Date(report.created_at).toLocaleDateString('pt-BR')}
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight size={20} className="text-zinc-500 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DashboardStats({ decksCount, quizzesCount, mastery }: { decksCount: number, quizzesCount: number, mastery: number }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <StatCard 
+        label="Materiais Ativos" 
+        value={decksCount + quizzesCount} 
+        icon={<Layers size={20} />} 
+        description="Flashcards e Quizzes"
+        color="blue"
+      />
+      <StatCard 
+        label="Domínio Clínico" 
+        value={`${mastery}%`} 
+        icon={<Target size={20} />} 
+        description="Taxa de acerto global"
+        color="emerald"
+      />
+      <StatCard 
+        label="Sequência" 
+        value="12 dias" 
+        icon={<Flame size={20} />} 
+        description="Seu recorde é 15"
+        color="amber"
+      />
+    </div>
+  )
+}
+
+function DashboardTabs({ activeTab, setActiveTab }: { activeTab: DashboardTab, setActiveTab: (tab: DashboardTab) => void }) {
+  const tabs: { id: DashboardTab, label: string, icon: any }[] = [
+    { id: 'decks', label: 'Flashcards', icon: BookOpen },
+    { id: 'quizzes', label: 'Quizzes', icon: HelpCircle },
+    { id: 'mindmaps', label: 'Mapas Mentais', icon: Zap },
+    { id: 'reports', label: 'Análise Neural', icon: BarChart3 }
+  ]
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800/50 pb-2">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={cn(
+            "flex items-center gap-2 px-6 py-3 rounded-2xl transition-all duration-300 font-bold text-sm tracking-tight",
+            activeTab === tab.id 
+              ? "bg-blue-600/10 text-blue-500 shadow-[inset_0_0_20px_rgba(37,99,235,0.05)]" 
+              : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
+          )}
+        >
+          <tab.icon size={18} />
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   return (
     <Suspense fallback={<div className="p-8 text-zinc-500">Carregando painel principal...</div>}>

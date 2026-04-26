@@ -117,30 +117,54 @@ ${text.substring(0, 50000)}`
       })
     })
 
-    const completion = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert medical exam question creator, specialized in creating questions similar to Brazilian medical residency exams (provas de residência médica).
- 
-Your task is to generate ${quantity} quiz questions based on the provided text and images.
- 
-STRICT RULES:
-1. Generate questions ONLY based on the provided text and images.
-2. For multiple_choice: 5 options (A-E). EXACTLY ONE correct answer.
-3. For cloze: Use ___ in the question. 4-5 options.
-4. For true_false: Options are ["Verdadeiro", "Falso"].
-5. Language: Portuguese.
-6. Provide detailed explanations justifying the correct answer based on the visual or textual evidence.`
-        },
-        {
-          role: 'user',
-          content: userMessageContent
-        }
-      ],
-      response_format: zodResponseFormat(QuizListSchema, 'quiz_list'),
-    })
+    let completion
+    try {
+      completion = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert medical exam question creator, specialized in creating questions similar to Brazilian medical residency exams (provas de residência médica).
+  
+  Your task is to generate ${quantity} quiz questions based on the provided text and images.
+  
+  STRICT RULES:
+  1. Generate questions ONLY based on the provided text and images.
+  2. For multiple_choice: 5 options (A-E). EXACTLY ONE correct answer.
+  3. For cloze: Use ___ in the question. 4-5 options.
+  4. For true_false: Options are ["Verdadeiro", "Falso"].
+  5. Language: Portuguese.
+  6. Provide detailed explanations justifying the correct answer based on the visual or textual evidence.`
+          },
+          {
+            role: 'user',
+            content: userMessageContent
+          }
+        ],
+        response_format: zodResponseFormat(QuizListSchema, 'quiz_list'),
+      })
+    } catch (apiError: any) {
+      console.warn('⚠️ OpenAI Quiz Image Error, retrying with text only:', apiError.message)
+      
+      if (apiError.message.includes('image') || apiError.message.includes('download') || apiError.message.includes('timeout')) {
+        completion = await openai.chat.completions.create({
+          model: OPENAI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert medical exam question creator specialized in medical education. Your task is to extract key concepts from the provided text and turn them into quiz questions.`
+            },
+            {
+              role: 'user',
+              content: `Generate ${quantity} quiz questions based strictly on the following text: \n\n ${text.substring(0, 50000)}`
+            }
+          ],
+          response_format: zodResponseFormat(QuizListSchema, 'quiz_list'),
+        })
+      } else {
+        throw apiError
+      }
+    }
 
     const content = completion.choices[0].message.content || ''
     let questions: z.infer<typeof QuizQuestionSchema>[] = []
@@ -210,6 +234,22 @@ STRICT RULES:
 
   } catch (error) {
     console.error('Quiz Generation error:', error)
+    
+    // Attempt refund if we have a user
+    try {
+      const supabaseAdmin = createAdminClient()
+      const token = req.headers.get('Authorization')?.replace('Bearer ', '')
+      if (token) {
+        const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+        if (user) {
+          const { refundCredit } = await import('@/lib/credits')
+          await refundCredit(user.id)
+        }
+      }
+    } catch (refundErr) {
+      console.error('Failed to refund credit:', refundErr)
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate quiz' },
       { status: 500 }

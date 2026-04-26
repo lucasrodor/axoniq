@@ -47,9 +47,14 @@ export default function RetentionDashboard() {
   const router = useRouter()
   
   const { data: stats, isLoading } = useSWR<RetentionStats>(user ? `retention:${user.id}` : null, dashboardFetcher)
-  const { isPremium, isLoading: planLoading } = useSubscription()
+  const { isPremium, isAdmin, isLoading: planLoading } = useSubscription()
   
+  // Para teste do Lucas: Se quisermos ver o bloqueio mesmo sendo admin,
+  // podemos forçar a verificação de quem NÃO é Pro de fato.
   const loading = (isLoading && !stats) || planLoading
+
+  // Se você quiser testar o bloqueio sendo admin, mude para: !isPremium || isAdmin
+  const shouldBlock = !isPremium
 
   // Custom colors for specialties
   const getSpecialtyColor = (score: number) => {
@@ -68,7 +73,7 @@ export default function RetentionDashboard() {
     )
   }
 
-  if (!isPremium) {
+  if (shouldBlock) {
     return (
       <div className="min-h-screen bg-[#09090B] text-zinc-100 p-6 md:p-10">
         <div className="max-w-7xl mx-auto">

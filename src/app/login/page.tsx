@@ -3,17 +3,20 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { Sparkles, Brain, Zap, Eye, EyeOff } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get('returnTo') || '/dashboard'
   const { toast } = useToast()
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -27,7 +30,7 @@ export default function LoginPage() {
       })
       if (error) throw error
       toast('Bem-vindo de volta!', 'success')
-      window.location.href = '/dashboard'
+      window.location.href = returnTo
     } catch (error) {
       console.error(error)
       const msg = error instanceof Error ? error.message : ''
@@ -50,7 +53,7 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`,
       },
     })
   }
@@ -161,5 +164,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-zinc-950 text-zinc-500">Preparando acesso...</div>}>
+      <LoginPageContent />
+    </Suspense>
   )
 }

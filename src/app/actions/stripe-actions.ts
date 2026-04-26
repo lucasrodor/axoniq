@@ -21,12 +21,29 @@ export async function createCheckoutSession(priceId: string) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    throw new Error('Você precisa estar logado para assinar um plano.')
+    // Se não estiver logado, redireciona para o checkout normal (o webhook criará a conta)
+  } else {
+    // 1. Verificar se o usuário já tem uma assinatura ativa
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('status, stripe_customer_id')
+      .eq('user_id', user.id)
+      .single()
+
+    // 2. Se já for Pro (ativo ou em triagem), manda para o portal de gerenciamento em vez de novo checkout
+    if (subscription?.status === 'active' || subscription?.status === 'trialing') {
+      const stripe = getStripe()
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: subscription.stripe_customer_id!,
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/account`,
+      })
+      redirect(portalSession.url)
+    }
   }
 
   const stripe = getStripe()
   
-  const session = await stripe.checkout.sessions.create({
+  const sessionConfig: any = {
     line_items: [
       {
         price: priceId,
@@ -34,11 +51,25 @@ export async function createCheckoutSession(priceId: string) {
       },
     ],
     mode: 'subscription',
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard`,
-    client_reference_id: user.id, // O segredo para o Webhook saber quem é o usuário
-    customer_email: user.email,
-  })
+    subscription_data: {
+      trial_period_days: 7,
+    },
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_SESSION_ID}${!user ? '&new_user=true' : ''}`,
+    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/teste-planos`,
+    metadata: {
+      supabase_user_id: user?.id || '',
+      plan_interval: 'monthly', // Padrão para o teste
+    },
+  }
+
+  // Se o usuário estiver logado, vinculamos o ID dele
+  if (user) {
+    sessionConfig.client_reference_id = user.id
+    sessionConfig.customer_email = user.email
+    sessionConfig.metadata.supabase_user_id = user.id
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionConfig)
 
   if (!session.url) {
     throw new Error('Falha ao criar sessão de checkout.')

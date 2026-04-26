@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getCreditsInfo } from '@/lib/credits'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient()
@@ -29,6 +31,18 @@ export async function GET(req: NextRequest) {
     // Fetch credits
     const credits = await getCreditsInfo(user.id)
 
+    // 4. Fetch Global Monetization Status (Launch Control)
+    const { data: settings, error: settingsError } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'is_monetization_active')
+      .maybeSingle()
+    
+    if (settingsError) console.error('❌ Settings Error:', settingsError)
+    
+    const isMonetizationActive = settings?.value === true
+    console.log(`🌐 [Plan API] User: ${user.email} | Monetization Active: ${isMonetizationActive}`)
+
     const isAdmin = profile?.is_admin || false
     const isWhitelisted = profile?.is_whitelisted || false
     const subscriptionStatus = subscription?.status || null
@@ -37,8 +51,12 @@ export async function GET(req: NextRequest) {
     const now = new Date()
     const trialEndsAt = profile?.trial_ends_at ? new Date(profile.trial_ends_at) : null
     const isTrialActive = trialEndsAt !== null && trialEndsAt > now
+    
+    console.log(`📊 [Plan Debug] User: ${user.email} | Admin: ${isAdmin} | White: ${isWhitelisted} | Sub: ${isSubscriptionActive} | Trial: ${isTrialActive}`)
 
-    const isPremium = isAdmin || isWhitelisted || isSubscriptionActive || isTrialActive
+    // Se a monetização não estiver ativa, todos são Premium (Modo de Lançamento)
+    // REMOVIDO isTrialActive temporariamente para teste do Lucas
+    const isPremium = !isMonetizationActive || isAdmin || isWhitelisted || isSubscriptionActive
 
     return NextResponse.json({
       isPremium,

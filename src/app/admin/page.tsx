@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { getAdminMetrics, deleteWaitlistLead, getWaitlistLeads } from '@/app/actions/admin-dashboard-actions'
 import { createAlphaUser } from '@/app/actions/admin-actions'
 import { getUsersList, toggleWhitelist } from '@/app/actions/admin-user-actions'
+import { getMonetizationStatus, toggleMonetization } from '@/app/actions/system-actions'
 import {
   Users,
   UserPlus,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
 interface AdminStats {
@@ -71,6 +73,8 @@ export default function AdminDashboard() {
   const [usersTotalPages, setUsersTotalPages] = useState(1)
   const [waitlistLoading, setWaitlistLoading] = useState(false)
   const [usersLoading, setUsersLoading] = useState(false)
+  const [isMonetizationActive, setIsMonetizationActive] = useState(false)
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
 
   async function loadMetrics() {
     setLoading(true)
@@ -103,10 +107,16 @@ export default function AdminDashboard() {
     setUsersLoading(false)
   }
 
+  async function loadSettings() {
+    const active = await getMonetizationStatus()
+    setIsMonetizationActive(active)
+  }
+
   useEffect(() => {
     loadMetrics()
     loadWaitlist(1)
     loadUsers(1)
+    loadSettings()
   }, [])
 
   useEffect(() => {
@@ -227,6 +237,47 @@ export default function AdminDashboard() {
             <span className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.2em]">Painel do Administrador</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Axoniq Command Center</h1>
+        </div>
+
+        {/* Launch Control Switch */}
+        <div className="flex items-center gap-4 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-3 px-5 rounded-3xl shadow-2xl ring-1 ring-white/5 order-last md:order-none w-full md:w-auto justify-between md:justify-start">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-[0.1em] text-zinc-500 mb-0.5">Controle de Lançamento</span>
+            <div className="flex items-center gap-2">
+              <div className={cn("w-2 h-2 rounded-full animate-pulse", isMonetizationActive ? "bg-emerald-500" : "bg-amber-500")} />
+              <span className={cn(
+                "text-xs font-black uppercase tracking-tight",
+                isMonetizationActive ? "text-emerald-500" : "text-amber-500"
+              )}>
+                {isMonetizationActive ? "Monetização: ON" : "Modo: Free Total"}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              setIsUpdatingSettings(true)
+              const result = await toggleMonetization(isMonetizationActive)
+              if (result.success) {
+                setIsMonetizationActive(result.newValue!)
+                toast(`Sistema atualizado para: ${result.newValue ? 'Monetização ON' : 'Free Total'}`, 'success')
+              }
+              setIsUpdatingSettings(false)
+            }}
+            disabled={isUpdatingSettings}
+            className={cn(
+              "w-14 h-7 rounded-full relative transition-all duration-500 p-1",
+              isMonetizationActive ? "bg-emerald-600/20 ring-1 ring-emerald-500/50" : "bg-zinc-800 ring-1 ring-zinc-700"
+            )}
+          >
+            <motion.div
+              animate={{ x: isMonetizationActive ? 28 : 0 }}
+              className={cn(
+                "w-5 h-5 rounded-full shadow-lg transition-colors",
+                isMonetizationActive ? "bg-emerald-500" : "bg-zinc-500"
+              )}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+          </button>
         </div>
 
         <div className="flex items-center gap-4">

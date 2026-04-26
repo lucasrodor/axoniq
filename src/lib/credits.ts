@@ -73,14 +73,22 @@ export async function consumeCredit(userId: string): Promise<{ allowed: boolean;
     return { allowed: false, remaining: 0 }
   }
 
-  // 5. Consume 1 credit
-  await supabase
-    .from('user_credits')
-    .update({
-      credits_used: credits.credits_used + 1,
-      updated_at: now.toISOString(),
-    })
-    .eq('user_id', userId)
+  // 5. Consume 1 credit atomically using RPC
+  const { error: rpcError } = await supabase.rpc('increment_credits', { 
+    target_user_id: userId 
+  })
+
+  if (rpcError) {
+    console.error('RPC Credit error:', rpcError)
+    // Fallback if RPC fails
+    await supabase
+      .from('user_credits')
+      .update({
+        credits_used: credits.credits_used + 1,
+        updated_at: now.toISOString(),
+      })
+      .eq('user_id', userId)
+  }
 
   return { allowed: true, remaining: remaining - 1 }
 }
@@ -120,5 +128,51 @@ export async function getCreditsInfo(userId: string): Promise<{
     limit: credits.credits_limit,
     remaining: Math.max(0, credits.credits_limit - credits.credits_used),
     periodStart: credits.period_start,
+  }
+}
+
+/**
+ * Refund a credit if generation fails
+ */
+export async function refundCredit(userId: string): Promise<void> {
+  const supabase = createAdminClient()
+
+  // 1. Check if user is premium (don't need to refund)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_admin, is_whitelisted')
+    .eq('id', userId)
+    .single()
+
+  if (profile?.is_admin || profile?.is_whitelisted) return
+
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('status')
+    .eq('user_id', userId)
+    .single()
+
+  if (subscription?.status === 'active' || subscription?.status === 'trialing') return
+
+  // 2. Decrement credits_used atomically
+  const { error } = await supabase.rpc('decrement_credits', {
+    target_user_id: userId
+  })
+
+  if (error) {
+    console.error('Error refunding credit:', error)
+    // Fallback: manually decrement if RPC fails (risky but better than nothing)
+    const { data: credits } = await supabase
+      .from('user_credits')
+      .select('credits_used')
+      .eq('user_id', userId)
+      .single()
+    
+    if (credits && credits.credits_used > 0) {
+      await supabase
+        .from('user_credits')
+        .update({ credits_used: credits.credits_used - 1 })
+        .eq('user_id', userId)
+    }
   }
 }

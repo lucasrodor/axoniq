@@ -1,889 +1,403 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { UploadZone } from '@/components/upload/upload-zone'
-import { AudioUploadZone } from '@/components/upload/audio-upload-zone'
-import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  ChevronLeft, Loader2, Folder, BookOpen, 
-  HelpCircle, CheckCircle2, XCircle, ArrowRight, Zap,
-  FileText, Tag, ChevronDown, Mic
+  Zap, 
+  ArrowRight, 
+  CheckCircle2, 
+  BookOpen, 
+  HelpCircle,
+  X,
+  Plus,
+  FileText,
+  Upload,
+  Brain,
+  Sparkles
 } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+import { Button } from '@/components/ui/button'
+import { UpgradeModal, LowCreditModal } from '@/components/dashboard/dashboard-modals'
+import { NeuronBackground } from '@/components/dashboard/neuron-background'
 import { supabase } from '@/lib/supabase/client'
-import { CustomSelect } from '@/components/ui/select'
 
-interface FolderType {
-  id: string
-  name: string
-}
+type GenerationStep = 'upload' | 'generating' | 'done'
+type Status = 'waiting' | 'loading' | 'done' | 'error'
 
-type Step = 'upload' | 'source-ready' | 'generating' | 'done'
-
-interface GenerationStatus {
-  flashcards: 'idle' | 'generating' | 'done' | 'error'
-  quiz: 'idle' | 'generating' | 'done' | 'error'
-  flashcardsCount?: number
-  quizCount?: number
-  deckId?: string
-  quizId?: string
-  mindmap: 'idle' | 'generating' | 'done' | 'error'
-  mindmapId?: string
-}
-
-export default function NewSourcePage() {
+function NewSourcePageContent() {
   const router = useRouter()
-  const { toast } = useToast()
-  const [step, setStep] = useState<Step>('upload')
-  const [isExtracting, setIsExtracting] = useState(false)
-  const [loadingMessage, setLoadingMessage] = useState('')
-  const [processingStep, setProcessingStep] = useState('')
-  const [inputMode, setInputMode] = useState<'file' | 'text' | 'audio'>('file')
-  const [rawText, setRawText] = useState('')
-  const [rawTitle, setRawTitle] = useState('')
+  const searchParams = useSearchParams()
+  const initialType = searchParams.get('type') as 'deck' | 'quiz' | 'mindmap' | null
 
-  // Source data
-  const [sourceId, setSourceId] = useState<string>('')
-  const [sourceTitle, setSourceTitle] = useState<string>('')
-  const [specialtyTag, setSpecialtyTag] = useState<string>('Outros')
-  const [textPreview, setTextPreview] = useState<string>('')
+  const [step, setStep] = useState<GenerationStep>('upload')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showLowCreditModal, setShowLowCreditModal] = useState(false)
+  
+  const [config, setConfig] = useState({
+    type: initialType || 'deck',
+    sourceType: 'pdf' as 'pdf' | 'text',
+    file: null as File | null,
+    text: '',
+    generateFlashcards: true,
+    generateQuiz: initialType === 'quiz',
+    generateMindMap: initialType === 'mindmap'
+  })
 
-  // Generation options
-  const [generateFlashcards, setGenerateFlashcards] = useState(true)
-  const [generateQuiz, setGenerateQuiz] = useState(true)
-  const [generateMindMap, setGenerateMindMap] = useState(true)
-  const [flashcardQuantity, setFlashcardQuantity] = useState(20)
-  const [quizQuantity, setQuizQuantity] = useState(20)
-  const [folders, setFolders] = useState<FolderType[]>([])
-  const [selectedFolderId, setSelectedFolderId] = useState<string>('')
-  const [customTitle, setCustomTitle] = useState<string>('')
-
-  // Generation status
-  const [genStatus, setGenStatus] = useState<GenerationStatus>({
-    flashcards: 'idle',
-    quiz: 'idle',
-    mindmap: 'idle',
+  const [genStatus, setGenStatus] = useState({
+    flashcards: 'waiting' as Status,
+    quiz: 'waiting' as Status,
+    mindmap: 'waiting' as Status,
+    deckId: null as string | null,
+    quizId: null as string | null,
+    mindmapId: null as string | null,
+    cardCount: 0,
+    quizCount: 0
   })
 
   useEffect(() => {
-    const loadFolders = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase
-        .from('folders')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .order('name')
-      setFolders(data || [])
-    }
-    loadFolders()
+    fetch('/api/user/credits')
+      .then(res => res.json())
+      .then(data => setAvailableCredits(data.available))
   }, [])
 
-  // Helper: Get auth headers with access token
-  const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) throw new Error('Sessão expirada. Faça login novamente.')
-    return { Authorization: `Bearer ${session.access_token}` }
-  }
+  useEffect(() => {
+    const handleConfirmLowCredit = () => {
+      setStep('generating')
+      setTimeout(() => handleStartGeneration(), 0)
+    }
+    window.addEventListener('confirm-low-credit', handleConfirmLowCredit)
+    return () => window.removeEventListener('confirm-low-credit', handleConfirmLowCredit)
+  }, [config])
 
-  // Handle Text Submission
-  const handleTextSubmit = async () => {
-    if (rawText.trim().length < 50) {
-      toast('O texto deve ter pelo menos 50 caracteres.', 'error')
+  const handlePreGenerationCheck = async () => {
+    const itemsSelected = [config.generateFlashcards, config.generateQuiz].filter(Boolean).length
+    if (availableCredits === 0) {
+      window.dispatchEvent(new Event('open-upgrade-modal'))
       return
     }
-
-    setIsExtracting(true)
-    setLoadingMessage('Processando texto e detectando especialidade...')
-
-    try {
-      const authHeaders = await getAuthHeaders()
-      const formData = new FormData()
-      formData.append('text', rawText)
-      if (rawTitle) formData.append('title', rawTitle)
-
-      const response = await fetch('/api/process-document', {
-        method: 'POST',
-        headers: { ...authHeaders },
-        body: formData,
-      })
-      const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Erro na extração')
-
-      setSourceId(data.sourceId)
-      setSourceTitle(data.title)
-      setSpecialtyTag(data.specialtyTag)
-      setTextPreview(data.preview)
-      setCustomTitle(data.title)
-      setStep('source-ready')
-      toast('Texto processado com sucesso!', 'success')
-
-    } catch (error) {
-      console.error(error)
-      toast('Erro ao processar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'), 'error')
-    } finally {
-      setIsExtracting(false)
-      setLoadingMessage('')
+    if (availableCredits !== null && availableCredits < itemsSelected) {
+      window.dispatchEvent(new CustomEvent('open-low-credit-modal', { detail: { available: availableCredits } }))
+      return
     }
+    handleStartGeneration()
   }
 
-  // Step 1 → Step 2: Upload and Extract Multiple Files
-  const handleFilesSelect = async (files: File[]) => {
-    setIsExtracting(true)
-    setLoadingMessage('Extraindo conteúdo e detectando especialidade...')
-
-    try {
-      const authHeaders = await getAuthHeaders()
-      const formData = new FormData()
-      
-      // Add all files to the same FormData
-      files.forEach(file => {
-        formData.append('files', file)
-      })
-
-      const response = await fetch('/api/process-document', {
-        method: 'POST',
-        headers: { ...authHeaders },
-        body: formData,
-      })
-      const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Erro na extração')
-
-      setSourceId(data.sourceId)
-      setSourceTitle(data.title)
-      setSpecialtyTag(data.specialtyTag)
-      setTextPreview(data.preview)
-      setCustomTitle(data.title)
-      setStep('source-ready')
-      toast(`${files.length} material(is) processado(s) com sucesso!`, 'success')
-
-    } catch (error) {
-      console.error(error)
-      toast('Erro ao processar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'), 'error')
-    } finally {
-      setIsExtracting(false)
-      setLoadingMessage('')
-    }
-  }
-
-  // Handle Audio Selection
-  const handleAudioSelect = async (file: File) => {
-    setIsExtracting(true)
-    setLoadingMessage('Preparando áudio...')
-    setProcessingStep('Enviando arquivo...')
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) throw new Error('Sessão expirada. Faça login novamente.')
-      
-      const formData = new FormData()
-      formData.append('file', file)
-
-      // 1. Transcribe the audio
-      const res = await fetch('/api/process-audio', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: formData
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro na transcrição')
-
-      // Once transcribed, we treat it like a document
-      setSourceId(data.sourceId)
-      setSourceTitle(data.title)
-      setCustomTitle(data.title)
-      setSpecialtyTag(data.specialtyTag || 'Outros')
-      setTextPreview(data.preview || '')
-      setStep('source-ready')
-      toast('Transcrição concluída!', 'success')
-    } catch (error) {
-      console.error('Audio process error:', error)
-      toast('Erro ao transcrever áudio. Verifique o tamanho e formato.', 'error')
-    } finally {
-      setIsExtracting(false)
-      setProcessingStep('')
-    }
-  }
-
-  // Step 2 → Step 3: Start Generation
   const handleStartGeneration = async () => {
-    if (!generateFlashcards && !generateQuiz && !generateMindMap) {
-      toast('Selecione pelo menos uma opção para gerar.', 'error')
-      return
-    }
-
+    setIsProcessing(true)
     setStep('generating')
-    const title = customTitle || sourceTitle
 
-    // Get auth token once
-    let authHeaders: Record<string, string>
-    try {
-      authHeaders = await getAuthHeaders()
-    } catch {
-      toast('Sessão expirada. Faça login novamente.', 'error')
-      return
+    const formData = new FormData()
+    if (config.sourceType === 'pdf' && config.file) {
+      formData.append('file', config.file)
+    } else {
+      formData.append('text', config.text)
     }
 
-    // Fire both in parallel
-    const promises: Promise<void>[] = []
+    const tasks = []
 
-    if (generateFlashcards) {
-      setGenStatus(prev => ({ ...prev, flashcards: 'generating' }))
-      promises.push(
-        fetch('/api/generate-flashcards', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeaders },
-          body: JSON.stringify({
-            sourceId,
-            quantity: flashcardQuantity,
-            folderId: selectedFolderId || null,
-            deckTitle: title,
-            specialtyTag,
-          }),
-        })
+    if (config.generateFlashcards) {
+      setGenStatus(prev => ({ ...prev, flashcards: 'loading' }))
+      tasks.push(
+        fetch('/api/generate-flashcards', { method: 'POST', body: formData })
           .then(async res => {
             const data = await res.json()
             if (!res.ok) throw new Error(data.error)
             setGenStatus(prev => ({
               ...prev,
               flashcards: 'done',
-              flashcardsCount: data.flashcardsCount,
               deckId: data.deckId,
+              cardCount: data.count
             }))
           })
-          .catch(err => {
-            console.error('Flashcard generation error:', err)
-            setGenStatus(prev => ({ ...prev, flashcards: 'error' }))
-            toast(`Flashcards: ${err.message || 'Erro inesperado'}`, 'error')
-          })
+          .catch(() => setGenStatus(prev => ({ ...prev, flashcards: 'error' })))
       )
     }
 
-    if (generateQuiz) {
-      setGenStatus(prev => ({ ...prev, quiz: 'generating' }))
-      promises.push(
-        fetch('/api/generate-quiz', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeaders },
-          body: JSON.stringify({
-            sourceId,
-            quantity: quizQuantity,
-            folderId: selectedFolderId || null,
-            quizTitle: title,
-            specialtyTag,
-          }),
-        })
+    if (config.generateQuiz) {
+      setGenStatus(prev => ({ ...prev, quiz: 'loading' }))
+      tasks.push(
+        fetch('/api/generate-quiz', { method: 'POST', body: formData })
           .then(async res => {
             const data = await res.json()
             if (!res.ok) throw new Error(data.error)
             setGenStatus(prev => ({
               ...prev,
               quiz: 'done',
-              quizCount: data.questionsCount,
               quizId: data.quizId,
+              quizCount: data.count
             }))
           })
-          .catch(err => {
-            console.error('Quiz generation error:', err)
-            setGenStatus(prev => ({ ...prev, quiz: 'error' }))
-            toast(`Quiz: ${err.message || 'Erro inesperado'}`, 'error')
-          })
+          .catch(() => setGenStatus(prev => ({ ...prev, quiz: 'error' })))
       )
     }
 
-    if (generateMindMap) {
-      setGenStatus(prev => ({ ...prev, mindmap: 'generating' }))
-      promises.push(
-        fetch('/api/generate-mindmap', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeaders },
-          body: JSON.stringify({
-            sourceId,
-            folderId: selectedFolderId || null,
-            mapTitle: title,
-            specialtyTag,
-          }),
-        })
-          .then(async res => {
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error)
-            setGenStatus(prev => ({
-              ...prev,
-              mindmap: 'done',
-              mindmapId: data.mindMapId,
-            }))
-          })
-          .catch(err => {
-            console.error('Mindmap generation error:', err)
-            setGenStatus(prev => ({ ...prev, mindmap: 'error' }))
-            toast(`Mapa Mental: ${err.message || 'Erro inesperado'}`, 'error')
-          })
-      )
-    }
-
-    await Promise.allSettled(promises)
+    await Promise.allSettled(tasks)
     setStep('done')
+    setIsProcessing(false)
   }
 
-  // Helpers
-  const quantityOptions = [
-    { label: 'Pequeno', value: 10, desc: '~10' },
-    { label: 'Médio', value: 20, desc: '~20' },
-    { label: 'Grande', value: 30, desc: '~30' },
-  ]
-
   return (
-    <div className="min-h-screen bg-[var(--background)] p-4 md:p-12">
-      <div className="max-w-4xl mx-auto animate-in slide-in-from-bottom-8 duration-700">
-
-        {/* Navigation */}
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-3 text-[var(--muted-foreground)]"
-            onClick={() => {
-              if (step === 'source-ready') setStep('upload')
-              else if (step === 'done') router.push('/dashboard')
-              else router.back()
-            }}
-          >
-            <ChevronLeft size={16} className="mr-1" />
-            {step === 'done' ? 'Ir ao Painel' : step === 'source-ready' ? 'Voltar' : 'Voltar ao Painel'}
-          </Button>
-        </div>
-
-        {/* ======================== */}
-        {/* STEP 1: Upload           */}
-        {/* ======================== */}
-        {step === 'upload' && (
-          <>
-            <div className="space-y-2 mb-8 md:mb-10">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-                Nova Fonte de Estudo
-              </h1>
-              <p className="text-[var(--muted-foreground)] text-base md:text-lg">
-                Faça upload do seu material ou cole texto bruto para gerar flashcards, quiz ou ambos.
-              </p>
-            </div>
-
-            {isExtracting && inputMode !== 'audio' ? (
-              <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl p-12 flex flex-col items-center justify-center text-center animate-pulse">
-                <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-                <p className="text-lg font-medium text-[var(--foreground)]">{loadingMessage}</p>
-                <p className="text-sm text-[var(--muted-foreground)] mt-2">Analisando conteúdo e detectando a especialidade médica...</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Seletor Visual Moderno - Escondido durante extração de texto para foco */}
-                {!isExtracting && (
-                  <div className="flex flex-col sm:flex-row bg-zinc-900/50 p-1.5 rounded-xl w-full sm:w-fit border border-zinc-800/50 gap-1 sm:gap-0">
-                  <button 
-                    onClick={() => setInputMode('file')}
-                    className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${inputMode === 'file' ? 'bg-[var(--background)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
-                  >
-                    Upload de Arquivo
-                  </button>
-                  <button 
-                    onClick={() => setInputMode('text')}
-                    className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${inputMode === 'text' ? 'bg-[var(--background)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
-                  >
-                    Colar Texto
-                  </button>
-                  <button 
-                    onClick={() => setInputMode('audio')}
-                    className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${inputMode === 'audio' ? 'bg-[var(--background)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
-                  >
-                    Áudio
-                  </button>
+    <>
+      <div className="min-h-screen relative clinical-grid overflow-x-hidden">
+        <NeuronBackground />
+        <div className="relative z-10 space-y-8 p-3 sm:p-4 md:p-8 max-w-2xl mx-auto text-center">
+          {step === 'upload' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-8"
+            >
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-2">
+                  <Zap size={14} className="animate-pulse" />
+                  Novo Material
                 </div>
-              )}
-
-                {inputMode === 'file' && (
-                  <UploadZone onFilesSelect={handleFilesSelect} isProcessing={isExtracting} />
-                )}
-                
-                {inputMode === 'text' && (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <input 
-                      type="text" 
-                      placeholder="Título do Material (Opcional)"
-                      value={rawTitle}
-                      onChange={(e) => setRawTitle(e.target.value)}
-                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--foreground)] font-medium"
-                    />
-                    <textarea 
-                      placeholder="Cole o seu texto de estudo aqui... (mínimo 50 caracteres)"
-                      value={rawText}
-                      onChange={(e) => setRawText(e.target.value)}
-                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-3 min-h-[300px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--foreground)]"
-                    />
-                    <Button 
-                      className="w-full h-14 text-base shadow-lg hover:shadow-xl transition-shadow" 
-                      onClick={handleTextSubmit}
-                      disabled={rawText.trim().length < 50 || isExtracting}
-                    >
-                      {isExtracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Processar Texto
-                    </Button>
-                  </div>
-                )}
-
-                {inputMode === 'audio' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <AudioUploadZone 
-                      onFileSelect={handleAudioSelect} 
-                      isProcessing={isExtracting}
-                      processingStep={processingStep}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ======================== */}
-        {/* STEP 2: Source Ready     */}
-        {/* ======================== */}
-        {step === 'source-ready' && (
-          <>
-            <div className="space-y-2 mb-8 md:mb-10">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-                Fonte Processada
-              </h1>
-              <p className="text-[var(--muted-foreground)] text-base md:text-lg">
-                Conteúdo extraído com sucesso. Escolha o que gerar.
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              {/* Source Info Card */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2.5 bg-blue-600/10 rounded-lg text-blue-400">
-                    <FileText size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={customTitle}
-                      onChange={(e) => setCustomTitle(e.target.value)}
-                      className="w-full text-xl font-bold bg-transparent border-none focus:outline-none text-[var(--foreground)] placeholder-zinc-400"
-                      placeholder="Nome do material..."
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mb-3">
-                  <CustomSelect
-                    className="w-48"
-                    value={specialtyTag}
-                    onChange={(val) => setSpecialtyTag(val)}
-                    icon={<Tag size={14} className="text-emerald-500" />}
-                    options={[
-                      'Anestesiologia', 'Cardiologia', 'Cirurgia Geral', 'Clínica Médica',
-                      'Dermatologia', 'Endocrinologia', 'Gastroenterologia', 'Geriatria',
-                      'Ginecologia e Obstetrícia', 'Hematologia', 'Infectologia',
-                      'Medicina de Emergência', 'Nefrologia', 'Neurologia', 'Oftalmologia',
-                      'Oncologia', 'Ortopedia', 'Otorrinolaringologia', 'Pediatria',
-                      'Pneumologia', 'Psiquiatria', 'Radiologia', 'Reumatologia',
-                      'Urologia', 'Outros',
-                    ].map(tag => ({ value: tag, label: tag }))}
-                  />
-                </div>
-                <p className="text-sm text-[var(--muted-foreground)] leading-relaxed line-clamp-4">
-                  {textPreview}
+                <h1 className="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight leading-tight">
+                  O que vamos <span className="text-blue-500">estudar</span> hoje?
+                </h1>
+                <p className="text-zinc-500 text-sm sm:text-base max-w-md mx-auto leading-relaxed">
+                  Envie seu material e deixe nossa IA sintetizar o conhecimento para você.
                 </p>
               </div>
 
-              {/* Output Selection */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-6 shadow-sm">
-                <h2 className="text-sm font-bold text-[var(--muted-foreground)] mb-5 uppercase tracking-widest">
-                  O que deseja gerar?
-                </h2>
+              <GenerationConfigComponent 
+                config={config} 
+                onChange={setConfig} 
+                onStart={handlePreGenerationCheck}
+                isLoading={isProcessing}
+              />
+            </motion.div>
+          )}
 
-                {/* Flashcards Option */}
-                <div className="space-y-4">
-                  <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    generateFlashcards
-                      ? 'border-blue-500/50 bg-blue-600/10'
-                      : 'border-zinc-800/50 hover:border-zinc-700'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={generateFlashcards}
-                      onChange={(e) => setGenerateFlashcards(e.target.checked)}
-                      className="mt-1 accent-blue-500 w-5 h-5"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <BookOpen size={18} className="text-blue-500" />
-                        <span className="font-bold text-[var(--foreground)]">Flashcards</span>
-                      </div>
-                      <p className="text-sm text-[var(--muted-foreground)]">
-                        Cards de pergunta e resposta + cloze (lacuna) para memorização via repetição espaçada.
-                      </p>
-                      {generateFlashcards && (
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          {quantityOptions.map((opt) => (
-                            <button
-                              key={opt.value}
-                              onClick={(e) => { e.preventDefault(); setFlashcardQuantity(opt.value) }}
-                              className={`text-center py-2 px-3 rounded-lg border text-sm transition-all ${
-                                flashcardQuantity === opt.value
-                                  ? 'border-blue-500/50 bg-blue-600/20 text-blue-400 font-bold'
-                                  : 'border-zinc-800 text-[var(--muted-foreground)] hover:border-zinc-700'
-                              }`}
-                            >
-                              <span className="font-medium">{opt.label}</span>
-                              <span className="block text-[10px] opacity-70">{opt.desc}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </label>
-
-                  {/* Quiz Option */}
-                  <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    generateQuiz
-                      ? 'border-emerald-500/60 bg-emerald-500/10'
-                      : 'border-zinc-800/50 hover:border-zinc-700 bg-zinc-950/40'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={generateQuiz}
-                      onChange={(e) => setGenerateQuiz(e.target.checked)}
-                      className="mt-1 accent-emerald-500 w-5 h-5"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <HelpCircle size={18} className="text-emerald-400" />
-                        <span className="font-bold text-zinc-100">Quiz</span>
-                      </div>
-                      <p className="text-sm text-zinc-400">
-                        Questões de múltipla escolha, lacuna e verdadeiro/falso no estilo prova de residência.
-                      </p>
-                      {generateQuiz && (
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          {quantityOptions.map((opt) => (
-                            <button
-                              key={opt.value}
-                              onClick={(e) => { e.preventDefault(); setQuizQuantity(opt.value) }}
-                              className={`text-center py-2 px-3 rounded-lg border text-sm transition-all ${
-                                quizQuantity === opt.value
-                                  ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-400 font-bold'
-                                  : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'
-                              }`}
-                            >
-                              <span className="font-medium">{opt.label}</span>
-                              <span className="block text-[10px] opacity-70">{opt.desc}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                  <label className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    generateMindMap
-                      ? 'border-amber-500/60 bg-amber-500/10'
-                      : 'border-zinc-800/50 hover:border-zinc-700 bg-zinc-950/40'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={generateMindMap}
-                      onChange={(e) => setGenerateMindMap(e.target.checked)}
-                      className="mt-1 accent-amber-500 w-5 h-5"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Zap size={18} className="text-amber-400" />
-                        <span className="font-bold text-zinc-100">Mapa Mental IA</span>
-                      </div>
-                      <p className="text-sm text-zinc-400">
-                        Uma visão panorâmica e hierárquica dos conceitos-chave para revisão rápida.
-                      </p>
-                    </div>
-                  </label>
+          {step === 'generating' && (
+            <div className="py-20 flex flex-col items-center justify-center space-y-10">
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full border-4 border-blue-500/10 border-t-blue-500 animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Zap size={40} className="text-blue-500 animate-pulse" />
                 </div>
               </div>
+              
+              <div className="space-y-4 max-w-sm mx-auto">
+                <h2 className="text-2xl font-black text-zinc-100 tracking-tight">Sintetizando...</h2>
+                <div className="space-y-3">
+                  {config.generateFlashcards && (
+                    <GenerationStatusCard 
+                      icon={<BookOpen size={20} />} 
+                      label="Flashcards" 
+                      status={genStatus.flashcards} 
+                    />
+                  )}
+                  {config.generateQuiz && (
+                    <GenerationStatusCard 
+                      icon={<HelpCircle size={20} />} 
+                      label="Simulação de Quiz" 
+                      status={genStatus.quiz} 
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-              {/* Folder Selection */}
-              {folders.length > 0 && (
-                <CustomSelect
-                  className="w-1/2"
-                  label="Pasta (opcional)"
-                  options={[
-                    { value: '', label: 'Sem pasta' },
-                    ...folders.map((f) => ({ value: f.id, label: f.name }))
-                  ]}
-                  value={selectedFolderId}
-                  onChange={(val) => setSelectedFolderId(val)}
-                  icon={<Folder size={18} className="text-amber-500 flex-shrink-0" />}
-                />
-              )}
-
-              {/* Generate Button */}
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full h-14 text-base shadow-lg hover:shadow-xl transition-shadow"
-                onClick={handleStartGeneration}
-                disabled={step !== 'source-ready'}
+          {step === 'done' && (
+            <>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="py-12 space-y-6"
               >
-                {step !== 'source-ready' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap size={18} className="mr-2" />}
-                Gerar {[generateFlashcards && 'Flashcards', generateQuiz && 'Quiz', generateMindMap && 'Mapa Mental'].filter(Boolean).join(' + ')}
-              </Button>
-            </div>
-          </>
-        )}
+                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto border-2 border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.2)]">
+                  <CheckCircle2 size={40} className="text-emerald-500" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black text-zinc-100 tracking-tight leading-tight">Sua sessão de estudo está pronta!</h2>
+                  <p className="text-zinc-500 max-w-xs mx-auto">Conteúdo sintetizado e organizado para máximo desempenho.</p>
+                </div>
+              </motion.div>
 
-        {/* ======================== */}
-        {/* STEP 3: Generating       */}
-        {/* ======================== */}
-        {step === 'generating' && (
-          <>
-            <div className="space-y-2 mb-8 md:mb-10">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-                Gerando seu material...
-              </h1>
-              <p className="text-[var(--muted-foreground)] text-base md:text-lg">
-                Processando seu documento. Isso pode levar alguns segundos.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {generateFlashcards && (
-                <GenerationStatusCard
-                  icon={<BookOpen size={20} />}
-                  label="Flashcards"
-                  status={genStatus.flashcards}
-                  count={genStatus.flashcardsCount}
-                  color="blue"
-                />
-              )}
-              {generateQuiz && (
-                <GenerationStatusCard
-                  icon={<HelpCircle size={20} />}
-                  label="Quiz"
-                  status={genStatus.quiz}
-                  count={genStatus.quizCount}
-                  color="emerald"
-                />
-              )}
-              {generateMindMap && (
-                <GenerationStatusCard
-                  icon={<Zap size={20} />}
-                  label="Mapa Mental"
-                  status={genStatus.mindmap}
-                  color="amber"
-                />
-              )}
-            </div>
-          </>
-        )}
-
-        {/* ======================== */}
-        {/* STEP 4: Done             */}
-        {/* ======================== */}
-        {step === 'done' && (
-          <>
-            <div className="space-y-2 mb-8">
-              {(() => {
-                const successCount = [genStatus.flashcards, genStatus.quiz, genStatus.mindmap].filter(s => s === 'done').length
-                const hasError = [genStatus.flashcards, genStatus.quiz, genStatus.mindmap].some(s => s === 'error')
+              <div className="grid gap-4 max-w-md mx-auto">
+                {genStatus.deckId && (
+                  <button
+                    onClick={() => router.push(`/dashboard/deck/${genStatus.deckId}`)}
+                    className="w-full flex items-center gap-4 p-5 rounded-[2rem] border-2 border-blue-500/20 bg-blue-600/5 hover:border-blue-500/40 transition-all hover:bg-blue-600/10 active:scale-[0.98] text-left group"
+                  >
+                    <div className="p-3 rounded-2xl bg-blue-600/10 text-blue-500 group-hover:scale-110 transition-transform">
+                      <BookOpen size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-bold text-zinc-100 text-lg block">Ver Flashcards</span>
+                      <p className="text-xs text-zinc-500">{genStatus.cardCount} cartas inteligentes geradas</p>
+                    </div>
+                    <ArrowRight size={20} className="text-blue-500 opacity-50 group-hover:opacity-100 transform group-hover:translate-x-1 transition-all" />
+                  </button>
+                )}
+                {genStatus.quizId && (
+                  <button
+                    onClick={() => router.push(`/dashboard/quiz/${genStatus.quizId}`)}
+                    className="w-full flex items-center gap-4 p-5 rounded-[2rem] border-2 border-emerald-500/20 bg-emerald-600/5 hover:border-emerald-500/40 transition-all hover:bg-emerald-600/10 active:scale-[0.98] text-left group"
+                  >
+                    <div className="p-3 rounded-2xl bg-emerald-600/10 text-emerald-500 group-hover:scale-110 transition-transform">
+                      <HelpCircle size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-bold text-zinc-100 text-lg block">Fazer Quiz</span>
+                      <p className="text-xs text-zinc-500">{genStatus.quizCount} questões clínicas geradas</p>
+                    </div>
+                    <ArrowRight size={20} className="text-emerald-500 opacity-50 group-hover:opacity-100 transform group-hover:translate-x-1 transition-all" />
+                  </button>
+                )}
                 
-                let title = "Tudo pronto!"
-                let desc = "Seu material de estudo foi gerado com sucesso."
-                
-                if (successCount === 0) {
-                  title = "Ops! Algo deu errado"
-                  desc = "Não foi possível gerar seu material. Verifique os alertas acima."
-                } else if (hasError) {
-                  title = "Geração Parcial"
-                  desc = "Alguns materiais foram gerados, mas outros atingiram o limite ou deram erro."
-                }
-
-                return (
-                  <>
-                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-                      {title}
-                    </h1>
-                    <p className="text-[var(--muted-foreground)] text-base md:text-lg">
-                      {desc}
-                    </p>
-                  </>
-                )
-              })()}
-            </div>
-
-            <div className="space-y-3 mb-8">
-              {generateFlashcards && (
-                <GenerationStatusCard
-                  icon={<BookOpen size={20} />}
-                  label="Flashcards"
-                  status={genStatus.flashcards}
-                  count={genStatus.flashcardsCount}
-                  color="blue"
-                />
-              )}
-              {generateQuiz && (
-                <GenerationStatusCard
-                  icon={<HelpCircle size={20} />}
-                  label="Quiz"
-                  status={genStatus.quiz}
-                  count={genStatus.quizCount}
-                  color="emerald"
-                />
-              )}
-              {generateMindMap && (
-                <GenerationStatusCard
-                  icon={<Zap size={20} />}
-                  label="Mapa Mental"
-                  status={genStatus.mindmap}
-                  color="amber"
-                />
-              )}
-            </div>
-
-            {/* Action Buttons — Mobile Optimized */}
-            <div className="space-y-3">
-              {/* Secondary Actions: Colored Cards */}
-              {genStatus.deckId && (
-                <button
-                  onClick={() => router.push(`/dashboard/deck/${genStatus.deckId}`)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-500/20 bg-blue-600/5 hover:border-blue-500/40 transition-all active:scale-[0.98]"
-                >
-                  <div className="p-2.5 rounded-lg bg-blue-600/10 text-blue-400">
-                    <BookOpen size={22} />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="font-bold text-zinc-100 text-base">Ver Flashcards</span>
-                    {genStatus.flashcardsCount && (
-                      <p className="text-xs text-zinc-500">{genStatus.flashcardsCount} cards prontos para estudar</p>
-                    )}
-                  </div>
-                  <ArrowRight size={18} className="text-blue-500" />
-                </button>
-              )}
-              {genStatus.quizId && (
-                <button
-                  onClick={() => router.push(`/dashboard/quiz/${genStatus.quizId}`)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-emerald-500/20 bg-emerald-600/5 hover:border-emerald-500/40 transition-all active:scale-[0.98]"
-                >
-                  <div className="p-2.5 rounded-lg bg-emerald-600/10 text-emerald-400">
-                    <HelpCircle size={22} />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="font-bold text-zinc-100 text-base">Fazer Quiz</span>
-                    {genStatus.quizCount && (
-                      <p className="text-xs text-zinc-500">{genStatus.quizCount} questões geradas</p>
-                    )}
-                  </div>
-                  <ArrowRight size={18} className="text-emerald-500" />
-                </button>
-              )}
-              {genStatus.mindmapId && (
-                <button
-                  onClick={() => router.push(`/dashboard/mindmap/${genStatus.mindmapId}`)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-amber-500/20 bg-amber-600/5 hover:border-amber-500/40 transition-all active:scale-[0.98]"
-                >
-                  <div className="p-2.5 rounded-lg bg-amber-600/10 text-amber-500">
-                    <Zap size={22} />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="font-bold text-zinc-100 text-base">Ver Mapa Mental</span>
-                    <p className="text-xs text-zinc-500">Visão panorâmica dos conceitos</p>
-                  </div>
-                  <ArrowRight size={18} className="text-amber-500" />
-                </button>
-              )}
-
-              {/* Primary CTA */}
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full h-14 text-base mt-2"
-                onClick={() => router.push('/dashboard')}
-              >
-                <ArrowRight size={18} className="mr-2" />
-                Ir ao Dashboard
-              </Button>
-            </div>
-          </>
-        )}
-
+                <div className="pt-4 border-t border-zinc-800/50 mt-2">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full h-14 rounded-2xl text-base shadow-lg shadow-blue-600/20"
+                    onClick={() => router.push('/dashboard')}
+                  >
+                    Ir ao Dashboard
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+    </>
+  )
+}
+
+function GenerationConfigComponent({ config, onChange, onStart, isLoading }: any) {
+  return (
+    <div className="space-y-6 text-left">
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => onChange({ ...config, sourceType: 'pdf' })}
+          className={`flex items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all ${
+            config.sourceType === 'pdf' ? 'border-blue-500 bg-blue-500/5 text-blue-500' : 'border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:border-zinc-700'
+          }`}
+        >
+          <Upload size={18} />
+          <span className="font-bold text-sm">Upload PDF</span>
+        </button>
+        <button
+          onClick={() => onChange({ ...config, sourceType: 'text' })}
+          className={`flex items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all ${
+            config.sourceType === 'text' ? 'border-blue-500 bg-blue-500/5 text-blue-500' : 'border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:border-zinc-700'
+          }`}
+        >
+          <FileText size={18} />
+          <span className="font-bold text-sm">Inserir Texto</span>
+        </button>
+      </div>
+
+      {config.sourceType === 'pdf' ? (
+        <div className="relative group">
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={(e) => onChange({ ...config, file: e.target.files?.[0] || null })}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          />
+          <div className="p-10 border-2 border-dashed border-zinc-800 rounded-3xl bg-zinc-900/30 group-hover:border-blue-500/30 group-hover:bg-blue-500/5 transition-all flex flex-col items-center justify-center gap-4">
+            <div className="p-4 bg-zinc-800 rounded-2xl text-zinc-500 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-all">
+              <Upload size={32} />
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-zinc-100">{config.file ? config.file.name : 'Selecione seu arquivo'}</p>
+              <p className="text-xs text-zinc-500 mt-1">PDF até 10MB</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <textarea
+          value={config.text}
+          onChange={(e) => onChange({ ...config, text: e.target.value })}
+          placeholder="Cole seu resumo, anotações ou transcrições aqui..."
+          className="w-full h-48 p-6 rounded-3xl border-2 border-zinc-800 bg-zinc-900/30 text-zinc-100 text-sm focus:outline-none focus:border-blue-500/50 transition-all"
+        />
+      )}
+
+      <div className="space-y-3">
+        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+          <Sparkles size={12} className="text-blue-500" />
+          O que vamos gerar?
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => onChange({ ...config, generateFlashcards: !config.generateFlashcards })}
+            className={`flex flex-col gap-3 p-5 rounded-[1.5rem] border-2 transition-all text-left group ${
+              config.generateFlashcards ? 'border-blue-500 bg-blue-500/5' : 'border-zinc-800 bg-zinc-900/50 opacity-50'
+            }`}
+          >
+            <BookOpen size={20} className={config.generateFlashcards ? 'text-blue-500' : 'text-zinc-500'} />
+            <span className={`font-bold text-sm ${config.generateFlashcards ? 'text-zinc-100' : 'text-zinc-500'}`}>Flashcards</span>
+          </button>
+          <button
+            onClick={() => onChange({ ...config, generateQuiz: !config.generateQuiz })}
+            className={`flex flex-col gap-3 p-5 rounded-[1.5rem] border-2 transition-all text-left group ${
+              config.generateQuiz ? 'border-emerald-500 bg-emerald-500/5' : 'border-zinc-800 bg-zinc-900/50 opacity-50'
+            }`}
+          >
+            <HelpCircle size={20} className={config.generateQuiz ? 'text-emerald-500' : 'text-zinc-500'} />
+            <span className={`font-bold text-sm ${config.generateQuiz ? 'text-zinc-100' : 'text-zinc-500'}`}>Quiz Clínico</span>
+          </button>
+        </div>
+      </div>
+
+      <Button
+        variant="primary"
+        size="lg"
+        className="w-full h-16 rounded-[1.5rem] text-lg font-black tracking-tight mt-4 shadow-xl shadow-blue-600/10"
+        onClick={onStart}
+        disabled={isLoading || (config.sourceType === 'pdf' && !config.file) || (config.sourceType === 'text' && !config.text.trim())}
+      >
+        {isLoading ? (
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+            <span>Processando...</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Brain size={22} />
+            <span>Gerar Material de Estudo</span>
+          </div>
+        )}
+      </Button>
     </div>
   )
 }
 
-// Sub-component: Generation status card
-function GenerationStatusCard({
-  icon,
-  label,
-  status,
-  count,
-  color,
-}: {
-  icon: React.ReactNode
-  label: string
-  status: 'idle' | 'generating' | 'done' | 'error'
-  count?: number
-  color: 'blue' | 'emerald' | 'amber'
-}) {
-  const colorMap = {
-    blue: {
-      bg: 'bg-zinc-900/40',
-      text: 'text-blue-400',
-      border: 'border-zinc-800',
-    },
-    emerald: {
-      bg: 'bg-zinc-900/40',
-      text: 'text-emerald-400',
-      border: 'border-zinc-800',
-    },
-    amber: {
-      bg: 'bg-zinc-900/40',
-      text: 'text-amber-400',
-      border: 'border-zinc-800',
-    },
-  }
-  const c = colorMap[color]
-
+function GenerationStatusCard({ icon, label, status }: { icon: React.ReactNode, label: string, status: Status }) {
   return (
-    <div className={`flex items-center gap-4 p-5 rounded-xl border ${c.border} ${c.bg} transition-all`}>
-      <div className={`p-2.5 rounded-lg ${c.bg} ${c.text}`}>
+    <div className="flex items-center gap-4 p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800">
+      <div className={`p-2 rounded-lg ${status === 'done' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-800 text-zinc-500'}`}>
         {icon}
       </div>
-      <div className="flex-1">
-        <span className="font-bold text-[var(--foreground)]">{label}</span>
-        {count !== undefined && (
-          <span className="text-sm text-[var(--muted-foreground)] ml-2">({count} itens)</span>
-        )}
+      <div className="flex-1 text-left">
+        <p className="text-sm font-bold text-zinc-100">{label}</p>
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">
+          {status === 'waiting' ? 'Aguardando' : status === 'loading' ? 'Processando...' : status === 'done' ? 'Concluído' : 'Erro'}
+        </p>
       </div>
-      {status === 'generating' && (
-        <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-          <Loader2 size={16} className="animate-spin" />
-          Gerando...
-        </div>
+      {status === 'loading' && (
+        <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
       )}
       {status === 'done' && (
-        <div className={`flex items-center gap-1 text-sm font-medium ${c.text}`}>
-          <CheckCircle2 size={16} />
-          Pronto!
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="flex items-center gap-1 text-sm font-medium text-red-500">
-          <XCircle size={16} />
-          Erro
-        </div>
+        <CheckCircle2 size={18} className="text-emerald-500" />
       )}
     </div>
+  )
+}
+
+export default function NewSourcePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-zinc-500 text-center mt-20">Preparando ambiente de geração...</div>}>
+      <NewSourcePageContent />
+    </Suspense>
   )
 }

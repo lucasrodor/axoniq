@@ -1,8 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/server'
 
 /**
- * Deleta todos os materiais brutos (arquivos no storage e registro no banco)
- * associados a uma sourceId. Usado para manter a privacidade e economia de espaço.
+ * Deleta todos os materiais brutos pesados (arquivos no storage)
+ * e limpa o conteúdo sensível, mas mantém o registro da source
+ * para evitar erros de integridade (Race Condition) em gerações múltiplas.
  */
 export async function cleanupSource(sourceId: string) {
   const supabase = createAdminClient()
@@ -21,7 +22,6 @@ export async function cleanupSource(sourceId: string) {
     }
 
     // 2. Extrair caminhos dos arquivos do Storage (se houver imagens)
-    // As URLs públicas costumam ter o formato: .../storage/v1/object/public/sources/caminho/do/arquivo
     const imagesToDelete: string[] = []
     
     if (source.image_urls && Array.isArray(source.image_urls)) {
@@ -33,7 +33,7 @@ export async function cleanupSource(sourceId: string) {
       })
     }
 
-    // 3. Deletar do Storage
+    // 3. Deletar do Storage (O que realmente ocupa espaço)
     if (imagesToDelete.length > 0) {
       const { error: storageError } = await supabase
         .storage
@@ -47,19 +47,22 @@ export async function cleanupSource(sourceId: string) {
       }
     }
 
-    // 4. Deletar registro da tabela Sources
-    // Nota: Como temos chaves estrangeiras, isso depende de estarem setadas como ON DELETE SET NULL 
-    // ou ON DELETE CASCADE. Se o usuário quiser manter o título, poderíamos apenas limpar o raw_content.
-    // Decisão: Deletar tudo para máxima privacidade conforme pedido.
-    const { error: deleteError } = await supabase
+    // 4. Limpar conteúdo sensível mas MANTER o registro
+    // Isso evita o erro "insert or update on table violates foreign key constraint"
+    // quando múltiplas gerações ocorrem em paralelo.
+    const { error: updateError } = await supabase
       .from('sources')
-      .delete()
+      .update({ 
+        raw_content: '[Conteúdo limpo após geração]', 
+        image_urls: [], 
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', sourceId)
 
-    if (deleteError) {
-      console.error(`[Cleanup] Erro ao deletar registro da source ${sourceId}:`, deleteError)
+    if (updateError) {
+      console.error(`[Cleanup] Erro ao limpar conteúdo da source ${sourceId}:`, updateError)
     } else {
-      console.log(`[Cleanup] Registro da source ${sourceId} removido com sucesso.`)
+      console.log(`[Cleanup] Conteúdo da source ${sourceId} limpo com sucesso. Registro mantido para integridade.`)
     }
 
   } catch (error) {

@@ -91,29 +91,54 @@ ${text.substring(0, 50000)}` // Limit text for safety
       })
     })
 
-    const completion = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert educational content creator specialized in medical education. Your task is to extract key concepts from the provided text and images and turn them into flashcards.
-          
-STRICT RULES:
-1. Generate exactly ${quantity} flashcards (${standardCount} standard + ${clozeRatio} cloze).
-2. Generate flashcards ONLY based on the provided text and images.
-3. For "standard" cards: front = question, back = answer.
-4. For "cloze" cards: front = sentence with blanks using "___", back = complete sentence.
-5. Focus on identifying anatomical structures, clinical findings in images (if any), and core medical concepts.
-6. Language: Portuguese.
-7. Set the "type" field to "standard" or "cloze" accordingly.`
-        },
-        {
-          role: 'user',
-          content: userMessageContent
-        }
-      ],
-      response_format: zodResponseFormat(FlashcardListSchema, 'flashcard_list'),
-    })
+    let completion
+    try {
+      completion = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert educational content creator specialized in medical education. Your task is to extract key concepts from the provided text and images and turn them into flashcards.
+            
+  STRICT RULES:
+  1. Generate exactly ${quantity} flashcards (${standardCount} standard + ${clozeRatio} cloze).
+  2. Generate flashcards ONLY based on the provided text and images.
+  3. For "standard" cards: front = question, back = answer.
+  4. For "cloze" cards: front = sentence with blanks using "___", back = complete sentence.
+  5. Focus on identifying anatomical structures, clinical findings in images (if any), and core medical concepts.
+  6. Language: Portuguese.
+  7. Set the "type" field to "standard" or "cloze" accordingly.`
+          },
+          {
+            role: 'user',
+            content: userMessageContent
+          }
+        ],
+        response_format: zodResponseFormat(FlashcardListSchema, 'flashcard_list'),
+      })
+    } catch (apiError: any) {
+      console.warn('⚠️ OpenAI Image Error, retrying with text only:', apiError.message)
+      
+      // Fallback: Retry with text only if images fail
+      if (apiError.message.includes('image') || apiError.message.includes('download') || apiError.message.includes('timeout')) {
+        completion = await openai.chat.completions.create({
+          model: OPENAI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert educational content creator specialized in medical education. Your task is to extract key concepts from the provided text and turn them into flashcards.`
+            },
+            {
+              role: 'user',
+              content: `Generate ${quantity} flashcards based strictly on the following text: \n\n ${text.substring(0, 50000)}`
+            }
+          ],
+          response_format: zodResponseFormat(FlashcardListSchema, 'flashcard_list'),
+        })
+      } else {
+        throw apiError // Re-throw if it's another type of error
+      }
+    }
 
     const content = completion.choices[0].message.content || ''
     let flashcards: { front: string; back: string; type: string }[] = []
@@ -187,6 +212,22 @@ STRICT RULES:
 
   } catch (error) {
     console.error('AI Generation error:', error)
+    
+    // Attempt refund if we have a user
+    try {
+      const supabaseAdmin = createAdminClient()
+      const token = req.headers.get('Authorization')?.replace('Bearer ', '')
+      if (token) {
+        const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+        if (user) {
+          const { refundCredit } = await import('@/lib/credits')
+          await refundCredit(user.id)
+        }
+      }
+    } catch (refundErr) {
+      console.error('Failed to refund credit:', refundErr)
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate flashcards' },
       { status: 500 }
