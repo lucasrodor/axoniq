@@ -204,7 +204,7 @@ Total: 1 root + 5 branches + 14 leaves = 20 nodes
           temperature: 0.3,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: \`Crie o mapa mental baseado apenas no texto a seguir:\\n\\n\${text.substring(0, 50000)}\` }
+            { role: 'user', content: `Crie o mapa mental baseado apenas no texto a seguir:\n\n${text.substring(0, 50000)}` }
           ],
           response_format: zodResponseFormat(MindMapSchema, 'mind_map'),
         })

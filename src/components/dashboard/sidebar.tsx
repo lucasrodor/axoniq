@@ -255,7 +255,7 @@ export function Sidebar() {
           </nav>
 
           {/* Plan Badge & Credits */}
-          <div className={cn("py-4 border-t border-zinc-800/50", isCollapsed ? "px-1" : "px-1")}>
+          <div id="tour-credits" className={cn("py-4 border-t border-zinc-800/50", isCollapsed ? "px-1" : "px-1")}>
             <CreditsIndicator
               used={credits.used}
               limit={credits.limit}

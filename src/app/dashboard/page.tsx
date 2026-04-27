@@ -63,6 +63,7 @@ import { QuizCard, DraggableQuiz } from '@/components/dashboard/quiz-card'
 import { MindMapCard, DraggableMindMap } from '@/components/dashboard/mind-map-card'
 import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import { UpgradeGate } from '@/components/dashboard/upgrade-gate'
+import { GuidedTour } from '@/components/dashboard/guided-tour'
 import { useSubscription } from '@/hooks/useSubscription'
 import { FolderHeader, DroppableFolder } from '@/components/dashboard/folder-management'
 import { 
@@ -600,8 +601,12 @@ function DashboardPageContent() {
   const activeIdString = activeId || ''
   const activeDeck = activeIdString.startsWith('deck-') ? filteredDecks.find((d: DeckWithStats) => d.id === activeIdString.replace('deck-', '')) : null
   const activeQuiz = activeIdString.startsWith('quiz-') ? filteredQuizzes.find((q: Quiz) => q.id === activeIdString.replace('quiz-', '')) : null
+  
+  const isAccountEmpty = decks.length === 0 && quizzes.length === 0 && mindMaps.length === 0
+
     return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <GuidedTour />
       <div className="min-h-screen relative clinical-grid overflow-x-hidden">
         <NeuronBackground />
         <div className="relative z-10 space-y-8 p-3 sm:p-4 md:p-8 max-w-7xl mx-auto">
@@ -635,6 +640,7 @@ function DashboardPageContent() {
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0 w-full sm:w-auto px-1">
               <Button 
+                id="tour-create-btn"
                 variant="primary" 
                 size="sm" 
                 className={cn(
@@ -667,7 +673,7 @@ function DashboardPageContent() {
           {/* Bento Command Center */}
           {loading ? (
             <StatSkeleton />
-          ) : (
+          ) : isAccountEmpty ? null : (
             <BentoGrid>
               <StatCard 
                 className="md:col-span-2"
@@ -683,7 +689,7 @@ function DashboardPageContent() {
             </BentoGrid>
           )}
           {/* Learning Progress Bar */}
-          {totalCards > 0 && (
+          {totalCards > 0 && !isAccountEmpty && (
             <div className="glass-panel p-4 sm:p-6 rounded-3xl border-zinc-800/50 relative overflow-hidden w-full min-w-0">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl pointer-events-none" />
               <div className="flex items-center justify-between mb-4">
@@ -710,7 +716,7 @@ function DashboardPageContent() {
             </div>
           )}
           {/* Due Cards Alert */}
-          {totalDue > 0 && (
+          {totalDue > 0 && !isAccountEmpty && (
             <div className="p-4 sm:p-6 rounded-[2rem] bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-transparent border border-amber-500/20 backdrop-blur-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 group">
               <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
               <div className="flex items-center gap-4 relative z-10">
@@ -726,7 +732,6 @@ function DashboardPageContent() {
               </Link>
             </div>
           )}
-          {/* New Folder Modal */}
           <AnimatePresence>
             {showNewFolder && (
               <NewFolderModal
@@ -737,8 +742,21 @@ function DashboardPageContent() {
               />
             )}
           </AnimatePresence>
-          {/* Tabs Navigation */}
-          <div className="flex items-center gap-1 border-b border-zinc-800 overflow-x-auto scrollbar-none mb-10 -mx-3 px-3 sm:mx-0 sm:px-0">
+
+          {isAccountEmpty ? (
+            <div className="pt-8">
+              <DashboardEmptyState 
+                title="Tudo pronto para começar!"
+                description="Seu cofre de conhecimento está limpo. Faça upload do seu primeiro PDF, anotação ou áudio para gerarmos flashcards, quizzes e mapas mentais."
+                icon={Plus}
+                actionLabel="CRIAR PRIMEIRO MATERIAL"
+                onAction={() => setShowCreateChoice(true)}
+              />
+            </div>
+          ) : (
+            <>
+              {/* Tabs Navigation */}
+              <div id="tour-tabs" className="flex items-center gap-1 border-b border-zinc-800 overflow-x-auto scrollbar-none mb-10 -mx-3 px-3 sm:mx-0 sm:px-0">
             <button
               onClick={() => handleTabChange('decks')}
               className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] border-b-2 transition-all duration-300 ${
@@ -1066,6 +1084,8 @@ function DashboardPageContent() {
               onUpgrade={() => window.dispatchEvent(new Event('open-upgrade-modal'))} 
               onGenerateReport={() => setShowReportLimitModal(true)}
             />
+          )}
+            </>
           )}
         </div>
       </div>

@@ -248,7 +248,7 @@ Exemplo:
     })
 
     if (uniqueCards.length < quantity * 0.7) {
-      console.warn(`Apenas \${uniqueCards.length}/\${quantity} cards passaram na validação`)
+      console.warn(`Apenas ${uniqueCards.length}/${quantity} cards passaram na validação`)
       if (uniqueCards.length === 0) {
         await supabaseAdmin.from('decks').update({ status: 'error' }).eq('id', deck.id)
         throw new Error('Não foi possível gerar flashcards com a qualidade exigida. Tente enviar um texto mais detalhado.')
