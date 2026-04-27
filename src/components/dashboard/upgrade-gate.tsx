@@ -26,7 +26,7 @@ const PLANS = [
     name: 'Semestral',
     price: 'R$ 23,90',
     description: 'R$ 143,40 a cada 6 meses',
-    checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=6',
+    checkoutUrl: 'https://pay.kirvano.com/211b8bc5-8f73-450e-bc51-444aee40f87f?split=6',
     badge: 'Mais Vendido',
     save: '15% OFF',
     gateway: 'kirvano'

@@ -24,7 +24,7 @@ const plans = [
   },
   {
     name: 'Semestral',
-    checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=6',
+    checkoutUrl: 'https://pay.kirvano.com/211b8bc5-8f73-450e-bc51-444aee40f87f?split=6',
     priceId: 'price_1TQ5rrDGo6c9XEzCDw2OVsTV',
     price: 'R$ 197',
     description: 'O equilíbrio perfeito para estudantes.',
