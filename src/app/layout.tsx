@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { MetaPixel } from "@/components/meta-pixel";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -67,6 +68,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
+          <MetaPixel />
           <ToastProvider>{children}</ToastProvider>
         </AuthProvider>
       </body>
