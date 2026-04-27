@@ -27,6 +27,11 @@ export function MetaPixel() {
   useEffect(() => {
     if (!isInternalRoute && typeof window !== 'undefined' && window.fbq) {
       window.fbq('track', 'PageView')
+      
+      // Páginas importantes disparam ViewContent
+      if (pathname === '/' || pathname === '/pricing' || pathname?.startsWith('/landing')) {
+        window.fbq('track', 'ViewContent')
+      }
     }
   }, [pathname, isInternalRoute])
 
@@ -58,6 +63,12 @@ export function MetaPixel() {
 }
 
 // Utilitários de Rastreamento (apenas executam se o fbq estiver disponível)
+export const trackViewContent = () => {
+  if (typeof window !== 'undefined' && window.fbq) {
+    window.fbq('track', 'ViewContent')
+  }
+}
+
 export const trackLead = () => {
   if (typeof window !== 'undefined' && window.fbq) {
     window.fbq('track', 'Lead')
@@ -69,3 +80,10 @@ export const trackCompleteRegistration = () => {
     window.fbq('track', 'CompleteRegistration')
   }
 }
+
+export const trackPurchase = (value: number, currency: string = 'BRL') => {
+  if (typeof window !== 'undefined' && window.fbq) {
+    window.fbq('track', 'Purchase', { value, currency })
+  }
+}
+

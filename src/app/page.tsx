@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 import { supabase } from '@/lib/supabase/client'
+import { trackLead } from '@/components/meta-pixel'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -337,6 +338,7 @@ function WaitlistModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     }
 
     setStatus('success')
+    trackLead()
   }
 
   // Reset status on open

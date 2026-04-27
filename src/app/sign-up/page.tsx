@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { Sparkles, Brain, Zap, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
+import { trackCompleteRegistration } from '@/components/meta-pixel'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -35,6 +36,7 @@ export default function SignUpPage() {
       })
       if (error) throw error
       toast('Cadastro realizado com sucesso!', 'success')
+      trackCompleteRegistration()
       router.push('/login')
     } catch (error) {
       console.error(error)

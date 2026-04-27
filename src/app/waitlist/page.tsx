@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 import { supabase } from '@/lib/supabase/client'
+import { trackLead } from '@/components/meta-pixel'
 // import { Metadata } from 'next'
 
 // export const metadata: Metadata = {
@@ -161,6 +162,7 @@ export default function WaitlistPage() {
     }
 
     setStatus('success')
+    trackLead()
   }
 
   return (
