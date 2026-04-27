@@ -15,7 +15,7 @@ const PLANS = [
   {
     id: 'monthly',
     name: 'Mensal',
-    price: 'R$ 27,90',
+    price: 'R$ 29,90',
     description: 'Flexibilidade total mês a mês',
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1TQ5rKDGo6c9XEzCjUnL9wb9',
     badge: null,
@@ -24,8 +24,8 @@ const PLANS = [
   {
     id: 'semiannual',
     name: 'Semestral',
-    price: 'R$ 23,90',
-    description: 'R$ 143,40 a cada 6 meses',
+    price: 'R$ 24,98',
+    description: 'R$ 131,90 à vista (Economia de 25%)',
     checkoutUrl: 'https://pay.kirvano.com/211b8bc5-8f73-450e-bc51-444aee40f87f?split=6',
     badge: 'Mais Vendido',
     save: '15% OFF',
@@ -34,8 +34,8 @@ const PLANS = [
   {
     id: 'annual',
     name: 'Anual',
-    price: 'R$ 19,90',
-    description: 'R$ 238,80 por ano',
+    price: 'R$ 19,98',
+    description: 'R$ 195,00 à vista (Melhor Valor)',
     checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=12',
     badge: 'Melhor Valor',
     save: '30% OFF',

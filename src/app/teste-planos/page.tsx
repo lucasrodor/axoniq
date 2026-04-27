@@ -10,8 +10,8 @@ const plans = [
   {
     name: 'Mensal',
     priceId: 'price_1TQ5rKDGo6c9XEzCjUnL9wb9',
-    price: 'R$ 47',
-    description: 'Para quem quer começar com tudo.',
+    price: 'R$ 29,90',
+    description: 'Flexibilidade total para começar agora.',
     features: [
       'Acesso Ilimitado à IA',
       'Criação de Decks Ilimitados',
@@ -26,8 +26,8 @@ const plans = [
     name: 'Semestral',
     checkoutUrl: 'https://pay.kirvano.com/211b8bc5-8f73-450e-bc51-444aee40f87f?split=6',
     priceId: 'price_1TQ5rrDGo6c9XEzCDw2OVsTV',
-    price: 'R$ 197',
-    description: 'O equilíbrio perfeito para estudantes.',
+    price: 'R$ 24,98',
+    description: 'R$ 131,90 à vista (Economia de 25%)',
     features: [
       'Tudo do plano Mensal',
       'Economia de 30%',
@@ -43,8 +43,8 @@ const plans = [
     name: 'Anual',
     checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=12',
     priceId: 'price_1TQ5s6DGo6c9XEzCSHjjmLoR',
-    price: 'R$ 297',
-    description: 'Foco total no longo prazo e aprovação.',
+    price: 'R$ 19,98',
+    description: 'R$ 195,00 à vista (Melhor Custo-Benefício)',
     features: [
       'Tudo do plano Semestral',
       'Melhor custo-benefício',
