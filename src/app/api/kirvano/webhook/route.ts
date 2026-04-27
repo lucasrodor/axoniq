@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
 import { getStripe } from '@/lib/stripe'
 
@@ -26,7 +27,8 @@ export async function POST(req: Request) {
     const email = payload.customer?.email || payload.buyer?.email || ''
     
     // Identificar plano pelo nome da oferta/produto
-    const offerName = (payload.offer?.name || payload.product?.name || '').toLowerCase()
+    const firstProduct = payload.products && payload.products.length > 0 ? payload.products[0] : null
+    const offerName = (payload.offer?.name || payload.product?.name || firstProduct?.offer_name || firstProduct?.name || '').toLowerCase()
     let planInterval = 'semiannual'
     if (offerName.includes('anual')) {
       planInterval = 'annual'
@@ -99,6 +101,13 @@ export async function POST(req: Request) {
       if (error) {
         console.error('Erro ao atualizar Supabase:', error)
         throw error
+      }
+
+      // Forçar revalidação de cache do Next.js para atualizar o painel imediatamente
+      try {
+        revalidatePath('/', 'layout')
+      } catch (e) {
+        console.warn('Não foi possível revalidar o cache:', e)
       }
     } 
     else if (event === 'SUBSCRIPTION_CANCELED' || event === 'PAYMENT_REFUNDED' || event === 'REFUNDED' || event === 'SUBSCRIPTION_SUSPENDED') {
