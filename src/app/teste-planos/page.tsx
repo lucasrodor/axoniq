@@ -23,6 +23,7 @@ const plans = [
     gateway: 'stripe'
   },
   {
+    name: 'Semestral',
     checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=6',
     priceId: 'price_1TQ5rrDGo6c9XEzCDw2OVsTV',
     price: 'R$ 197',
