@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, OPENAI_MODEL } from '@/lib/ai/client'
+import { openai, MODEL_SMART } from '@/lib/ai/client'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -8,12 +8,22 @@ import { quizLimiter } from '@/lib/rate-limit'
 
 // Define quiz question structure
 const QuizQuestionSchema = z.object({
-  question: z.string().describe('The question text. For cloze type, use ___ for blanks.'),
-  type: z.enum(['multiple_choice', 'cloze', 'true_false']).describe('Question type'),
-  options: z.array(z.string()).describe('Answer options (5 for multiple_choice, 2 for true_false, 4-5 for cloze)'),
-  correct_answer: z.number().describe('Zero-based index of the correct option in the options array'),
-  explanation: z.string().describe('Explanation of why the correct answer is right and others are wrong'),
-  difficulty: z.enum(['easy', 'medium', 'hard']).describe('Difficulty level'),
+  question: z.string()
+    .min(20, 'Pergunta muito curta')
+    .describe('Pergunta clínica completa terminando em "?" ou comando direto. NUNCA afirmativa solta. Para cloze, usar ___ no lugar da palavra-chave. Idealmente um minicasso clínico com história, exame físico ou achado relevante antes da pergunta.'),
+  
+  type: z.enum(['multiple_choice', 'cloze', 'true_false']),
+  
+  options: z.array(z.string().min(2))
+    .describe('Opções únicas, do mesmo domínio semântico, sem repetições nem sinônimos. 5 para multiple_choice, 2 para true_false (Verdadeiro/Falso), 4-5 para cloze.'),
+  
+  correct_answer: z.number().int().min(0),
+  
+  explanation: z.string()
+    .min(150, 'Explicação muito curta — exija mecanismo e refutação dos distratores')
+    .describe('Explicação em 3 partes: (1) por que a correta está certa explicando o mecanismo fisiopatológico ou raciocínio clínico — NUNCA apenas reafirme a alternativa; (2) por que pelo menos 2 distratores específicos estão errados, citando o motivo clínico; (3) referência ou conceito-chave para fixação. Mínimo 150 caracteres.'),
+  
+  difficulty: z.enum(['easy', 'medium', 'hard']),
 })
 
 const QuizListSchema = z.object({
@@ -120,21 +130,76 @@ ${text.substring(0, 50000)}`
     let completion
     try {
       completion = await openai.chat.completions.create({
-        model: OPENAI_MODEL,
+        model: MODEL_SMART,
         messages: [
           {
             role: 'system',
-            content: `You are an expert medical exam question creator, specialized in creating questions similar to Brazilian medical residency exams (provas de residência médica).
-  
-  Your task is to generate ${quantity} quiz questions based on the provided text and images.
-  
-  STRICT RULES:
-  1. Generate questions ONLY based on the provided text and images.
-  2. For multiple_choice: 5 options (A-E). EXACTLY ONE correct answer.
-  3. For cloze: Use ___ in the question. 4-5 options.
-  4. For true_false: Options are ["Verdadeiro", "Falso"].
-  5. Language: Portuguese.
-  6. Provide detailed explanations justifying the correct answer based on the visual or textual evidence.`
+            content: `Você é um professor de medicina sênior especializado em criar questões para provas de residência de alto nível (USP, UNICAMP, ENARE, UERJ, AMRIGS).
+
+Sua tarefa é gerar \${quantity} questões de qualidade igual ou superior a essas provas, baseadas EXCLUSIVAMENTE no conteúdo fornecido (texto e imagens).
+
+## REGRAS DE QUALIDADE — NÃO NEGOCIÁVEIS
+
+### 1. ESTRUTURA DA PERGUNTA
+- Toda questão DEVE terminar com "?" ou ser um comando direto ("Assinale a alternativa correta", "Qual a conduta?")
+- PROIBIDO: afirmativas soltas, frases incompletas, perguntas vagas
+- IDEAL: minicasso clínico com idade, sexo, queixa principal, achado relevante e pergunta clara
+
+### 2. PROFUNDIDADE
+- Evite "decoreba" pura. Privilegie raciocínio clínico, fisiopatologia, mecanismo de ação
+- Para multiple_choice: 5 opções (A-E), todas plausíveis e do mesmo domínio
+- PROIBIDO: "Todas as anteriores", "Nenhuma das anteriores", opções óbvias por exclusão
+
+### 3. ALTERNATIVAS
+- NUNCA repita opções nem use sinônimos como opções diferentes (ex: "HAS" e "Hipertensão arterial sistêmica" são a MESMA opção)
+- Mantenha tamanho similar entre opções — distratores curtos demais entregam a resposta
+- Distratores devem ser erros plausíveis que um residente intermediário cometeria
+
+### 4. EXPLICAÇÃO — REGRA CRÍTICA
+A explicação NUNCA pode ser circular. PROIBIDO:
+❌ "A resposta é X porque X é o que faz Y acontecer"
+❌ "A alternativa correta é a B"
+❌ Explicações genéricas sem fundamento clínico
+
+OBRIGATÓRIO em toda explicação:
+✅ Mecanismo fisiopatológico OU raciocínio clínico que justifica a resposta
+✅ Refutação específica de pelo menos 2 distratores ("A alternativa C está errada porque [motivo clínico específico]")
+✅ Conceito-chave para fixação (ex: critério diagnóstico, dose terapêutica, achado patognomônico)
+✅ Mínimo de 150 caracteres
+
+## EXEMPLO DE QUESTÃO RUIM (NÃO FAÇA ASSIM)
+{
+  "question": "Mecanismo de ação da metformina",
+  "options": ["Diminui glicemia", "Aumenta insulina", "Inibe glicose", "Reduz açúcar", "Controla diabetes"],
+  "correct_answer": 0,
+  "explanation": "A metformina diminui a glicemia porque ela é um antidiabético que reduz a glicose."
+}
+
+PROBLEMAS: pergunta sem ?, opções vagas e sobrepostas, explicação circular sem mecanismo.
+
+## EXEMPLO DE QUESTÃO BOA (FAÇA ASSIM)
+{
+  "question": "Mulher de 52 anos, IMC 31, diagnosticada com DM2 há 2 meses, glicemia de jejum 168 mg/dL e HbA1c 7,8%. Qual o mecanismo de ação principal do medicamento de primeira linha indicado?",
+  "options": [
+    "Inibição da gliconeogênese hepática e melhora da sensibilidade periférica à insulina",
+    "Estímulo direto à secreção de insulina pelas células beta-pancreáticas",
+    "Inibição da alfa-glicosidase intestinal reduzindo absorção de carboidratos",
+    "Bloqueio do cotransportador SGLT2 no túbulo proximal renal",
+    "Agonismo do receptor GLP-1 com retardo do esvaziamento gástrico"
+  ],
+  "correct_answer": 0,
+  "explanation": "A metformina é a primeira linha no DM2 e atua principalmente pela inibição da gliconeogênese hepática (via ativação da AMPK) e aumento da sensibilidade periférica à insulina, sem estimular sua secreção — daí o baixo risco de hipoglicemia. A alternativa B descreve sulfonilureias (ex: glibenclamida), que estimulam células beta. A alternativa D descreve os iSGLT2 (dapagliflozina), usados em segunda linha ou com benefício cardiovascular. Conceito-chave: metformina é antihiperglicemiante, não hipoglicemiante."
+}
+
+## DISTRIBUIÇÃO POR TIPO
+- \${multipleChoiceCount} questões multiple_choice (5 opções)
+- \${clozeCount} questões cloze (com ___ na lacuna)
+- \${trueFalseCount} questões true_false (Verdadeiro / Falso)
+
+## DIFICULDADE
+Distribua entre easy (30%), medium (50%) e hard (20%) baseado no nível de raciocínio exigido, não no quanto o conteúdo foi explorado no material.
+
+Use APENAS o conteúdo fornecido. Não invente fatos clínicos.`
           },
           {
             role: 'user',
@@ -148,11 +213,13 @@ ${text.substring(0, 50000)}`
       
       if (apiError.message.includes('image') || apiError.message.includes('download') || apiError.message.includes('timeout')) {
         completion = await openai.chat.completions.create({
-          model: OPENAI_MODEL,
+          model: MODEL_SMART,
           messages: [
             {
               role: 'system',
-              content: `You are an expert medical exam question creator specialized in medical education. Your task is to extract key concepts from the provided text and turn them into quiz questions.`
+              content: `Você é um professor de medicina sênior especializado em criar questões para provas de residência de alto nível (USP, UNICAMP, ENARE, UERJ, AMRIGS).
+
+Sua tarefa é gerar \${quantity} questões de qualidade igual ou superior a essas provas, baseadas EXCLUSIVAMENTE no conteúdo textual fornecido. Siga rigorosamente as diretrizes de perguntas clínicas, distratores plausíveis e explicações não-circulares detalhadas.`
             },
             {
               role: 'user',
@@ -192,8 +259,45 @@ ${text.substring(0, 50000)}`
       return NextResponse.json({ error: 'Não foi possível gerar questões' }, { status: 500 })
     }
 
+    // Validação pós-geração
+    const validQuestions = questions.filter(q => {
+      // Pergunta deve terminar em ? ou conter comando claro
+      const hasQuestionMark = q.question.trim().endsWith('?')
+      const hasCommand = /assinale|qual|indique|aponte|determine|conduta|diagnóstico/i.test(q.question)
+      if (!hasQuestionMark && !hasCommand) return false
+      
+      // Opções únicas (case-insensitive, sem espaços extras)
+      const normalized = q.options.map(o => o.toLowerCase().trim().replace(/\\s+/g, ' '))
+      const unique = new Set(normalized)
+      if (unique.size !== q.options.length) return false
+      
+      // Explicação não pode ser circular ou muito curta
+      if (!q.explanation || q.explanation.length < 150) return false
+      
+      // Detecta explicação circular básica (resposta literalmente repetida na explicação)
+      const correctOption = q.options[q.correct_answer]?.toLowerCase()
+      if (correctOption && q.explanation.toLowerCase().includes(`a resposta é \${correctOption}`)) {
+        return false
+      }
+      
+      return true
+    })
+
+    if (validQuestions.length < quantity * 0.7) {
+      // Se mais de 30% das questões falharam validação, falhar a geração
+      console.warn(`Apenas \${validQuestions.length}/\${quantity} passaram na validação. Falhando geração para preservar qualidade.`)
+      
+      await supabaseAdmin
+        .from('quizzes')
+        .update({ status: 'error' })
+        .eq('id', quiz.id)
+
+      // Throw to trigger the credit refund catch block
+      throw new Error('A inteligência artificial não conseguiu atingir o padrão de qualidade exigido para este material. Seus créditos foram estornados. Tente enviar um texto mais claro.')
+    }
+
     // Insert questions
-    const questionsToInsert = questions.map(q => ({
+    const questionsToInsert = validQuestions.map(q => ({
       quiz_id: quiz.id,
       question: q.question,
       type: q.type,
@@ -229,7 +333,7 @@ ${text.substring(0, 50000)}`
       success: true,
       quizId: quiz.id,
       questionsCount: questions.length,
-      model: OPENAI_MODEL,
+      model: MODEL_SMART,
     })
 
   } catch (error) {

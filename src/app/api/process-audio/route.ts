@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, OPENAI_MODEL } from '@/lib/ai/client'
+import { openai, MODEL_STRUCT, MODEL_AUDIO } from '@/lib/ai/client'
 import { createAdminClient } from '@/lib/supabase/server'
 import { Readable } from 'stream'
 import { audioLimiter } from '@/lib/rate-limit'
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         
         const transcription = await openai.audio.transcriptions.create({
           file: chunkFile,
-          model: 'whisper-1',
+          model: MODEL_AUDIO,
           language: 'pt', // Force Portuguese for medical precision
         })
         
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       // Single file transcription
       const transcription = await openai.audio.transcriptions.create({
         file: file,
-        model: 'whisper-1',
+        model: MODEL_AUDIO,
         language: 'pt',
       })
       fullTranscription = transcription.text
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     let specialtyTag = 'Outros'
     try {
       const tagCompletion = await openai.chat.completions.create({
-        model: OPENAI_MODEL,
+        model: MODEL_STRUCT,
         messages: [
           {
             role: 'system',

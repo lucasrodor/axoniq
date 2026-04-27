@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, OPENAI_MODEL } from '@/lib/ai/client'
+import { openai, MODEL_STRUCT } from '@/lib/ai/client'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
 
     // 3. AI Analysis
     const completion = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
+      model: MODEL_STRUCT,
       messages: [
         {
           role: 'system',

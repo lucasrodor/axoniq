@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractTextFromBuffer } from '@/lib/processing/text-extractor'
 import { createAdminClient } from '@/lib/supabase/server'
-import { openai, OPENAI_MODEL } from '@/lib/ai/client'
+import { openai, MODEL_FAST, MODEL_CLEAN } from '@/lib/ai/client'
 import { documentLimiter } from '@/lib/rate-limit'
 
 // Helper: Process Image with GPT-4o Vision
 async function processImageWithVision(base64Image: string, mimeType: string, fileName: string) {
   try {
     const response = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
+      model: MODEL_FAST,
       messages: [
         {
           role: 'system',
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
     if (safeText) {
       try {
         const tagCompletion = await openai.chat.completions.create({
-          model: OPENAI_MODEL,
+          model: MODEL_CLEAN,
           messages: [
             {
               role: 'system',
