@@ -17,6 +17,8 @@ function SuccessContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const emailParam = searchParams.get('email')
+  const [emailToSet, setEmailToSet] = useState(emailParam || '')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -35,12 +37,16 @@ function SuccessContent() {
 
     try {
       const sessionId = searchParams.get('session_id')
-      if (!sessionId) throw new Error('Sessão de pagamento não encontrada.')
+      
+      // Kirvano fallback ou Stripe session
+      if (!sessionId && !emailToSet) {
+        throw new Error('Sessão ou e-mail não encontrados. Aguarde o e-mail com suas credenciais.')
+      }
 
       const res = await fetch('/api/auth/setup-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, password })
+        body: JSON.stringify({ sessionId, password, email: emailToSet })
       })
 
       const data = await res.json()
@@ -91,6 +97,19 @@ function SuccessContent() {
             </div>
             
             <div className="space-y-4">
+              {!searchParams.get('session_id') && !emailParam && (
+                 <div className="space-y-2 text-left">
+                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Seu E-mail da Compra</label>
+                   <input
+                     type="email"
+                     value={emailToSet}
+                     onChange={(e) => setEmailToSet(e.target.value)}
+                     placeholder="voce@exemplo.com"
+                     className="w-full px-5 py-4 rounded-2xl border border-zinc-800 bg-black/40 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-zinc-600"
+                   />
+                 </div>
+              )}
+
               <div className="space-y-2 text-left">
                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Defina sua Senha</label>
                 <div className="relative">

@@ -18,25 +18,28 @@ const PLANS = [
     price: 'R$ 27,90',
     description: 'Flexibilidade total mês a mês',
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1TQ5rKDGo6c9XEzCjUnL9wb9',
-    badge: null
+    badge: null,
+    gateway: 'stripe'
   },
   {
     id: 'semiannual',
     name: 'Semestral',
     price: 'R$ 23,90',
     description: 'R$ 143,40 a cada 6 meses',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMIANNUAL || 'price_1TQ5rrDGo6c9XEzCDw2OVsTV',
+    checkoutUrl: 'https://pay.kirvano.com/d5d56a74-bb16-4aa1-afea-fc8edd974899?split=6',
     badge: 'Mais Vendido',
-    save: '15% OFF'
+    save: '15% OFF',
+    gateway: 'kirvano'
   },
   {
     id: 'annual',
     name: 'Anual',
     price: 'R$ 19,90',
     description: 'R$ 238,80 por ano',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL || 'price_1TQ5s6DGo6c9XEzCSHjjmLoR',
+    checkoutUrl: 'https://pay.kirvano.com/2fff3c32-c96b-4f12-8ffb-fe0b050a7a16?split=12',
     badge: 'Melhor Valor',
-    save: '30% OFF'
+    save: '30% OFF',
+    gateway: 'kirvano'
   }
 ]
 
@@ -51,10 +54,25 @@ const FEATURES = [
 export function UpgradeGate({ feature, description, children }: UpgradeGateProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  const handleUpgrade = async (priceId: string) => {
-    setLoadingId(priceId)
+  const handleUpgrade = async (plan: typeof PLANS[0]) => {
+    setLoadingId(plan.id)
     try {
-      await createCheckoutSession(priceId)
+      if (plan.gateway === 'kirvano' && plan.checkoutUrl) {
+        const { supabase } = await import('@/lib/supabase/client')
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        let url = plan.checkoutUrl
+        if (user) {
+          // Passamos o email para autocompletar e o ID no parâmetro src para rastreamento no webhook
+          url += `&email=${encodeURIComponent(user.email || '')}&src=${user.id}`
+        }
+        window.location.href = url
+        return
+      }
+
+      if (plan.priceId) {
+        await createCheckoutSession(plan.priceId)
+      }
     } catch (error) {
       console.error('Upgrade error:', error)
     } finally {
@@ -121,7 +139,7 @@ export function UpgradeGate({ feature, description, children }: UpgradeGateProps
               </p>
 
               <button
-                onClick={() => handleUpgrade(plan.priceId)}
+                onClick={() => handleUpgrade(plan)}
                 disabled={!!loadingId}
                 className={`mt-auto w-full py-3 sm:py-3.5 rounded-2xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
                   plan.badge 
@@ -129,7 +147,7 @@ export function UpgradeGate({ feature, description, children }: UpgradeGateProps
                     : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
                 }`}
               >
-                {loadingId === plan.priceId ? (
+                {loadingId === plan.id ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
@@ -154,7 +172,7 @@ export function UpgradeGate({ feature, description, children }: UpgradeGateProps
 
           <p className="text-[9px] sm:text-[10px] text-zinc-700 mt-2 sm:mt-4 flex items-center gap-1.5 uppercase font-bold tracking-[0.2em]">
             <Lock className="w-3 h-3" />
-            7 dias grátis • Stripe
+            Pagamento Seguro via Stripe e Kirvano
           </p>
         </div>
       </motion.div>
