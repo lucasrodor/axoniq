@@ -99,9 +99,9 @@ export default function AccountPage() {
       }
 
       if (subscription?.paymentGateway === 'kirvano') {
-        setMessage({ type: 'success', text: 'Redirecionando para a central de compras da Kirvano...' })
+        setMessage({ type: 'success', text: 'Redirecionando para o portal de pagamentos...' })
         setTimeout(() => {
-          window.open('https://hub.kirvano.com/', '_blank')
+          window.open('https://kirvano.com/', '_blank')
         }, 1500)
         return
       }
@@ -130,7 +130,15 @@ export default function AccountPage() {
       }
     } catch (err: any) {
       console.error('Erro ao abrir portal:', err)
-      setMessage({ type: 'error', text: err.message || 'Erro ao abrir portal de pagamentos.' })
+      
+      let friendlyMessage = 'Erro ao abrir portal de pagamentos.'
+      if (err.message?.includes('test mode') || err.message?.includes('No such customer')) {
+        friendlyMessage = 'Houve um problema de sincronização com sua assinatura antiga. Por favor, contate o nosso suporte para resolvermos na hora!'
+      } else if (err.message) {
+        friendlyMessage = err.message
+      }
+
+      setMessage({ type: 'error', text: friendlyMessage })
     } finally {
       setSaving(false)
     }

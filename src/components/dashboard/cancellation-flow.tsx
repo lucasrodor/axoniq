@@ -144,7 +144,7 @@ export function CancellationFlow({ isOpen, isKirvano, onClose, onConfirm }: Canc
                       disabled={loading}
                       className="w-full py-4 text-zinc-500 hover:text-red-500 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
                     >
-                      {loading ? 'Processando...' : isKirvano ? 'Ir para a Kirvano cancelar' : 'Confirmar cancelamento e ir para o Portal'}
+                      {loading ? 'Processando...' : 'Confirmar e ir para o Portal'}
                     </button>
                   </div>
                 </div>
