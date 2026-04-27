@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     // Fetch subscription
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('status, plan_interval, current_period_end, cancel_at_period_end')
+      .select('status, plan_interval, current_period_end, cancel_at_period_end, payment_gateway')
       .eq('user_id', user.id)
       .single()
 
@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
         interval: subscription.plan_interval,
         currentPeriodEnd: subscription.current_period_end,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        paymentGateway: subscription.payment_gateway,
       } : null,
       credits,
       trial: isTrialActive ? {

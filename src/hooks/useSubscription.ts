@@ -14,6 +14,7 @@ interface SubscriptionData {
     interval: string | null
     currentPeriodEnd: string | null
     cancelAtPeriodEnd: boolean
+    paymentGateway: 'stripe' | 'kirvano' | null
   } | null
   credits: {
     used: number

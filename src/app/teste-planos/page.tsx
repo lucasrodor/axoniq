@@ -23,8 +23,7 @@ const plans = [
     gateway: 'stripe'
   },
   {
-    name: 'Semestral',
-    checkoutUrl: 'https://pay.kirvano.com/d5d56a74-bb16-4aa1-afea-fc8edd974899?split=6',
+    checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=6',
     priceId: 'price_1TQ5rrDGo6c9XEzCDw2OVsTV',
     price: 'R$ 197',
     description: 'O equilíbrio perfeito para estudantes.',
@@ -41,7 +40,7 @@ const plans = [
   },
   {
     name: 'Anual',
-    checkoutUrl: 'https://pay.kirvano.com/2fff3c32-c96b-4f12-8ffb-fe0b050a7a16?split=12',
+    checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=12',
     priceId: 'price_1TQ5s6DGo6c9XEzCSHjjmLoR',
     price: 'R$ 297',
     description: 'Foco total no longo prazo e aprovação.',

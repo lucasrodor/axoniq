@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 
 interface CancellationFlowProps {
   isOpen: boolean
+  isKirvano?: boolean
   onClose: () => void
   onConfirm: (reason: string, feedback: string) => void
 }
@@ -20,7 +21,7 @@ const reasons = [
   { id: 'other', label: 'Outro motivo', icon: '📝' },
 ]
 
-export function CancellationFlow({ isOpen, onClose, onConfirm }: CancellationFlowProps) {
+export function CancellationFlow({ isOpen, isKirvano, onClose, onConfirm }: CancellationFlowProps) {
   const [step, setStep] = useState(1)
   const [selectedReason, setSelectedReason] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -143,7 +144,7 @@ export function CancellationFlow({ isOpen, onClose, onConfirm }: CancellationFlo
                       disabled={loading}
                       className="w-full py-4 text-zinc-500 hover:text-red-500 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
                     >
-                      {loading ? 'Processando...' : 'Confirmar cancelamento e ir para o Portal'}
+                      {loading ? 'Processando...' : isKirvano ? 'Ir para a Kirvano cancelar' : 'Confirmar cancelamento e ir para o Portal'}
                     </button>
                   </div>
                 </div>

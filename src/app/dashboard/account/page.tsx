@@ -94,9 +94,16 @@ export default function AccountPage() {
     setSaving(true)
     
     try {
-      // Opcional: Salvar o feedback do cancelamento no seu banco aqui
       if (reason) {
         console.log('Motivo do cancelamento:', reason, feedback)
+      }
+
+      if (subscription?.paymentGateway === 'kirvano') {
+        setMessage({ type: 'success', text: 'Redirecionando para a central de compras da Kirvano...' })
+        setTimeout(() => {
+          window.open('https://hub.kirvano.com/', '_blank')
+        }, 1500)
+        return
       }
 
       const { data: { session } } = await supabase.auth.getSession()
@@ -122,7 +129,7 @@ export default function AccountPage() {
         }, 1500)
       }
     } catch (err: any) {
-      console.error('Erro ao abrir portal do Stripe:', err)
+      console.error('Erro ao abrir portal:', err)
       setMessage({ type: 'error', text: err.message || 'Erro ao abrir portal de pagamentos.' })
     } finally {
       setSaving(false)
@@ -396,6 +403,7 @@ export default function AccountPage() {
 
         <CancellationFlow 
           isOpen={isCancelModalOpen}
+          isKirvano={subscription?.paymentGateway === 'kirvano'}
           onClose={() => setIsCancelModalOpen(false)}
           onConfirm={handleManageSubscription}
         />
