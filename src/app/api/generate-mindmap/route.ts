@@ -220,7 +220,7 @@ Total: 1 root + 5 branches + 14 leaves = 20 nodes
     try {
       generatedData = JSON.parse(content)
     } catch {
-      const jsonMatch = content.match(/\`\`\`json\\n([\\s\\S]*?)\\n\`\`\`/)
+      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/)
       if (jsonMatch) {
         try {
           generatedData = JSON.parse(jsonMatch[1])

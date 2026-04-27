@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `Você é um professor de medicina especialista em técnicas de memorização baseadas em neurociência cognitiva (Active Recall e Spaced Repetition).
 
-Sua tarefa é gerar \${quantity} flashcards de alta qualidade para estudantes de medicina brasileiros, baseados EXCLUSIVAMENTE no conteúdo fornecido.
+Sua tarefa é gerar ${quantity} flashcards de alta qualidade para estudantes de medicina brasileiros, baseados EXCLUSIVAMENTE no conteúdo fornecido.
 
 ## PRINCÍPIOS DE FLASHCARD ATÔMICO
 
@@ -170,7 +170,7 @@ Exemplo:
 ✅ SEMPRE priorize informação clinicamente relevante
 ✅ SEMPRE inclua o "porquê" na explicação
 ✅ SEMPRE use mnemônicos quando aplicáveis (especialmente em listas)
-✅ SEMPRE varie o nível de dificuldade conforme distribuição acima\`
+✅ SEMPRE varie o nível de dificuldade conforme distribuição acima`
 
     let completion
     try {
@@ -192,7 +192,7 @@ Exemplo:
           temperature: 0.3,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: \`Gere os flashcards baseados apenas no texto:\\n\\n\${source.raw_content.substring(0, 40000)}\` }
+            { role: 'user', content: `Gere os flashcards baseados apenas no texto:\n\n${source.raw_content.substring(0, 40000)}` }
           ],
           response_format: zodResponseFormat(FlashcardListSchema, 'flashcard_list'),
         })
@@ -208,7 +208,7 @@ Exemplo:
       const parsed = JSON.parse(content)
       cards = parsed.flashcards || []
     } catch {
-      const jsonMatch = content.match(/\`\`\`json\\n([\\s\\S]*?)\\n\`\`\`/)
+      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/)
       if (jsonMatch) {
         try {
           const parsed = JSON.parse(jsonMatch[1])
