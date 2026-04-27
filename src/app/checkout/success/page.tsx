@@ -17,6 +17,7 @@ function SuccessContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const emailParam = searchParams.get('email')
   const [emailToSet, setEmailToSet] = useState(emailParam || '')
 
@@ -50,7 +51,14 @@ function SuccessContent() {
       })
 
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro ao definir senha')
+      
+      if (!res.ok) {
+        if (res.status === 403) {
+          setShowLoginPrompt(true)
+          return
+        }
+        throw new Error(data.error || 'Erro ao definir senha')
+      }
 
       // 4. Se deu certo, faz o login automático
       const { error: loginError } = await supabase.auth.signInWithPassword({
@@ -87,7 +95,40 @@ function SuccessContent() {
           Pagamento Confirmado!
         </h1>
 
-        {isNewUser ? (
+        {isLoggedIn ? (
+          <div className="space-y-6">
+            <p className="text-zinc-400 leading-relaxed">
+              Parabéns! Seu pagamento foi processado com sucesso. Todos os recursos já estão liberados.
+            </p>
+
+            <Link 
+              href="/dashboard" 
+              className="group flex items-center justify-center gap-2 w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black transition-all shadow-lg shadow-blue-600/30"
+            >
+              Acessar Dashboard
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        ) : showLoginPrompt ? (
+          <div className="space-y-6">
+            <div className="w-16 h-16 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8" />
+            </div>
+            <p className="text-zinc-300 font-bold text-lg">
+              Você já possui uma conta!
+            </p>
+            <p className="text-zinc-400 leading-relaxed text-sm">
+              Identificamos que o e-mail informado já tem uma senha cadastrada no nosso sistema. 
+              Sua assinatura já foi ativada.
+            </p>
+            <Link 
+              href="/login" 
+              className="block w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold transition-all shadow-lg shadow-blue-600/30"
+            >
+              Fazer Login Agora
+            </Link>
+          </div>
+        ) : isNewUser || !searchParams.get('session_id') ? (
           <div className="space-y-6">
             <div className="space-y-2">
               <p className="text-zinc-200 font-bold">Boas-vindas ao AxonIQ Pro!</p>
@@ -144,7 +185,7 @@ function SuccessContent() {
               </Button>
             </div>
           </div>
-        ) : isLoggedIn === false ? (
+        ) : (
           <div className="space-y-6">
             <p className="text-zinc-400 leading-relaxed">
               Sua conta já está ativa com o plano Pro. Entre agora para começar a estudar.
@@ -154,20 +195,6 @@ function SuccessContent() {
               className="block w-full py-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-bold transition-all border border-zinc-700"
             >
               Ir para o Login
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <p className="text-zinc-400 leading-relaxed">
-              Parabéns! Seu upgrade para o plano Pro foi concluído com sucesso. Todos os recursos já estão liberados.
-            </p>
-
-            <Link 
-              href="/dashboard" 
-              className="group flex items-center justify-center gap-2 w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black transition-all shadow-lg shadow-blue-600/30"
-            >
-              Acessar Dashboard
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         )}

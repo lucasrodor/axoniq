@@ -19,10 +19,10 @@ export async function POST(req: Request) {
     const event = payload.event
     
     // O tracking src é passado na URL do checkout: &src={USER_ID}
-    // A Kirvano normalmente manda isso em tracking.src, src, ou metadata.src dependendo da configuração
-    const src = payload.tracking?.src || payload.src || payload.customer?.src || payload.metadata?.src
+    // A Kirvano normalmente manda isso em utm.src, tracking.src, src, ou metadata.src
+    const src = payload.utm?.src || payload.tracking?.src || payload.src || payload.customer?.src || payload.metadata?.src
     const kirvanoCustomerId = payload.customer?.id || payload.buyer?.id || ''
-    const kirvanoSubscriptionId = payload.subscription?.id || payload.transaction?.id || ''
+    const kirvanoSubscriptionId = payload.subscription?.id || payload.transaction?.id || payload.sale_id || ''
     const email = payload.customer?.email || payload.buyer?.email || ''
     
     // Identificar plano pelo nome da oferta/produto

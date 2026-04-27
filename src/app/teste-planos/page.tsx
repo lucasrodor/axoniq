@@ -19,10 +19,12 @@ const plans = [
       'Suporte Prioritário',
     ],
     icon: Rocket,
-    color: 'blue'
+    color: 'blue',
+    gateway: 'stripe'
   },
   {
     name: 'Semestral',
+    checkoutUrl: 'https://pay.kirvano.com/d5d56a74-bb16-4aa1-afea-fc8edd974899?split=6',
     priceId: 'price_1TQ5rrDGo6c9XEzCDw2OVsTV',
     price: 'R$ 197',
     description: 'O equilíbrio perfeito para estudantes.',
@@ -34,10 +36,12 @@ const plans = [
     ],
     popular: true,
     icon: Star,
-    color: 'emerald'
+    color: 'emerald',
+    gateway: 'kirvano'
   },
   {
     name: 'Anual',
+    checkoutUrl: 'https://pay.kirvano.com/2fff3c32-c96b-4f12-8ffb-fe0b050a7a16?split=12',
     priceId: 'price_1TQ5s6DGo6c9XEzCSHjjmLoR',
     price: 'R$ 297',
     description: 'Foco total no longo prazo e aprovação.',
@@ -48,19 +52,35 @@ const plans = [
       'Acesso Vitalício aos Decks Base',
     ],
     icon: Zap,
-    color: 'amber'
+    color: 'amber',
+    gateway: 'kirvano'
   }
 ]
 
 export default function TestePlanosPage() {
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null)
 
-  const handleSubscribe = async (priceId: string) => {
-    setLoadingPriceId(priceId)
+  const handleSubscribe = async (plan: typeof plans[0]) => {
+    setLoadingPriceId(plan.priceId || plan.name)
     try {
-      await createCheckoutSession(priceId)
+      if (plan.gateway === 'kirvano' && plan.checkoutUrl) {
+        const { supabase } = await import('@/lib/supabase/client')
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        let url = plan.checkoutUrl
+        if (user) {
+          url += `&email=${encodeURIComponent(user.email || '')}&src=${user.id}`
+        }
+        window.location.href = url
+        return
+      }
+
+      if (plan.priceId) {
+        await createCheckoutSession(plan.priceId)
+      }
     } catch (error) {
       console.error(error)
+    } finally {
       setLoadingPriceId(null)
     }
   }
@@ -153,7 +173,7 @@ export default function TestePlanosPage() {
               </ul>
 
               <button
-                onClick={() => handleSubscribe(plan.priceId)}
+                onClick={() => handleSubscribe(plan)}
                 disabled={loadingPriceId !== null}
                 className={cn(
                   "w-full py-4 rounded-2xl font-black transition-all active:scale-[0.98] flex items-center justify-center gap-2",
@@ -162,7 +182,7 @@ export default function TestePlanosPage() {
                     : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
                 )}
               >
-                {loadingPriceId === plan.priceId ? (
+                {loadingPriceId === (plan.priceId || plan.name) ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
