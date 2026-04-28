@@ -182,6 +182,8 @@ export function Sidebar() {
     { href: '/dashboard/account', icon: 'settings', label: 'Configurações' },
   ]
 
+  const effectiveIsCollapsed = isMobileOpen ? false : isCollapsed
+
   return (
     <>
       {/* Mobile Hamburger Toggle */}
@@ -213,7 +215,7 @@ export function Sidebar() {
       <aside
         className={cn(
           "fixed top-0 left-0 h-screen z-[55] glass-panel border-r border-zinc-800/50 transition-all duration-500 ease-in-out bg-[#09090B]/80 backdrop-blur-xl",
-          isCollapsed ? "w-[72px]" : "w-[240px]",
+          effectiveIsCollapsed ? "w-[72px]" : "w-[240px]",
           isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
@@ -221,13 +223,13 @@ export function Sidebar() {
           {/* Logo Section */}
           <div className={cn(
             "flex items-center mb-10 mt-2 transition-all duration-500 relative",
-            isCollapsed ? "justify-center" : "justify-start px-4"
+            effectiveIsCollapsed ? "justify-center" : "justify-start px-4"
           )}>
             <Link href="/dashboard" className="flex items-center">
               <img 
                 src="/AxonIQ.png" 
                 alt="Axoniq Logo" 
-                className={cn("transition-all duration-500 hover:scale-105 active:scale-95", isCollapsed ? "w-10" : "w-28")} 
+                className={cn("transition-all duration-500 hover:scale-105 active:scale-95", effectiveIsCollapsed ? "w-10" : "w-28")} 
               />
             </Link>
           </div>
@@ -248,7 +250,7 @@ export function Sidebar() {
               <SidebarItem
                 key={item.href}
                 {...item}
-                isCollapsed={isCollapsed}
+                isCollapsed={effectiveIsCollapsed}
                 onClick={() => setIsMobileOpen(false)}
               />
             ))}
@@ -261,8 +263,8 @@ export function Sidebar() {
               limit={credits.limit}
               remaining={credits.remaining}
               isPremium={isPremium}
-              isCollapsed={isCollapsed}
-              className={cn(isCollapsed && "justify-center")}
+              isCollapsed={effectiveIsCollapsed}
+              className={cn(effectiveIsCollapsed && "justify-center")}
             />
           </div>
 
@@ -272,7 +274,7 @@ export function Sidebar() {
               <SidebarItem
                 key={item.href}
                 {...item}
-                isCollapsed={isCollapsed}
+                isCollapsed={effectiveIsCollapsed}
                 onClick={() => setIsMobileOpen(false)}
               />
             ))}
@@ -281,11 +283,11 @@ export function Sidebar() {
               onClick={() => setIsLogoutModalOpen(true)}
               className={cn(
                 'flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300 group w-full text-zinc-400 hover:bg-zinc-800/50 hover:text-red-500',
-                isCollapsed && "justify-center"
+                effectiveIsCollapsed && "justify-center"
               )}
             >
               <span className="material-symbols-outlined text-[24px]">logout</span>
-              {!isCollapsed && <span className="text-sm font-semibold tracking-tight">Sair</span>}
+              {!effectiveIsCollapsed && <span className="text-sm font-semibold tracking-tight">Sair</span>}
             </button>
 
             {isAdmin && (
@@ -293,11 +295,11 @@ export function Sidebar() {
                 onClick={() => setIsInviteModalOpen(true)}
                 className={cn(
                   'flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300 group w-full text-emerald-500/80 hover:bg-emerald-500/5 hover:text-emerald-400 border border-transparent hover:border-emerald-500/20 shadow-sm mt-1',
-                  isCollapsed && "justify-center"
+                  effectiveIsCollapsed && "justify-center"
                 )}
               >
                 <span className="material-symbols-outlined text-[24px] fill-[1]">auto_awesome</span>
-                {!isCollapsed && <span className="text-sm font-bold tracking-tight">Convidar Alpha</span>}
+                {!effectiveIsCollapsed && <span className="text-sm font-bold tracking-tight">Convidar Alpha</span>}
               </button>
             )}
           </div>

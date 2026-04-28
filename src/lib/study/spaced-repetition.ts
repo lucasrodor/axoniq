@@ -98,6 +98,7 @@ export function calculateNextReview(
 export type CardStage = 'new' | 'learning' | 'review' | 'mastered'
 
 export function getCardStage(card: CardState): CardStage {
+  if (!card) return 'new'
   if (card.repetition === 0 && card.interval === 0) return 'new'
   if (card.interval < 7) return 'learning'
   if (card.interval >= 21) return 'mastered'

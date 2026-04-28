@@ -1080,6 +1080,7 @@ function DashboardPageContent() {
           {/* Reports Tab */}
           {activeTab === 'reports' && (
             <ReportsTab 
+              reports={reports}
               isPremium={isPremium} 
               onUpgrade={() => window.dispatchEvent(new Event('open-upgrade-modal'))} 
               onGenerateReport={() => setShowReportLimitModal(true)}
@@ -1212,9 +1213,7 @@ function LegendItem({ color, label }: { color: string, label: string }) {
     </span>
   )
 }
-function ReportsTab({ isPremium, onUpgrade, onGenerateReport }: { isPremium: boolean, onUpgrade: () => void, onGenerateReport: () => void }) {
-  const { data: reportsData } = useSWR('reports', dashboardFetcher)
-  const reports = reportsData || []
+function ReportsTab({ reports, isPremium, onUpgrade, onGenerateReport }: { reports: PerformanceReport[], isPremium: boolean, onUpgrade: () => void, onGenerateReport: () => void }) {
 
   if (!isPremium) {
     return (

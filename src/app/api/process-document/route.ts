@@ -194,8 +194,7 @@ Respond with EXACTLY ONE of the specialized medical specialty names or 'Outros'.
               content: `Classify this content:\n\n${safeText.substring(0, 3000)}`
             }
           ],
-          max_tokens: 30,
-          temperature: 0,
+          max_completion_tokens: 30,
         })
         specialtyTag = tagCompletion.choices[0].message.content?.trim() || 'Outros'
       } catch (tagError) {

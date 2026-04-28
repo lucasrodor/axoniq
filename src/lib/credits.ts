@@ -101,8 +101,28 @@ export async function getCreditsInfo(userId: string): Promise<{
   limit: number
   remaining: number
   periodStart: string
+  isPro?: boolean
 }> {
   const supabase = createAdminClient()
+
+  // Check if user is premium
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_admin, is_whitelisted')
+    .eq('id', userId)
+    .single()
+
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('status')
+    .eq('user_id', userId)
+    .single()
+
+  const isPro = !!(profile?.is_admin || profile?.is_whitelisted || subscription?.status === 'active' || subscription?.status === 'trialing')
+
+  if (isPro) {
+    return { used: 0, limit: 999, remaining: 999, periodStart: new Date().toISOString(), isPro: true }
+  }
 
   const { data: credits } = await supabase
     .from('user_credits')

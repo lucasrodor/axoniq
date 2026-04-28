@@ -174,7 +174,10 @@ function MindMapViewPage() {
       const s = normalizeId(edge.source)
       const t = normalizeId(edge.target)
       if (!childrenMap.has(s)) childrenMap.set(s, [])
-      childrenMap.get(s)!.push(t)
+      // Deduplication to prevent the same edge from being added twice
+      if (!childrenMap.get(s)!.includes(t)) {
+        childrenMap.get(s)!.push(t)
+      }
     })
 
     const rootNodeData = rawNodes.find(n => n.type === 'root') || rawNodes[0]
@@ -183,9 +186,18 @@ function MindMapViewPage() {
 
     // ENGINE v9.0 GLOBAL LAYOUT
     let currentGlobalY = 0
+    const visitedNodes = new Set<string>()
+    const nodeYMap = new Map<string, number>()
 
     const computePositions = (nodeId: string, level: number): number => {
       const normId = normalizeId(nodeId)
+      
+      // Prevent infinite loops and duplicate node rendering if the graph has cycles or multi-parents
+      if (visitedNodes.has(normId)) {
+        return nodeYMap.get(normId) || currentGlobalY
+      }
+      visitedNodes.add(normId)
+
       const nodeData = rawNodes.find(n => normalizeId(n.id) === normId)
       if (!nodeData) return 0
 
@@ -215,6 +227,8 @@ function MindMapViewPage() {
         })
         finalY = (childYs[0] + childYs[childYs.length - 1]) / 2
       }
+
+      nodeYMap.set(normId, finalY)
 
       visibleNodesList.push({
         id: normId,
@@ -253,8 +267,19 @@ function MindMapViewPage() {
 
     visibleNodesList.forEach(n => positionsCache.current.set(n.id, n.position.y))
 
-    setNodes(visibleNodesList)
-    setEdges(visibleEdgesList)
+    // Bulletproof Deduplication
+    const uniqueNodesMap = new Map<string, Node>()
+    visibleNodesList.forEach(n => {
+      if (!uniqueNodesMap.has(n.id)) uniqueNodesMap.set(n.id, n)
+    })
+
+    const uniqueEdgesMap = new Map<string, Edge>()
+    visibleEdgesList.forEach(e => {
+      if (!uniqueEdgesMap.has(e.id)) uniqueEdgesMap.set(e.id, e)
+    })
+
+    setNodes(Array.from(uniqueNodesMap.values()))
+    setEdges(Array.from(uniqueEdgesMap.values()))
 
     if (!isInitialized.current && visibleNodesList.length > 0) {
       setTimeout(() => {
@@ -297,7 +322,7 @@ function MindMapViewPage() {
             variant="ghost" 
             size="sm" 
             onClick={() => router.push('/dashboard')} 
-            className="h-12 px-5 bg-zinc-900/50 border border-zinc-800 text-zinc-500 hover:text-white rounded-xl font-bold uppercase text-[10px] tracking-[0.2em] transition-all hover:scale-105 active:scale-95"
+            className="h-12 px-5 bg-zinc-900/50 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl font-bold uppercase text-[10px] tracking-[0.2em] transition-all hover:scale-105 active:scale-95"
           >
             <ChevronLeft size={16} className="mr-2" /> PAINEL
           </Button>

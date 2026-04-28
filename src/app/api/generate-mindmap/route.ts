@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, MODEL_FAST } from '@/lib/ai/client'
+import { openai, MODEL_SMART } from '@/lib/ai/client'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -9,7 +9,7 @@ import { mindmapLimiter } from '@/lib/rate-limit'
 // Define the schema for Mind Map data
 const MindMapNodeSchema = z.object({
   id: z.string(),
-  label: z.string().min(2).max(80, 'Labels muito longas comprometem a leitura visual'),
+  label: z.string().min(2).max(150, 'Labels muito longas comprometem a leitura visual'),
   type: z.enum(['root', 'branch', 'leaf']),
   parentId: z.string().nullable()
 })
@@ -18,7 +18,7 @@ const MindMapSchema = z.object({
   title: z.string().min(3),
   nodes: z.array(MindMapNodeSchema)
     .min(8, 'Mapa muito raso — mínimo 8 nodes')
-    .max(40, 'Mapa muito denso — máximo 40 nodes para manter legibilidade'),
+    .max(150, 'Mapa muito denso — máximo 150 nodes para manter a profundidade sem perder a estrutura'),
   edges: z.array(z.object({
     id: z.string(),
     source: z.string(),
@@ -108,87 +108,43 @@ ${text.substring(0, 50000)}`
       })
     })
 
-    const systemPrompt = `Você é um especialista em educação médica e neurociência cognitiva, especializado em criar mapas mentais que aceleram a memorização e a conexão entre conceitos clínicos.
+    const systemPrompt = `## OBJETIVO
+Criar um mapa mental hierárquico profundo e estratégico para um estudante de medicina brasileiro, baseado integralmente no conteúdo fornecido. Priorize a densidade de informações e a organização em múltiplos níveis.
 
-## OBJETIVO
-Criar um mapa mental hierárquico estruturado em 3 níveis para um estudante de medicina brasileiro, baseado APENAS no conteúdo fornecido.
-
-## ESTRUTURA OBRIGATÓRIA
+## ESTRUTURA HIERÁRQUICA (MÚLTIPLOS NÍVEIS)
+Sua estrutura DEVE se aprofundar organicamente. Não jogue toda a informação no mesmo nível final. Se um tópico tiver mais de 4 ou 5 detalhes, crie uma subcategoria!
 
 ### Nível 1 — ROOT (1 node)
-- O conceito central do material (ex: "Insuficiência Cardíaca", "Diabetes Mellitus tipo 2", "Cetoacidose Diabética")
-- Apenas 1 node do tipo "root", com parentId: null
-- Label curta e direta (máximo 50 caracteres)
+- O conceito central do material.
+- Label curta e direta (máximo 50 caracteres).
 
-### Nível 2 — BRANCHES (4 a 7 nodes)
-- Grandes categorias clínicas que fazem sentido para o tema
-- Para doenças, sempre tente cobrir: Etiologia, Fisiopatologia, Quadro Clínico, Diagnóstico, Tratamento, Complicações (use apenas as relevantes ao material)
-- Para fármacos: Mecanismo de Ação, Indicações, Posologia, Efeitos Adversos, Contraindicações
-- Para procedimentos: Indicações, Técnica, Contraindicações, Complicações
-- Cada branch tem parentId apontando para o root
+### Níveis Intermediários — BRANCHES
+- Você pode (e deve) criar múltiplas camadas de 'branches' (ex: root -> branch -> branch -> branch).
+- Desça até 4, 5 ou 6 níveis de profundidade se o conteúdo exigir, para que uma informação leve logicamente à outra.
+- Use 'branches' para categorizar antes de listar detalhes. (Ex: em vez de listar 10 sintomas soltos na "Laringe", crie Laringe -> "Sintomas Iniciais" -> ... e Laringe -> "Sintomas Tardios" -> ...).
 
-### Nível 3 — LEAVES (2 a 6 por branch)
-- Detalhes específicos, achados clínicos, valores de referência, drogas específicas, sinais semiológicos
-- Cada leaf tem parentId apontando para uma branch
-- Labels curtas e objetivas (máximo 80 caracteres)
+### Nível Final — LEAVES
+- Detalhes específicos finais, valores de referência, doses, sinais semiológicos curtos.
+- As leaves representam a ponta final da árvore de conhecimento.
 
-## REGRAS DE QUALIDADE
-
-1. **Hierarquia limpa**: nunca crie leaves apontando para outros leaves. Apenas root → branch → leaf.
-
-2. **Conteúdo específico**: priorize informações memoráveis e clinicamente relevantes (ex: "Sinal de Kussmaul" ao invés de "Sinais respiratórios"; "Metformina 500mg 2x/dia" ao invés de "Tratamento medicamentoso").
-
-3. **Sem redundância**: cada conceito aparece em apenas 1 node. Não duplique informações entre branches.
-
-4. **Fidelidade ao material**: use APENAS o que está no texto/imagem fornecido. Não invente fatos clínicos.
-
-5. **Português médico brasileiro**: termos clínicos em português (ex: "insuficiência cardíaca" e não "heart failure").
-
-6. **Edges**: para cada relação parent-child, crie uma edge correspondente.
-
-## EXEMPLO DE ESTRUTURA CORRETA
-
-Para um material sobre Insuficiência Cardíaca:
-
-ROOT: "Insuficiência Cardíaca"
-├── BRANCH: "Etiologia"
-│   ├── LEAF: "Doença coronariana (causa mais comum)"
-│   ├── LEAF: "Hipertensão arterial sistêmica"
-│   └── LEAF: "Cardiomiopatia dilatada"
-├── BRANCH: "Fisiopatologia"
-│   ├── LEAF: "Disfunção sistólica vs diastólica"
-│   ├── LEAF: "Ativação neuro-hormonal (SRAA, SNS)"
-│   └── LEAF: "Remodelamento ventricular"
-├── BRANCH: "Quadro Clínico"
-│   ├── LEAF: "Dispneia aos esforços / ortopneia"
-│   ├── LEAF: "Edema de MMII"
-│   └── LEAF: "Estertores crepitantes pulmonares"
-├── BRANCH: "Diagnóstico"
-│   ├── LEAF: "BNP/NT-proBNP elevado"
-│   ├── LEAF: "ECO com FE < 40% (IC com FE reduzida)"
-│   └── LEAF: "Critérios de Framingham"
-└── BRANCH: "Tratamento"
-    ├── LEAF: "iECA/BRA (primeira linha)"
-    ├── LEAF: "Betabloqueadores (carvedilol, bisoprolol)"
-    ├── LEAF: "iSGLT2 (dapagliflozina)"
-    └── LEAF: "Diuréticos (sintomáticos)"
-
-Total: 1 root + 5 branches + 14 leaves = 20 nodes
+## REGRAS DE OURO (QUALIDADE MÁXIMA)
+1. **Poder de Síntese**: O texto de cada nó (label) DEVE ser resumido! Use no máximo de 5 a 10 palavras por nó. JAMAIS copie frases inteiras do texto. Use palavras-chave, setas (->) e abreviações médicas comuns.
+2. **Profundidade em Cascata**: A informação deve fluir de forma organizada. Use branches filhas de branches para manter o mapa limpo e escalável.
+3. **Hierarquia Lógica**: Root → Branch → Branch (opcional) → Leaf.
+4. **Conteúdo Específico**: Evite termos genéricos. Use termos técnicos e dados precisos (ex: "Sinal de Murphy" vs "Dor abdominal").
+5. **Fidelidade Multimodal**: Analise tanto o texto quanto os detalhes das imagens/tabelas fornecidas.
+6. **Linguagem**: Português médico brasileiro técnico.
 
 ## NÃO FAÇA
-
-❌ Mapas com menos de 8 nodes (raso demais)
-❌ Mapas com mais de 40 nodes (poluído)
-❌ Branches genéricas sem conteúdo específico nas leaves
-❌ Inventar dados clínicos não presentes no material
-❌ Misturar idiomas
-❌ Hierarquia inconsistente (leaf apontando para leaf)`
+❌ Escrever parágrafos ou frases muito longas em um único nó (máximo estrito de ~100 caracteres por nó).
+❌ Mapas rasos limitados a apenas 2 ou 3 níveis de profundidade.
+❌ Agrupar 10 'leaves' no mesmo 'branch' pai sem criar subcategorias.
+❌ Omitir detalhes clínicos relevantes do material original.`
 
     let completion
     try {
       completion = await openai.chat.completions.create({
-        model: MODEL_FAST,
-        temperature: 0.3,
+        model: MODEL_SMART,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessageContent }
@@ -200,8 +156,7 @@ Total: 1 root + 5 branches + 14 leaves = 20 nodes
       
       if (apiError.message.includes('image') || apiError.message.includes('download') || apiError.message.includes('timeout')) {
         completion = await openai.chat.completions.create({
-          model: MODEL_FAST,
-          temperature: 0.3,
+          model: MODEL_SMART,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: `Crie o mapa mental baseado apenas no texto a seguir:\n\n${text.substring(0, 50000)}` }
@@ -249,20 +204,13 @@ Total: 1 root + 5 branches + 14 leaves = 20 nodes
       throw new Error('Mapa mental muito raso: precisa de pelo menos 3 branches')
     }
 
-    // Verifica se todas as branches apontam para o root
-    const rootId = roots[0].id
-    const orphanBranches = branches.filter((b: any) => b.parentId !== rootId)
-    if (orphanBranches.length > 0) {
+    // Verifica se todos os nós (exceto o root) têm um parentId válido que existe no mapa
+    const allNodeIds = new Set(generatedData.nodes.map((n: any) => n.id))
+    const orphanNodes = generatedData.nodes.filter((n: any) => n.type !== 'root' && (!n.parentId || !allNodeIds.has(n.parentId)))
+    
+    if (orphanNodes.length > 0) {
       await supabaseAdmin.from('mind_maps').update({ status: 'error' }).eq('id', mindMap.id)
-      throw new Error('Mapa com branches órfãs detectadas')
-    }
-
-    // Verifica se todas as leaves apontam para uma branch válida
-    const branchIds = new Set(branches.map((b: any) => b.id))
-    const orphanLeaves = leaves.filter((l: any) => !l.parentId || !branchIds.has(l.parentId))
-    if (orphanLeaves.length > 0) {
-      await supabaseAdmin.from('mind_maps').update({ status: 'error' }).eq('id', mindMap.id)
-      throw new Error('Mapa com leaves órfãs detectadas')
+      throw new Error('Mapa com nós órfãos detectados')
     }
 
     // 4. Update record to ready

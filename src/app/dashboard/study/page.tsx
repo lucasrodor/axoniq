@@ -24,6 +24,9 @@ import {
   getStageLabel,
   type Quality,
 } from '@/lib/study/spaced-repetition'
+import dynamic from 'next/dynamic'
+
+const MarkdownDisplay = dynamic(() => import('@/components/ui/markdown-display'), { ssr: false })
 
 interface Flashcard {
   id: string
@@ -168,6 +171,38 @@ function StudySession() {
     }
   }
 
+  const renderCardContent = (text: string, isFront: boolean) => {
+    if (!text) return null
+    
+    // Split by cloze syntax: {{c1::answer}} or {{c1::answer::hint}}
+    const parts = text.split(/(\{\{c\d+::.*?(?:::(?:.*?))?\}\})/g)
+    
+    return (
+      <>
+        {parts.map((part, i) => {
+          const match = part.match(/\{\{c\d+::(.*?)(?:::(.*?))?\}\}/)
+          if (match) {
+            const [_, answer, hint] = match
+            if (isFront) {
+              return (
+                <span key={i} className="bg-blue-500/20 px-2 py-0.5 rounded text-blue-400 border border-blue-500/30 font-mono text-[0.8em] mx-1">
+                  {hint || '...'}
+                </span>
+              )
+            } else {
+              return (
+                <span key={i} className="text-emerald-400 font-bold border-b border-emerald-500/30 mx-1">
+                  {answer}
+                </span>
+              )
+            }
+          }
+          return <MarkdownDisplay key={i} content={part} raw={true} as="span" className="text-inherit !leading-inherit" />
+        })}
+      </>
+    )
+  }
+
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-[#09090B]">
       <div className="flex flex-col items-center gap-6">
@@ -282,6 +317,7 @@ function StudySession() {
   }
 
   const currentCard = cards[currentIndex]
+  if (!currentCard) return null
   const stage = getCardStage(currentCard)
 
   return (
@@ -307,8 +343,8 @@ function StudySession() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 z-10 min-h-0">
-        <div className="mb-4 sm:mb-8">
+      <div className="flex-1 flex flex-col items-center justify-start pt-4 sm:pt-6 p-4 sm:p-6 z-10 min-h-0">
+        <div className="mb-6 sm:mb-10">
           <span className={cn(
             "text-[10px] uppercase font-black tracking-[0.3em] px-6 py-2 rounded-lg border shadow-lg backdrop-blur-md transition-all duration-500",
             stage === 'new' ? 'text-blue-400 bg-blue-500/5 border-blue-500/20 shadow-blue-500/5' : 
@@ -328,8 +364,8 @@ function StudySession() {
                 PROMPT ANALÍTICO
               </div>
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-zinc-100 leading-tight tracking-tight px-4 flex items-center justify-center text-center">
-                  {currentCard.front}
+                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-zinc-100 leading-tight tracking-tight px-4 flex flex-wrap items-center justify-center text-center">
+                  {renderCardContent(currentCard.front, true)}
                 </h2>
               </div>
               <div className="absolute bottom-10 text-[10px] text-zinc-500 flex items-center gap-2 opacity-60 uppercase tracking-[0.2em] font-bold">
@@ -344,9 +380,9 @@ function StudySession() {
                 SÍNTESE DE RESPOSTA
               </div>
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-zinc-300 leading-relaxed max-w-lg flex items-center justify-center text-center">
-                  {currentCard.back}
-                </p>
+                <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-zinc-300 leading-relaxed max-w-lg flex flex-wrap items-center justify-center text-center">
+                  {renderCardContent(currentCard.back || currentCard.front, false)}
+                </div>
               </div>
             </div>
           </motion.div>

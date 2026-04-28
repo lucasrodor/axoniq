@@ -290,7 +290,7 @@ export default function AccountPage() {
                 <Button
                   onClick={() => handleManageSubscription()}
                   variant="ghost"
-                  className="h-12 px-6 text-zinc-500 hover:text-zinc-300 font-bold"
+                  className="h-12 px-6 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 font-bold"
                 >
                   Ver Histórico de Faturas
                 </Button>
