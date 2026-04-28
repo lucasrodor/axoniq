@@ -27,13 +27,16 @@ const plans = [
     checkoutUrl: 'https://pay.kirvano.com/211b8bc5-8f73-450e-bc51-444aee40f87f?split=6',
     priceId: 'price_1TQ5rrDGo6c9XEzCDw2OVsTV',
     price: 'R$ 24,98',
-    description: 'R$ 131,90 à vista (Economia de 25%)',
+    originalPrice: 'R$ 29,90',
+    totalPrice: 'R$ 131,90 à vista',
+    description: 'Acesso por 6 meses.',
     features: [
       'Tudo do plano Mensal',
-      'Economia de 30%',
+      'Economia de 25%',
       'Acesso Antecipado a Novas Funções',
       'Badge de Membro Alpha',
     ],
+    discount: '15% OFF',
     popular: true,
     icon: Star,
     color: 'emerald',
@@ -44,13 +47,16 @@ const plans = [
     checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=12',
     priceId: 'price_1TQ5s6DGo6c9XEzCSHjjmLoR',
     price: 'R$ 19,98',
-    description: 'R$ 195,00 à vista (Melhor Custo-Benefício)',
+    originalPrice: 'R$ 29,90',
+    totalPrice: 'R$ 195,00 à vista',
+    description: 'Acesso por 12 meses.',
     features: [
       'Tudo do plano Semestral',
       'Melhor custo-benefício',
       'Consultoria de Estudo com IA',
       'Acesso Vitalício aos Decks Base',
     ],
+    discount: '33% OFF',
     icon: Zap,
     color: 'amber',
     gateway: 'kirvano'
@@ -154,9 +160,25 @@ export default function TestePlanosPage() {
                 </div>
                 
                 <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <div className="flex items-baseline gap-1 mb-2">
-                  <span className="text-4xl font-black">{plan.price}</span>
-                  <span className="text-zinc-500 text-sm">/periodo</span>
+                <div className="flex flex-col mb-4">
+                  {(plan as any).originalPrice && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm text-zinc-500 line-through">{(plan as any).originalPrice}</span>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest animate-pulse",
+                        plan.color === 'emerald' ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+                      )}>
+                        {(plan as any).discount}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl lg:text-5xl font-black">{plan.price}</span>
+                    <span className="text-zinc-500 text-sm font-medium">/mês</span>
+                  </div>
+                  {(plan as any).totalPrice && (
+                    <p className="text-xs font-bold text-zinc-400 mt-1">{(plan as any).totalPrice}</p>
+                  )}
                 </div>
                 <p className="text-zinc-400 text-sm leading-relaxed">{plan.description}</p>
               </div>
