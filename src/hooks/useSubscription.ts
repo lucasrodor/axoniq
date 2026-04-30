@@ -8,6 +8,8 @@ interface SubscriptionData {
   isPremium: boolean
   isAdmin: boolean
   isWhitelisted: boolean
+  isLaunchWeek: boolean
+  launchEndDate: string | null
   plan: 'free' | 'pro'
   subscription: {
     status: string
@@ -56,6 +58,8 @@ export function useSubscription() {
     isPremium: data?.isPremium ?? false,
     isAdmin: data?.isAdmin ?? false,
     isWhitelisted: data?.isWhitelisted ?? false,
+    isLaunchWeek: data?.isLaunchWeek ?? false,
+    launchEndDate: data?.launchEndDate ?? null,
     plan: data?.plan ?? 'free',
     subscription: data?.subscription ?? null,
     credits: data?.credits ?? { used: 0, limit: 10, remaining: 10, periodStart: '' },

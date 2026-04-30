@@ -52,16 +52,24 @@ export async function GET(req: NextRequest) {
     const trialEndsAt = profile?.trial_ends_at ? new Date(profile.trial_ends_at) : null
     const isTrialActive = trialEndsAt !== null && trialEndsAt > now
     
-    console.log(`📊 [Plan Debug] User: ${user.email} | Admin: ${isAdmin} | White: ${isWhitelisted} | Sub: ${isSubscriptionActive} | Trial: ${isTrialActive}`)
+    // --- LÓGICA DE LANÇAMENTO OFICIAL ---
+    // A pedido do admin, voltamos a controlar isso pela flag do banco,
+    // para que ele possa testar fluxos de pagamento (ligando/desligando o passe livre)
+    const isLaunchWeek = !isMonetizationActive
+    // A data limite continua sendo passada para a UI para o banner,
+    // mas a trava de acesso é controlada pelo banco de dados.
+    const LAUNCH_DEADLINE = new Date('2026-05-12T03:00:00Z')
+    
+    console.log(`📊 [Plan Debug] User: ${user.email} | Sub: ${isSubscriptionActive} | LaunchPass: ${isLaunchWeek}`)
 
-    // Se a monetização não estiver ativa, todos são Premium (Modo de Lançamento)
-    // REMOVIDO isTrialActive temporariamente para teste do Lucas
-    const isPremium = !isMonetizationActive || isAdmin || isWhitelisted || isSubscriptionActive
+    const isPremium = isLaunchWeek || isAdmin || isWhitelisted || isSubscriptionActive
 
     return NextResponse.json({
       isPremium,
       isAdmin,
       isWhitelisted,
+      isLaunchWeek,
+      launchEndDate: LAUNCH_DEADLINE.toISOString(),
       plan: isPremium ? 'pro' : 'free',
       subscription: subscription ? {
         status: subscription.status,

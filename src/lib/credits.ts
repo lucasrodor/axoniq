@@ -17,7 +17,16 @@ export async function consumeCredit(userId: string): Promise<{ allowed: boolean;
     .eq('id', userId)
     .single()
 
-  if (profile?.is_admin || profile?.is_whitelisted) {
+  // --- LAUNCH WEEK CHECK ---
+  const { data: settings } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'is_monetization_active')
+    .maybeSingle()
+
+  const isLaunchWeek = settings?.value === false
+
+  if (isLaunchWeek || profile?.is_admin || profile?.is_whitelisted) {
     return { allowed: true, remaining: 999 }
   }
 
@@ -118,7 +127,15 @@ export async function getCreditsInfo(userId: string): Promise<{
     .eq('user_id', userId)
     .single()
 
-  const isPro = !!(profile?.is_admin || profile?.is_whitelisted || subscription?.status === 'active' || subscription?.status === 'trialing')
+  const { data: settings } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'is_monetization_active')
+    .maybeSingle()
+
+  const isLaunchWeek = settings?.value === false
+
+  const isPro = isLaunchWeek || !!(profile?.is_admin || profile?.is_whitelisted || subscription?.status === 'active' || subscription?.status === 'trialing')
 
   if (isPro) {
     return { used: 0, limit: 999, remaining: 999, periodStart: new Date().toISOString(), isPro: true }

@@ -526,23 +526,31 @@ function AuroraHero({ onJoinWaitlist }: { onJoinWaitlist: () => void }) {
         }}
       />
 
-      <motion.h1
+      <motion.div
         initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={0}
-        className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-4 text-zinc-100"
+        className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 mb-8"
       >
-        Transforme horas de estudo em{' '}
-        <span className="text-blue-500">retenção permanente.</span>
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Pare de perder tempo</span>
+      </motion.div>
+
+      <motion.h1
+        initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={1}
+        className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6 text-zinc-100"
+      >
+        Conheça o jeito mais rápido de transformar o seu{' '}
+        <span className="text-blue-500">conteúdo em conhecimento.</span>
       </motion.h1>
 
       <motion.p
-        initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={1}
-        className="text-lg text-zinc-400 mb-6 max-w-2xl mx-auto leading-relaxed"
+        initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={2}
+        className="text-lg md:text-xl text-zinc-400 mb-8 max-w-3xl mx-auto leading-relaxed"
       >
-        O Axoniq transforma qualquer material de estudo em flashcards, quizzes e mapas mentais em segundos usando inteligência artificial clínica de ponta.
+        Estude com flashcards, quizzes e mapas mentais gerados automaticamente do seu próprio material em segundos!
       </motion.p>
 
       <motion.div
-        initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={2}
+        initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={3}
         className="flex flex-col sm:flex-row gap-4 justify-center items-center"
       >
         <button onClick={onJoinWaitlist} className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 hover:-translate-y-0.5 transition-all">
@@ -553,7 +561,7 @@ function AuroraHero({ onJoinWaitlist }: { onJoinWaitlist: () => void }) {
         </a>
       </motion.div>
 
-      <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={3} className="mt-16">
+      <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={4} className="mt-16">
         <FlashcardDemo onJoinWaitlist={onJoinWaitlist} />
       </motion.div>
     </section>

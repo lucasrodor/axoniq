@@ -25,7 +25,7 @@ export default function AccountPage() {
     type: 'success' | 'error'
     text: string
   } | null>(null)
-  const { isPremium, credits, plan, subscription, refresh } = useSubscription()
+  const { isPremium, credits, plan, subscription, refresh, isLaunchWeek, launchEndDate } = useSubscription()
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
@@ -196,6 +196,27 @@ export default function AccountPage() {
           >
             <div className={cn("w-2 h-2 rounded-full", message.type === 'success' ? "bg-emerald-500" : "bg-red-500")} />
             {message.text}
+          </div>
+        )}
+
+        {/* Launch Pass Banner */}
+        {isLaunchWeek && (
+          <div className="bg-gradient-to-r from-blue-600/20 to-blue-900/20 border border-blue-500/30 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 shadow-[0_0_30px_rgba(37,99,235,0.15)] relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-blue-500/20 rounded-2xl flex-shrink-0 text-blue-400 border border-blue-500/20">
+                <Crown size={28} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-black text-blue-100 tracking-tight">🚀 Passe Livre de Lançamento Ativo!</h3>
+                  <span className="px-2 py-0.5 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-md animate-pulse">VIP</span>
+                </div>
+                <p className="text-blue-200/80 font-medium leading-relaxed max-w-3xl">
+                  Você ganhou acesso total e ilimitado a todos os recursos da inteligência artificial do AxonIQ até o nosso pré-lançamento no dia <strong className="text-white">11 de Maio</strong>. Aproveite para criar mapas mentais e flashcards sem limites de uso! Após essa data, você poderá garantir sua assinatura com condições especiais para fundadores.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
