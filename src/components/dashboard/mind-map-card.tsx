@@ -39,7 +39,7 @@ export function MindMapCard({
           <div className="absolute -top-12 -right-12 w-24 h-24 blur-[40px] opacity-10 bg-blue-500 transition-all duration-700 group-hover/card:scale-150 group-hover/card:opacity-20" />
         </div>
 
-        <div className="flex justify-between items-start mb-4 sm:mb-6 relative z-10 w-full min-w-0">
+        <div className="flex justify-between items-start mb-4 sm:mb-6 relative z-40 w-full min-w-0">
           <div className="p-2 sm:p-3 bg-blue-500/10 rounded-xl text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)] group-hover/card:bg-blue-500/20 group-hover/card:text-blue-400 transition-all duration-500">
             <Zap className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
           </div>

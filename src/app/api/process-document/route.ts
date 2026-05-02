@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractTextFromBuffer } from '@/lib/processing/text-extractor'
 import { createAdminClient } from '@/lib/supabase/server'
 import { openai, MODEL_FAST, MODEL_CLEAN } from '@/lib/ai/client'
+import { logAiUsage } from '@/lib/ai/usage'
 import { documentLimiter } from '@/lib/rate-limit'
 
 // Helper: Process Image with GPT-4o Vision
-async function processImageWithVision(base64Image: string, mimeType: string, fileName: string) {
+async function processImageWithVision(base64Image: string, mimeType: string, fileName: string, userId: string) {
   try {
     const response = await openai.chat.completions.create({
       model: MODEL_FAST,
@@ -28,6 +29,14 @@ async function processImageWithVision(base64Image: string, mimeType: string, fil
         }
       ],
       max_tokens: 1500,
+    })
+
+    // Log AI Usage (tokens) - Vision
+    logAiUsage({
+      userId,
+      actionType: 'document_process',
+      modelName: response.model,
+      usage: response.usage
     })
 
     return response.choices[0].message.content || ''
@@ -120,7 +129,7 @@ export async function POST(req: NextRequest) {
         // Process with Vision (OCR + Description)
         const arrayBuffer = await file.arrayBuffer()
         const base64 = Buffer.from(arrayBuffer).toString('base64')
-        const imageAnalysis = await processImageWithVision(base64, file.type, file.name)
+        const imageAnalysis = await processImageWithVision(base64, file.type, file.name, user.id)
         
         combinedText += `\n\n--- CONTEÚDO DA IMAGEM: ${file.name} ---\n${imageAnalysis}\n--- FIM DA IMAGEM: ${file.name} ---\n`
         
@@ -195,6 +204,14 @@ Respond with EXACTLY ONE of the specialized medical specialty names or 'Outros'.
             }
           ],
           max_completion_tokens: 30,
+        })
+
+        // Log AI Usage (tokens) - Tagging
+        logAiUsage({
+          userId: user.id,
+          actionType: 'tagging',
+          modelName: tagCompletion.model,
+          usage: tagCompletion.usage
         })
         specialtyTag = tagCompletion.choices[0].message.content?.trim() || 'Outros'
       } catch (tagError) {

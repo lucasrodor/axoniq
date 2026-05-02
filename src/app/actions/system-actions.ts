@@ -18,14 +18,15 @@ export async function getMonetizationStatus() {
 
     if (error) {
       console.error('❌ DB Error fetching status:', error)
-      return false
+      return true // Fallback to active
     }
 
     console.log('📖 [DB Read] monetization_active is:', data?.value)
-    return data?.value === true
+    // Se for nulo ou não definido, padrão é TRUE
+    return data?.value !== false
   } catch (err) {
     console.error('❌ System error in getMonetizationStatus:', err)
-    return false
+    return true // Fallback to active
   }
 }
 

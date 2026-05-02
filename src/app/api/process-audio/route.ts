@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, MODEL_STRUCT, MODEL_AUDIO } from '@/lib/ai/client'
+import { logAiUsage } from '@/lib/ai/usage'
 import { createAdminClient } from '@/lib/supabase/server'
 import { Readable } from 'stream'
 import { audioLimiter } from '@/lib/rate-limit'
@@ -100,6 +101,14 @@ Respond with ONLY the name (e.g. Cardiologia, Anatomia, Outros).`
           }
         ],
         max_tokens: 20
+      })
+      
+      // Log AI Usage (tokens) - Tagging
+      logAiUsage({
+        userId: user.id,
+        actionType: 'tagging',
+        modelName: tagCompletion.model,
+        usage: tagCompletion.usage
       })
       specialtyTag = tagCompletion.choices[0].message.content?.trim() || 'Outros'
     } catch (e) {

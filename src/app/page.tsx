@@ -65,6 +65,117 @@ function MaterialIcon({ name, className = '', fill = false }: { name: string; cl
   )
 }
 
+function RetentionChart() {
+  const [inView, setInView] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setInView(true)
+      },
+      { threshold: 0.1 }
+    )
+    if (containerRef.current) observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={containerRef} className="w-full h-full relative">
+      <svg className="w-full h-full overflow-visible" viewBox="0 0 400 200">
+        {/* Grid Lines */}
+        {[0, 50, 100, 150, 200].map((y) => (
+          <line key={y} x1="0" y1={y} x2="400" y2={y} stroke="#27272A" strokeWidth="1" strokeOpacity="0.3" />
+        ))}
+
+        {/* Forget Path (Red) */}
+        <motion.path
+          d="M 0 20 Q 50 180 380 190"
+          fill="none"
+          stroke="#EF4444"
+          strokeWidth="3"
+          strokeDasharray="5,5"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={inView ? { pathLength: 1, opacity: 0.4 } : {}}
+          transition={{ duration: 2.5, ease: "easeOut" }}
+        />
+
+        {/* Axoniq Path (Green) */}
+        <motion.path
+          d="M 0 20 C 50 20, 80 40, 100 40 S 130 30, 160 30 S 190 50, 220 50 S 250 40, 300 40 S 350 45, 400 45"
+          fill="none"
+          stroke="#10B981"
+          strokeWidth="4"
+          strokeLinecap="round"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={inView ? { pathLength: 1, opacity: 1 } : {}}
+          transition={{ duration: 3, ease: [0.21, 0.47, 0.32, 0.98], delay: 0.5 }}
+        />
+
+        {/* Start Point */}
+        <motion.circle
+          cx="0" cy="20" r="4"
+          fill="#3B82F6"
+          initial={{ scale: 0 }}
+          animate={inView ? { scale: 1 } : {}}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        />
+
+        {/* Labels */}
+        <motion.text 
+          fill="#3B82F6" className="text-[10px] font-mono font-bold" x="12" y="15"
+          initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.3 }}
+        >
+          Aula Assistida
+        </motion.text>
+        
+        <motion.text 
+          fill="#EF4444" className="text-[10px] font-mono font-bold" x="280" y="180"
+          initial={{ opacity: 0 }} animate={inView ? { opacity: 0.6 } : {}} transition={{ delay: 2 }}
+        >
+          Esquecimento Comum
+        </motion.text>
+        
+        <motion.text 
+          fill="#10B981" className="text-[10px] font-mono font-bold" x="250" y="25"
+          initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 3 }}
+        >
+          Retenção Axoniq
+        </motion.text>
+      </svg>
+    </div>
+  )
+}
+
+function Counter({ value, duration = 2, delay = 0, inView = false }: { value: number; duration?: number; delay?: number; inView?: boolean }) {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    if (!inView) return
+    let start = 0
+    const end = value
+    const totalSteps = 60 * duration
+    const stepValue = end / totalSteps
+    
+    const timer = setTimeout(() => {
+      const interval = setInterval(() => {
+        start += stepValue
+        if (start >= end) {
+          setCount(end)
+          clearInterval(interval)
+        } else {
+          setCount(Math.floor(start))
+        }
+      }, 1000 / 60)
+      return () => clearInterval(interval)
+    }, delay * 1000)
+
+    return () => clearTimeout(timer)
+  }, [value, duration, delay, inView])
+
+  return <span>{count}%</span>
+}
+
 function OrbitPill({ angle, radius, label, icon, delay = 0 }: { angle: number, radius: number, label: string, icon: string, delay?: number }) {
   const radian = angle * (Math.PI / 180);
   const x = Math.cos(radian) * radius;
@@ -572,6 +683,7 @@ export default function LandingPage() {
 
   const [mobileMenu, setMobileMenu] = useState(false)
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false)
+  const [chartInView, setChartInView] = useState(false)
 
   return (
     <div className="min-h-screen bg-[#09090B] text-zinc-100 selection:bg-blue-600 selection:text-white">
@@ -648,26 +760,32 @@ export default function LandingPage() {
               </ul>
             </motion.div>
 
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={1}
-              className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 shadow-xl">
+            <motion.div 
+              initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={1}
+              onViewportEnter={() => setChartInView(true)}
+              className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 shadow-xl"
+            >
               <div className="mb-4 flex justify-between items-center">
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Análise de Retenção</span>
                 <span className="text-xs font-bold text-emerald-400 bg-emerald-900/20 px-2 py-1 rounded">Otimizado por IA</span>
               </div>
               <div className="w-full h-48 sm:h-64 relative">
-                <svg className="w-full h-full" viewBox="0 0 400 200">
-                  <path d="M 0 20 Q 50 180 380 190" fill="none" stroke="#EF4444" strokeDasharray="5,5" strokeWidth="3" />
-                  <path d="M 0 20 C 50 20, 80 40, 100 40 S 130 30, 160 30 S 190 50, 220 50 S 250 40, 300 40 S 350 45, 400 45" fill="none" stroke="#10B981" strokeWidth="4" />
-                  <circle cx="0" cy="20" fill="#2563EB" r="5" />
-                  <text fill="#3B82F6" fontFamily="monospace" fontSize="10" x="10" y="15">Aula Assistida</text>
-                  <text fill="#EF4444" fontFamily="monospace" fontSize="10" x="280" y="180">Esquecimento Comum</text>
-                  <text fill="#10B981" fontFamily="monospace" fontSize="10" x="250" y="25">Retenção Axoniq</text>
-                </svg>
+                <RetentionChart />
               </div>
               <div className="mt-6 pt-6 border-t border-zinc-800 flex items-center justify-around">
-                <div className="text-center"><div className="text-2xl font-bold text-zinc-100">94%</div><div className="text-[10px] text-zinc-500 uppercase">Retenção 30d</div></div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-zinc-100">
+                    <Counter value={94} inView={chartInView} delay={1} />
+                  </div>
+                  <div className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Retenção 30d</div>
+                </div>
                 <div className="w-px h-8 bg-zinc-700" />
-                <div className="text-center"><div className="text-2xl font-bold text-red-500">12%</div><div className="text-[10px] text-zinc-500 uppercase">Método Tradicional</div></div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-500">
+                    <Counter value={12} inView={chartInView} delay={0.5} />
+                  </div>
+                  <div className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Método Tradicional</div>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -1001,11 +1119,11 @@ export default function LandingPage() {
               </svg>
             </div>
             <div className="relative z-10">
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">A aprovação começa com o material de hoje.</h2>
-              <p className="text-lg text-white/80 mb-10 max-w-xl mx-auto">Inscreva-se na lista de espera exclusiva e tenha acesso antecipado à plataforma que revoluciona o estudo médico.</p>
-              <button onClick={() => setIsWaitlistOpen(true)} className="inline-block bg-white text-blue-600 px-10 py-5 rounded-2xl font-bold text-xl hover:shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all">
-                Garantir Acesso Antecipado
-              </button>
+              <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Acesse o nosso site.</h2>
+              <p className="text-lg md:text-xl text-white/90 mb-10 max-w-xl mx-auto font-medium">E crie a sua conta para revolucionar o seu estudo médico com inteligência artificial.</p>
+              <Link href="/sign-up" className="inline-block bg-white text-blue-600 px-12 py-5 rounded-2xl font-bold text-xl hover:shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all">
+                Criar minha conta agora
+              </Link>
             </div>
           </div>
         </section>

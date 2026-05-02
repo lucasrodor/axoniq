@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, MODEL_SMART } from '@/lib/ai/client'
+import { logAiUsage } from '@/lib/ai/usage'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -167,6 +168,14 @@ Sua estrutura DEVE se aprofundar organicamente. Não jogue toda a informação n
         throw apiError
       }
     }
+
+    // Log AI Usage (tokens)
+    logAiUsage({
+      userId: user.id,
+      actionType: 'mindmap',
+      modelName: completion.model,
+      usage: completion.usage
+    })
 
     const content = completion.choices[0].message.content
     if (!content) throw new Error('AI falhou em gerar mapa mental')

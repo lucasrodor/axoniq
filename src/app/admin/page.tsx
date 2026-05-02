@@ -73,7 +73,7 @@ export default function AdminDashboard() {
   const [usersTotalPages, setUsersTotalPages] = useState(1)
   const [waitlistLoading, setWaitlistLoading] = useState(false)
   const [usersLoading, setUsersLoading] = useState(false)
-  const [isMonetizationActive, setIsMonetizationActive] = useState(false)
+  const [isMonetizationActive, setIsMonetizationActive] = useState(true)
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
 
   async function loadMetrics() {
@@ -242,14 +242,14 @@ export default function AdminDashboard() {
         {/* Launch Control Switch */}
         <div className="flex items-center gap-4 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-3 px-5 rounded-3xl shadow-2xl ring-1 ring-white/5 order-last md:order-none w-full md:w-auto justify-between md:justify-start">
           <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-[0.1em] text-zinc-500 mb-0.5">Controle de Lançamento</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.1em] text-zinc-500 mb-0.5">Status de Cobrança</span>
             <div className="flex items-center gap-2">
-              <div className={cn("w-2 h-2 rounded-full animate-pulse", isMonetizationActive ? "bg-emerald-500" : "bg-amber-500")} />
+              <div className={cn("w-2 h-2 rounded-full animate-pulse", isMonetizationActive ? "bg-emerald-500" : "bg-red-500")} />
               <span className={cn(
                 "text-xs font-black uppercase tracking-tight",
-                isMonetizationActive ? "text-emerald-500" : "text-amber-500"
+                isMonetizationActive ? "text-emerald-500" : "text-red-500"
               )}>
-                {isMonetizationActive ? "Monetização: ON" : "Modo: Free Total"}
+                {isMonetizationActive ? "Monetização: ON" : "Monetização: OFF"}
               </span>
             </div>
           </div>
@@ -259,21 +259,21 @@ export default function AdminDashboard() {
               const result = await toggleMonetization(isMonetizationActive)
               if (result.success) {
                 setIsMonetizationActive(result.newValue!)
-                toast(`Sistema atualizado para: ${result.newValue ? 'Monetização ON' : 'Free Total'}`, 'success')
+                toast(`Sistema atualizado para: ${result.newValue ? 'Monetização ON' : 'Desativado'}`, 'success')
               }
               setIsUpdatingSettings(false)
             }}
             disabled={isUpdatingSettings}
             className={cn(
               "w-14 h-7 rounded-full relative transition-all duration-500 p-1",
-              isMonetizationActive ? "bg-emerald-600/20 ring-1 ring-emerald-500/50" : "bg-zinc-800 ring-1 ring-zinc-700"
+              isMonetizationActive ? "bg-emerald-600/20 ring-1 ring-emerald-500/50" : "bg-red-600/20 ring-1 ring-red-500/50"
             )}
           >
             <motion.div
               animate={{ x: isMonetizationActive ? 28 : 0 }}
               className={cn(
                 "w-5 h-5 rounded-full shadow-lg transition-colors",
-                isMonetizationActive ? "bg-emerald-500" : "bg-zinc-500"
+                isMonetizationActive ? "bg-emerald-500" : "bg-red-500"
               )}
               transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             />
@@ -281,6 +281,9 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex items-center gap-4">
+          <Link href="/admin/ai-costs" className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+            💰 Custos de IA
+          </Link>
           <Link href="/dashboard" className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
             Dashboard <ChevronRight className="w-4 h-4" />
           </Link>

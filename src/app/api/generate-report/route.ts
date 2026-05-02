@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, MODEL_STRUCT } from '@/lib/ai/client'
+import { logAiUsage } from '@/lib/ai/usage'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -155,6 +156,14 @@ Gere uma análise completa seguindo o formato JSON solicitado. Foque em fornecer
         }
       ],
       response_format: zodResponseFormat(PerformanceAnalysisSchema, 'performance_analysis'),
+    })
+
+    // Log AI Usage (tokens)
+    logAiUsage({
+      userId: user.id,
+      actionType: 'report',
+      modelName: completion.model,
+      usage: completion.usage
     })
 
     const analysisContent = completion.choices[0].message.content
