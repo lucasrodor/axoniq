@@ -250,7 +250,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function FlashcardDemo({ onJoinWaitlist }: { onJoinWaitlist: () => void }) {
+function FlashcardDemo({ onGetStarted }: { onGetStarted: () => void }) {
   const [cards, setCards] = useState(demoCards)
   const [idx, setIdx] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
@@ -391,7 +391,7 @@ function FlashcardDemo({ onJoinWaitlist }: { onJoinWaitlist: () => void }) {
       </div>
 
       <p className="text-center text-xs text-zinc-600 mt-4">
-        Experimente agora — <button onClick={onJoinWaitlist} className="text-blue-500 hover:underline font-medium">crie flashcards do seu próprio material</button>
+        Experimente agora — <button onClick={onGetStarted} className="text-blue-500 hover:underline font-medium">crie sua conta grátis</button>
       </p>
     </div>
   )
@@ -424,131 +424,10 @@ const howItWorks = [
   { icon: 'psychology', title: '3. Estude com ciência', desc: 'Estude através de repetição espaçada e receba feedbacks imediatos sobre seu desempenho.' },
 ]
 
-function WaitlistModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [email, setEmail] = useState('')
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle')
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setStatus('loading')
-    
-    const { error } = await supabase.from('waitlist_leads').insert({
-      name, email, phone
-    })
-
-    if (error) {
-      console.error('Erro ao salvar lead:', error)
-      // Código de erro do Postgres para violação de unique constraint (e-mail já cadastrado)
-      if (error.code !== '23505') {
-        alert('Ocorreu um erro ao salvar suas informações. Tente novamente.')
-        setStatus('idle')
-        return
-      }
-    }
-
-    setStatus('success')
-    trackLead()
-  }
-
-  // Reset status on open
-  useEffect(() => {
-    if (isOpen) {
-      setStatus('idle')
-      setEmail('')
-      setName('')
-      setPhone('')
-    }
-  }, [isOpen])
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl z-10 overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[80px] rounded-full pointer-events-none" />
-            
-            <button onClick={onClose} className="absolute top-6 right-6 z-50 text-zinc-500 hover:text-zinc-100 transition-colors">
-              <MaterialIcon name="close" />
-            </button>
-
-            {status === 'success' ? (
-              <div className="text-center py-8 relative z-10">
-                <div className="w-16 h-16 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <MaterialIcon name="check" className="text-3xl font-bold" />
-                </div>
-                <h3 className="text-2xl font-bold text-zinc-100 mb-2">Você está na lista!</h3>
-                <p className="text-zinc-400">Em breve enviaremos seu acesso antecipado exclusivo para não assinantes.</p>
-                <button onClick={onClose} className="mt-8 w-full py-3 bg-zinc-800 text-zinc-100 font-bold rounded-xl hover:bg-zinc-700 transition-colors">
-                  Fechar
-                </button>
-              </div>
-            ) : (
-              <div className="relative z-10">
-                <div className="mb-8">
-                  <h3 className="text-2xl font-bold text-zinc-100 mb-2">Acesso Antecipado</h3>
-                  <p className="text-zinc-400 text-sm">Inscreva-se na lista de espera para testar o Axoniq antes do lançamento oficial.</p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Seu Nome</label>
-                    <input 
-                      type="text" required
-                      value={name} onChange={(e) => setName(e.target.value)}
-                      placeholder="Como gosta de ser chamado"
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">E-mail</label>
-                    <input 
-                      type="email" required
-                      value={email} onChange={(e) => setEmail(e.target.value)}
-                      placeholder="voce@exemplo.com"
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Telefone / WhatsApp</label>
-                    <input 
-                      type="tel" required
-                      value={phone} onChange={(e) => setPhone(e.target.value)}
-                      placeholder="(11) 99999-9999"
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                  
-                  <button 
-                    type="submit" disabled={status === 'loading'}
-                    className="w-full py-4 mt-2 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-70"
-                  >
-                    {status === 'loading' ? <MaterialIcon name="sync" className="animate-spin" /> : 'Entrar na Lista de Espera'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  )
-}
 
 
-function AuroraHero({ onJoinWaitlist }: { onJoinWaitlist: () => void }) {
+
+function AuroraHero({ onGetStarted }: { onGetStarted: () => void }) {
   const sectionRef = useRef<HTMLElement>(null)
   const router = useRouter()
 
@@ -662,49 +541,64 @@ function AuroraHero({ onJoinWaitlist }: { onJoinWaitlist: () => void }) {
 
       <motion.div
         initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={3}
-        className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+        className="flex flex-col sm:flex-row gap-4 justify-center items-start"
       >
-        <button onClick={onJoinWaitlist} className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 hover:-translate-y-0.5 transition-all">
-          Entrar na Lista de Espera
-        </button>
+        <div className="flex flex-col items-center w-full sm:w-auto">
+          <motion.button
+            onClick={onGetStarted}
+            whileHover={{ scale: 1.02, translateY: -2 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-600/25 hover:bg-blue-500 transition-colors relative group overflow-hidden cursor-pointer"
+          >
+            <span className="relative z-10">Começar agora</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
+          </motion.button>
+          <p className="text-[10px] text-zinc-500 mt-3 font-medium uppercase tracking-widest opacity-60">grátis, sem cartão, fácil</p>
+        </div>
         <a href="#como-funciona" className="w-full sm:w-auto px-8 py-4 text-blue-400 border border-blue-600/20 rounded-xl font-bold text-lg hover:bg-blue-600/5 transition-all text-center">
           Ver como funciona
         </a>
       </motion.div>
 
       <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={4} className="mt-16">
-        <FlashcardDemo onJoinWaitlist={onJoinWaitlist} />
+        <FlashcardDemo onGetStarted={onGetStarted} />
       </motion.div>
     </section>
   )
 }
 
 export default function LandingPage() {
-
+  const router = useRouter()
   const [mobileMenu, setMobileMenu] = useState(false)
-  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false)
   const [chartInView, setChartInView] = useState(false)
 
   return (
     <div className="min-h-screen bg-[#09090B] text-zinc-100 selection:bg-blue-600 selection:text-white">
-      <WaitlistModal isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
+
 
       {/* ── Navbar ── */}
       <nav className="bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 fixed top-0 w-full z-50">
-        <div className="flex justify-between items-center px-6 py-4 w-full max-w-7xl mx-auto">
+        <div className="flex justify-between items-center px-6 py-4 w-full max-w-7xl mx-auto relative">
+          {/* Logo */}
           <div className="flex items-center gap-2">
             <Image src="/AxonIQ.png" alt="AxonIQ" width={120} height={32} className="h-8 w-auto object-contain" />
           </div>
 
-          <div className="hidden md:flex gap-8 items-center">
-            <a href="#produto" className="text-blue-500 font-semibold hover:text-blue-400 transition-colors">Produto</a>
-            <a href="#funcionalidades" className="text-zinc-400 hover:text-blue-500 transition-colors">Funcionalidades</a>
+          {/* Centered Links */}
+          <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 gap-8 items-center">
+            <a href="#produto" className="text-zinc-400 hover:text-blue-500 font-medium transition-colors">Produto</a>
+            <a href="#funcionalidades" className="text-zinc-400 hover:text-blue-500 font-medium transition-colors">Funcionalidades</a>
+            <a href="#como-funciona" className="text-zinc-400 hover:text-blue-500 font-medium transition-colors">Como funciona</a>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button onClick={() => setIsWaitlistOpen(true)} className="bg-blue-600 text-white px-5 py-2 rounded-xl font-semibold text-sm hover:bg-blue-500 active:scale-95 transition-all">
-              Lista de Espera
-            </button>
+          {/* Right Actions */}
+          <div className="flex items-center gap-4">
+            <Link href="/login" className="hidden sm:block text-zinc-400 hover:text-zinc-100 font-semibold text-sm transition-colors">
+              Entrar
+            </Link>
+            <Link href="/sign-up" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-500 active:scale-95 transition-all shadow-lg shadow-blue-600/20">
+              Começar Agora
+            </Link>
             <button onClick={() => setMobileMenu(!mobileMenu)} className="md:hidden p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400">
               <MaterialIcon name={mobileMenu ? 'close' : 'menu'} />
             </button>
@@ -712,9 +606,13 @@ export default function LandingPage() {
         </div>
 
         {mobileMenu && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="md:hidden px-6 pb-4 flex flex-col gap-3 border-t border-zinc-800">
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="md:hidden px-6 pb-6 flex flex-col gap-4 border-t border-zinc-800 bg-zinc-950/95">
             <a href="#produto" onClick={() => setMobileMenu(false)} className="py-2 text-zinc-300 font-medium">Produto</a>
             <a href="#funcionalidades" onClick={() => setMobileMenu(false)} className="py-2 text-zinc-300 font-medium">Funcionalidades</a>
+            <div className="flex flex-col gap-3 pt-2">
+              <Link href="/login" className="w-full py-3 text-center text-zinc-400 font-bold border border-zinc-800 rounded-xl">Entrar</Link>
+              <Link href="/sign-up" className="w-full py-3 text-center bg-blue-600 text-white font-bold rounded-xl">Cadastrar Agora</Link>
+            </div>
           </motion.div>
         )}
       </nav>
@@ -722,7 +620,7 @@ export default function LandingPage() {
       <main className="pt-24 overflow-x-hidden">
 
         {/* ── Hero ── */}
-        <AuroraHero onJoinWaitlist={() => setIsWaitlistOpen(true)} />
+        <AuroraHero onGetStarted={() => router.push('/sign-up')} />
 
         {/* ── Informações do Beta ── */}
         <section className="bg-zinc-900 py-12 border-y border-zinc-800">
@@ -1100,11 +998,11 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl font-bold text-center mb-12 text-zinc-100">Dúvidas Frequentes</h2>
             <div className="space-y-4">
-              <FAQItem question="Por que entrar na lista de espera agora?" answer="As vagas iniciais são limitadas para garantirmos a melhor experiência. Quem estiver na lista terá acesso antecipado exclusivo e condições comerciais especiais (desconto de fundador) no lançamento oficial." defaultOpen />
-              <FAQItem question="É totalmente gratuito para entrar na lista?" answer="Sim, a inscrição é 100% gratuita. Você não precisa cadastrar nenhum cartão de crédito e não assume nenhum compromisso financeiro ao garantir seu lugar." />
-              <FAQItem question="O Axoniq serve do Ciclo Básico até a prova de Residência?" answer="Com certeza. A plataforma adapta a profundidade do conteúdo com base no material que você envia. O Axoniq estrutura desde resumos de anatomia para o Ciclo Básico até guidelines complexos de Clínica Médica para o Internato e Residência." />
-              <FAQItem question="Meus PDFs e resumos enviados estão seguros?" answer="Absolutamente. Seus materiais são isolados e protegidos na plataforma. Nós não utilizamos os PDFs das suas aulas ou resumos para treinar modelos abertos; só você tem acesso ao que sobe no Axoniq." />
-              <FAQItem question="Como vou saber quando minha conta for liberada?" answer="Assim que a plataforma estiver pronta para receber sua turma, enviaremos um convite exclusivo direto para o e-mail e WhatsApp cadastrados na lista de espera, contendo todas as instruções de acesso." />
+              <FAQItem question="Como o Axoniq acelera meu aprendizado?" answer="Através de algoritmos de IA clínica treinados para entender a complexidade da medicina, o Axoniq transforma PDFs e vídeos em flashcards e mapas mentais em segundos, garantindo que você foque no que realmente importa: o domínio do conteúdo." defaultOpen />
+              <FAQItem question="Posso testar gratuitamente?" answer="Com certeza. Ao criar sua conta, você recebe acesso imediato ao plano gratuito para experimentar o poder da nossa IA com seus próprios materiais, sem necessidade de cartão de crédito." />
+              <FAQItem question="O Axoniq serve do Ciclo Básico até a prova de Residência?" answer="Sim. A plataforma adapta a profundidade do conteúdo com base no material que você envia. Ele estrutura desde resumos de anatomia para o Ciclo Básico até guidelines complexos de Clínica Médica para o Internato e Residência." />
+              <FAQItem question="Meus PDFs e resumos enviados estão seguros?" answer="Absolutamente. Seus materiais são isolados e protegidos. Nós não utilizamos os PDFs das suas aulas ou resumos para treinar modelos abertos; apenas você tem acesso ao que sobe no seu painel pessoal." />
+              <FAQItem question="O Axoniq substitui meus métodos de estudo?" answer="O Axoniq é seu copiloto. Ele não substitui o seu estudo, mas remove o trabalho mecânico e chato de 'fazer resumos', permitindo que você aprenda até 3x mais rápido através de metodologias ativas e repetição espaçada." />
             </div>
           </div>
         </section>
@@ -1133,11 +1031,11 @@ export default function LandingPage() {
       <footer className="bg-zinc-950 text-zinc-400 py-16 px-6 border-t border-zinc-800">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 max-w-7xl mx-auto">
           <div className="space-y-6">
-            <div className="text-zinc-100 font-bold text-2xl flex items-center gap-1 tracking-tight">Axoniq<span className="text-blue-500">.</span></div>
-            <p className="text-sm leading-relaxed">A primeira inteligência artificial clínica dedicada ao domínio absoluto da medicina brasileira.</p>
+            <Image src="/AxonIQ.png" alt="AxonIQ" width={100} height={28} className="h-7 w-auto object-contain brightness-100 opacity-90" />
+            <p className="text-sm leading-relaxed max-w-[240px]">Sua inteligência artificial clínica para domínio absoluto da medicina.</p>
           </div>
           <div>
-            <h4 className="text-zinc-100 font-bold mb-6">Produto</h4>
+            <h4 className="text-zinc-100 font-bold mb-6 text-sm uppercase tracking-wider">Produto</h4>
             <ul className="space-y-4 text-sm">
               <li><a className="hover:text-zinc-100 transition-colors" href="#como-funciona">Como funciona</a></li>
               <li><a className="hover:text-zinc-100 transition-colors" href="#funcionalidades">Flashcards</a></li>
@@ -1146,15 +1044,7 @@ export default function LandingPage() {
             </ul>
           </div>
           <div>
-            <h4 className="text-zinc-100 font-bold mb-6">Empresa</h4>
-            <ul className="space-y-4 text-sm">
-              <li><a className="hover:text-zinc-100 transition-colors" href="#">Sobre nós</a></li>
-              <li><a className="hover:text-zinc-100 transition-colors" href="#">Carreiras</a></li>
-              <li><a className="hover:text-zinc-100 transition-colors" href="#">Blog Clínico</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-zinc-100 font-bold mb-6">Jurídico</h4>
+            <h4 className="text-zinc-100 font-bold mb-6 text-sm uppercase tracking-wider">Jurídico</h4>
             <ul className="space-y-4 text-sm">
               <li><Link className="hover:text-zinc-100 transition-colors" href="/terms">Termos de Uso</Link></li>
               <li><Link className="hover:text-zinc-100 transition-colors" href="/privacy">Privacidade</Link></li>

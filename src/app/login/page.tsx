@@ -48,15 +48,7 @@ function LoginPageContent() {
     }
   }
 
-  const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`,
-      },
-    })
-  }
+
 
   return (
     <div className="w-full h-screen grid grid-cols-1 lg:grid-cols-2">
@@ -141,20 +133,7 @@ function LoginPageContent() {
             </Button>
           </form>
 
-          <div className="flex items-center justify-between">
-            <div className="h-px flex-1 bg-[var(--border)]"></div>
-            <span className="px-4 text-xs text-[var(--muted-foreground)] uppercase">OU</span>
-            <div className="h-px flex-1 bg-[var(--border)]"></div>
-          </div>
 
-          <Button
-            onClick={handleGoogleLogin}
-            variant="outline"
-            className="w-full h-12"
-            isLoading={isLoading}
-          >
-            Entrar com Google
-          </Button>
 
           <div className="text-center text-sm space-y-2">
             <a href="/forgot-password" className="block text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors text-xs">

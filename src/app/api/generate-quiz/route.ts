@@ -148,9 +148,10 @@ Sua tarefa é gerar ${quantity} questões de qualidade igual ou superior a essas
 2. OPCÕES: 5 opções plausíveis. Sem "Todas as anteriores".
 3. EXPLICAÇÃO: Texto fluido e direto. 
    - PROIBIDO: Rótulos como "Mecanismo:", "Justificativa:", "Raciocínio:" ou frases como "Por que os distratores estão errados".
-   - REGRAS: Justifique a correta e refute os distratores referindo-se a eles por LETRAS (ex: "A alternativa 'a' está incorreta pois..."). 
-   - FORMATO: Use letras (a, b, c, d, e) em vez de números. Termine com uma frase curta de "Conceito-chave".
-4. ALEATORIEDADE: Distribua a resposta correta de forma aleatória.
+   - REGRAS: Justifique a correta e refute os distratores referindo-se a eles por LETRAS (a, b, c, d, e). 
+   - CONSISTÊNCIA: Antes de gerar a explicação, verifique se a letra que você está usando (ex: 'a') corresponde exatamente à opção na posição correta do seu array 'options'. Se a correta é a terceira opção, ela DEVE ser referida como 'c'.
+   - FORMATO: Use letras minúsculas (a, b, c, d, e) entre aspas simples. Termine com uma frase curta de "Conceito-chave".
+4. ALEATORIEDADE: Distribua a resposta correta de forma aleatória no array 'options' e garanta que as letras na 'explanation' acompanhem essa distribuição.
 
 ## REGRA CRÍTICA DE RESPOSTA CORRETA:
 No campo "correct_answer_text", copie EXATAMENTE o texto da alternativa correta tal como aparece no array "options". Caractere por caractere, sem resumir, sem reescrever, sem alterar pontuação. O sistema usa esse texto para localizar a resposta correta programaticamente.
@@ -283,31 +284,15 @@ REGRAS:
     }
 
     // Insert questions
-    const questionsToInsert = resolvedQuestions.map(q => {
-      let finalOptions = q.options;
-      let finalCorrectAnswer = q.correct_answer;
-
-      // Embaralhar opções para questões de múltipla escolha
-      if (q.type === 'multiple_choice' && q.options.length > 1) {
-        const optionsWithOriginalIndex = q.options.map((opt: string, idx: number) => ({ opt, idx }));
-        for (let i = optionsWithOriginalIndex.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [optionsWithOriginalIndex[i], optionsWithOriginalIndex[j]] = [optionsWithOriginalIndex[j], optionsWithOriginalIndex[i]];
-        }
-        finalOptions = optionsWithOriginalIndex.map((item: any) => item.opt);
-        finalCorrectAnswer = optionsWithOriginalIndex.findIndex((item: any) => item.idx === q.correct_answer);
-      }
-
-      return {
-        quiz_id: quiz.id,
-        question: q.question,
-        type: q.type,
-        options: finalOptions,
-        correct_answer: finalCorrectAnswer,
-        explanation: q.explanation,
-        difficulty: q.difficulty,
-      };
-    })
+    const questionsToInsert = resolvedQuestions.map(q => ({
+      quiz_id: quiz.id,
+      question: q.question,
+      type: q.type,
+      options: q.options,
+      correct_answer: q.correct_answer,
+      explanation: q.explanation,
+      difficulty: q.difficulty,
+    }))
 
     const { error: questionsError } = await supabaseAdmin
       .from('quiz_questions')

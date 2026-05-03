@@ -51,15 +51,7 @@ export default function SignUpPage() {
     }
   }
 
-  const handleGoogleSignUp = async () => {
-    setIsLoading(true)
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-  }
+
 
   return (
     <div className="w-full h-screen grid grid-cols-1 lg:grid-cols-2">
@@ -189,20 +181,7 @@ export default function SignUpPage() {
             </Button>
           </form>
 
-          <div className="flex items-center justify-between">
-            <div className="h-px flex-1 bg-[var(--border)]"></div>
-            <span className="px-4 text-xs text-[var(--muted-foreground)] uppercase">OU</span>
-            <div className="h-px flex-1 bg-[var(--border)]"></div>
-          </div>
 
-          <Button
-            onClick={handleGoogleSignUp}
-            variant="outline"
-            className="w-full h-12"
-            isLoading={isLoading}
-          >
-            Cadastrar com Google
-          </Button>
 
           <p className="text-[10px] text-center text-zinc-500 max-w-xs mx-auto leading-relaxed">
             Ao criar uma conta, você concorda com nossos{" "}
