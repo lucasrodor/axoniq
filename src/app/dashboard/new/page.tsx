@@ -311,10 +311,52 @@ function NewSourcePageContent() {
 
           {step === 'generating' && (
             <div className="py-10 sm:py-20 flex flex-col items-center justify-center space-y-10">
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full border-4 border-blue-500/10 border-t-blue-500 animate-spin" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Brain size={40} className="text-blue-500 animate-pulse" />
+              <div className="relative w-48 h-48 flex items-center justify-center">
+                {/* Outer pulsing glow */}
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.1, 1],
+                    opacity: [0.15, 0.05, 0.15]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 rounded-full bg-blue-500/20 blur-2xl"
+                />
+                
+                {/* Outer dashed ring */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 rounded-full border border-dashed border-blue-500/20"
+                />
+                
+                {/* Middle rotating ring */}
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-4 rounded-full border border-blue-500/10 border-t-blue-500/40"
+                />
+
+                {/* Inner Core */}
+                <div className="relative w-24 h-24 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-2xl">
+                  <div className="absolute inset-0 rounded-full bg-blue-600/5 animate-pulse" />
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.05, 1],
+                      filter: ["brightness(1)", "brightness(1.5)", "brightness(1)"]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <Brain size={48} className="text-blue-500 relative z-10" />
+                  </motion.div>
+                  
+                  {/* Orbiting Particle */}
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-[-12px]"
+                  >
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-[0_0_15px_#3b82f6]" />
+                  </motion.div>
                 </div>
               </div>
               
