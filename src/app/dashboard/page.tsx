@@ -75,7 +75,8 @@ import {
   NewFolderModal,
   NewDeckModal,
   NewQuizModal,
-  UpgradeModal
+  UpgradeModal,
+  WaitlistModal
 } from '@/components/dashboard/dashboard-modals'
 import { 
   Heart, 
@@ -89,6 +90,7 @@ import {
 import useSWR, { mutate } from 'swr'
 import { dashboardFetcher } from '@/lib/dashboard/fetchers'
 import { ListSkeleton, StatSkeleton, CardSkeleton } from '@/components/dashboard/skeleton'
+import { LaunchCountdownBanner } from '@/components/dashboard/launch-countdown'
 interface Flashcard {
   id: string
   ease_factor: number
@@ -195,6 +197,7 @@ function DashboardPageContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [availableCredits, setAvailableCredits] = useState<number | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showWaitlistModal, setShowWaitlistModal] = useState(false)
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -611,26 +614,8 @@ function DashboardPageContent() {
         <NeuronBackground />
         <div className="relative z-10 space-y-8 p-3 sm:p-4 md:p-8 max-w-7xl mx-auto">
         
-        {/* Launch Pass Banner - Dashboard */}
-        {isLaunchWeek && (
-          <div className="bg-gradient-to-r from-blue-600/20 to-blue-900/20 border border-blue-500/30 p-4 sm:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-700 shadow-[0_0_30px_rgba(37,99,235,0.15)] relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-blue-500/20 rounded-2xl flex-shrink-0 text-blue-400 border border-blue-500/20 hidden sm:flex">
-                <Crown size={24} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg sm:text-xl font-black text-blue-100 tracking-tight">🚀 Acesso VIP de Lançamento!</h3>
-                  <span className="px-2 py-0.5 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-md animate-pulse">PASSE LIVRE</span>
-                </div>
-                <p className="text-blue-200/80 text-sm sm:text-base font-medium leading-relaxed max-w-3xl">
-                  Você ganhou acesso total a todos os recursos da inteligência artificial do AxonIQ até o nosso pré-lançamento no dia <strong className="text-white">11 de Maio</strong>. Aproveite os recursos Pro sem moderação!
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Launch Countdown Banner */}
+        <LaunchCountdownBanner onOpenWaitlist={() => setShowWaitlistModal(true)} />
 
         {/* Header - Unified with Bento Search */}
         <header className="flex flex-col md:flex-row md:items-start justify-between pb-4 md:pb-8 gap-3 px-1 sm:px-0">
@@ -762,6 +747,9 @@ function DashboardPageContent() {
                 onConfirm={handleCreateFolder}
                 onClose={() => { setShowNewFolder(false); setNewFolderName('') }}
               />
+            )}
+            {showWaitlistModal && (
+              <WaitlistModal onClose={() => setShowWaitlistModal(false)} />
             )}
           </AnimatePresence>
 

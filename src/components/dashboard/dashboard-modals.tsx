@@ -17,6 +17,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { UpgradeGate } from './upgrade-gate'
+import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/components/providers/auth-provider'
 
 interface ModalProps {
   onClose: () => void
@@ -425,6 +427,144 @@ export function LowCreditModal({ onClose, onConfirm, onUpgrade, available }: Mod
               Tentar com o que tenho
             </Button>
           </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+export function WaitlistModal({ onClose }: ModalProps) {
+  const { user } = useAuth()
+  const [name, setName] = React.useState(user?.user_metadata?.full_name || '')
+  const [email, setEmail] = React.useState(user?.email || '')
+  const [phone, setPhone] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+  const [success, setSuccess] = React.useState(false)
+
+  // Pre-fill if user data becomes available after mount
+  React.useEffect(() => {
+    if (user) {
+      if (!name) setName(user.user_metadata?.full_name || '')
+      if (!email) setEmail(user.email || '')
+    }
+  }, [user])
+
+  const handleSubmit = async () => {
+    if (!phone.trim() || !email.trim() || !name.trim()) return
+    setLoading(true)
+    
+    try {
+      const { error } = await supabase.from('waitlist_leads').insert({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim()
+      })
+
+      if (error && error.code !== '23505') { // Ignorar erro de duplicata
+        throw error
+      }
+
+      setSuccess(true)
+      setTimeout(onClose, 2000)
+    } catch (error) {
+      console.error('Erro ao salvar lead:', error)
+      alert('Ocorreu um erro ao salvar suas informações. Tente novamente.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-2xl animate-in fade-in duration-500 p-4" onClick={onClose}>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-zinc-950 border border-blue-500/20 rounded-[2.5rem] p-8 sm:p-12 w-full max-w-md mx-4 shadow-[0_0_50px_rgba(37,99,235,0.1)] relative overflow-hidden" 
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Background Gradient */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-3xl -mr-16 -mt-16" />
+        
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-all">
+          <X size={20} />
+        </button>
+
+        <div className="flex flex-col items-start text-left">
+          <div className="p-4 bg-blue-500/10 rounded-3xl text-blue-500 mb-8 shadow-inner self-center">
+            <Crown size={32} />
+          </div>
+
+          <AnimatePresence mode="wait">
+            {!success ? (
+              <motion.div 
+                key="form"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full"
+              >
+                <h3 className="text-2xl font-black text-white mb-3 tracking-tight uppercase italic self-center text-center w-full">Condições VIP</h3>
+                <p className="text-sm text-zinc-400 mb-10 leading-relaxed text-center w-full">
+                  Deixe seu WhatsApp para receber as condições exclusivas de lançamento e garantir seu acesso Pro com desconto.
+                </p>
+
+                <div className="space-y-4 w-full text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nome Completo</label>
+                    <input
+                      type="text"
+                      placeholder="Seu nome"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-3 px-6 text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">E-mail</label>
+                    <input
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-3 px-6 text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">WhatsApp</label>
+                    <input
+                      type="text"
+                      placeholder="(00) 00000-0000"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-3 px-6 text-white font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all text-sm"
+                    />
+                  </div>
+                </div>
+                
+                <Button 
+                    className="w-full py-8 mt-6 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-[11px] border-none shadow-xl shadow-blue-500/20 transition-all hover:scale-[1.02]"
+                    onClick={handleSubmit}
+                    disabled={loading || !phone.trim() || !email.trim() || !name.trim()}
+                  >
+                    {loading ? 'Processando...' : 'Quero Minha Oferta'}
+                  </Button>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="success"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center py-6"
+              >
+                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500 mb-6 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h4 className="text-xl font-bold text-white mb-2">Sucesso!</h4>
+                <p className="text-sm text-zinc-400">Em breve entraremos em contato com as condições especiais.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     </div>
