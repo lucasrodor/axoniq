@@ -50,7 +50,7 @@ export const dashboardFetcher = async (key: string) => {
       return summary
       
     case 'profile':
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single()
+      const { data: profile } = await supabase.from('profiles').select('full_name, has_completed_tour').eq('id', userId).single()
       return profile
 
     case 'documents':

@@ -609,7 +609,7 @@ function DashboardPageContent() {
 
     return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <GuidedTour />
+      <GuidedTour userId={user?.id} hasCompleted={profile?.has_completed_tour} />
       <div className="min-h-screen relative clinical-grid overflow-x-hidden">
         <NeuronBackground />
         <div className="relative z-10 space-y-8 p-3 sm:p-4 md:p-8 max-w-7xl mx-auto">

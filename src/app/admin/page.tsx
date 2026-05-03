@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Search,
+  Zap,
   ArrowUpRight
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -240,44 +241,50 @@ export default function AdminDashboard() {
         </div>
 
         {/* Launch Control Switch */}
-        <div className="flex items-center gap-4 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-3 px-5 rounded-3xl shadow-2xl ring-1 ring-white/5 order-last md:order-none w-full md:w-auto justify-between md:justify-start">
+        <div className="flex items-center gap-6 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-3 px-6 rounded-3xl shadow-2xl ring-1 ring-white/5 order-last md:order-none w-full md:w-auto">
           <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-[0.1em] text-zinc-500 mb-0.5">Status de Cobrança</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.1em] text-zinc-500 mb-0.5">Configuração de Cobrança</span>
             <div className="flex items-center gap-2">
-              <div className={cn("w-2 h-2 rounded-full animate-pulse", isMonetizationActive ? "bg-emerald-500" : "bg-red-500")} />
+              <div className={cn("w-2 h-2 rounded-full", isMonetizationActive ? "bg-emerald-500" : "bg-red-500 animate-pulse")} />
               <span className={cn(
                 "text-xs font-black uppercase tracking-tight",
                 isMonetizationActive ? "text-emerald-500" : "text-red-500"
               )}>
-                {isMonetizationActive ? "Monetização: ON" : "Monetização: OFF"}
+                {isMonetizationActive ? "Status: Cobrança Ativa" : "Status: Modo Gratuito"}
               </span>
             </div>
           </div>
-          <button
-            onClick={async () => {
-              setIsUpdatingSettings(true)
-              const result = await toggleMonetization(isMonetizationActive)
-              if (result.success) {
-                setIsMonetizationActive(result.newValue!)
-                toast(`Sistema atualizado para: ${result.newValue ? 'Monetização ON' : 'Desativado'}`, 'success')
-              }
-              setIsUpdatingSettings(false)
-            }}
-            disabled={isUpdatingSettings}
-            className={cn(
-              "w-14 h-7 rounded-full relative transition-all duration-500 p-1",
-              isMonetizationActive ? "bg-emerald-600/20 ring-1 ring-emerald-500/50" : "bg-red-600/20 ring-1 ring-red-500/50"
-            )}
-          >
-            <motion.div
-              animate={{ x: isMonetizationActive ? 28 : 0 }}
+          
+          <div className="flex items-center gap-3 border-l border-zinc-800 pl-6">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Desativar Cobrança</span>
+            <button
+              onClick={async () => {
+                setIsUpdatingSettings(true)
+                const result = await toggleMonetization(isMonetizationActive)
+                if (result.success) {
+                  setIsMonetizationActive(result.newValue!)
+                  toast(`Sistema: ${result.newValue ? 'Cobrança Ativada' : 'Modo Gratuito Ativado'}`, result.newValue ? 'success' : 'warning')
+                }
+                setIsUpdatingSettings(false)
+              }}
+              disabled={isUpdatingSettings}
               className={cn(
-                "w-5 h-5 rounded-full shadow-lg transition-colors",
-                isMonetizationActive ? "bg-emerald-500" : "bg-red-500"
+                "w-14 h-7 rounded-full relative transition-all duration-500 p-1",
+                !isMonetizationActive ? "bg-red-600/20 ring-1 ring-red-500/50" : "bg-zinc-800 ring-1 ring-zinc-700"
               )}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            />
-          </button>
+            >
+              <motion.div
+                animate={{ x: !isMonetizationActive ? 28 : 0 }}
+                className={cn(
+                  "w-5 h-5 rounded-full shadow-lg transition-colors flex items-center justify-center",
+                  !isMonetizationActive ? "bg-red-500" : "bg-zinc-600"
+                )}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              >
+                {!isMonetizationActive && <Zap size={10} className="text-white" />}
+              </motion.div>
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
