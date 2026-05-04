@@ -511,7 +511,7 @@ export default function DeckDetailPage() {
                         Pergunta
                       </span>
                       <div className="mt-4 prose prose-sm dark:prose-invert text-zinc-100 max-w-none prose-p:leading-relaxed">
-                        <MarkdownDisplay content={card.front} />
+                        <MarkdownDisplay content={card.front.replace(/\{\{c\d::(.*?)\}\}/g, '[...]')} />
                       </div>
                     </div>
                     <div>
@@ -519,7 +519,7 @@ export default function DeckDetailPage() {
                         Resposta
                       </span>
                       <div className="mt-4 prose prose-sm dark:prose-invert text-zinc-400 max-w-none prose-p:leading-relaxed">
-                        <MarkdownDisplay content={card.back} />
+                        <MarkdownDisplay content={card.back.replace(/\{\{c\d::(.*?)\}\}/g, '**$1**')} />
                       </div>
                     </div>
                     {/* Hover Actions */}

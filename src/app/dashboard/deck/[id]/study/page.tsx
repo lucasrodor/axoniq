@@ -258,6 +258,38 @@ export default function StudyPage({
   
   const stage = getCardStage(currentCard)
 
+  const renderCardContent = (text: string, isFront: boolean) => {
+    if (!text) return null
+    
+    // Split by cloze syntax: {{c1::answer}} or {{c1::answer::hint}}
+    const parts = text.split(/(\{\{c\d+::.*?(?:::(?:.*?))?\}\})/g)
+    
+    return (
+      <>
+        {parts.map((part, i) => {
+          const match = part.match(/\{\{c\d+::(.*?)(?:::(.*?))?\}\}/)
+          if (match) {
+            const [_, answer, hint] = match
+            if (isFront) {
+              return (
+                <span key={i} className="bg-blue-500/20 px-2 py-0.5 rounded text-blue-400 border border-blue-500/30 font-mono text-[0.8em] mx-1">
+                  {hint || '...'}
+                </span>
+              )
+            } else {
+              return (
+                <span key={i} className="text-emerald-400 font-bold border-b border-emerald-500/30 mx-1">
+                  {answer}
+                </span>
+              )
+            }
+          }
+          return <MarkdownDisplay key={i} content={part} raw={true} as="span" className="text-inherit !leading-inherit" />
+        })}
+      </>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full min-h-0 bg-[#09090B] relative overflow-hidden selection:bg-blue-500/30">
       {/* Background Aurora */}
@@ -291,17 +323,17 @@ export default function StudyPage({
             />
           </div>
         </div>
-
+ 
         <div className="flex justify-end invisible md:visible">
           {/* Spacer to keep center balanced */}
           <div className="w-[100px]" />
         </div>
       </div>
 </div>
-
+ 
       {/* Card Area */}
       <div className="flex-1 flex flex-col items-center justify-center pt-4 pb-2">
-
+ 
         <div
           className="relative w-full max-w-xl aspect-[3/2.2] cursor-pointer"
           style={{ perspective: '1000px' }}
@@ -325,14 +357,14 @@ export default function StudyPage({
             >
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-zinc-100 leading-normal px-4 sm:px-6 flex items-center justify-center text-center">
-                  <MarkdownDisplay content={currentCard.front} raw={true} className="text-inherit !leading-inherit" />
+                  {renderCardContent(currentCard.front, true)}
                 </h2>
               </div>
               <div className="absolute bottom-6 text-[10px] uppercase font-black tracking-widest text-zinc-500 flex items-center gap-2 opacity-50">
                 <RotateCw size={10} /> Clique para virar
               </div>
             </div>
-
+ 
             {/* Back */}
             <div
               className="absolute inset-0 bg-zinc-950/80 border border-zinc-800/80 rounded-[2.5rem] shadow-[0_0_50px_rgba(16,185,129,0.05)] backdrop-blur-3xl flex items-center justify-center p-8 sm:p-12 text-center overflow-hidden"
@@ -343,7 +375,7 @@ export default function StudyPage({
             >
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
                 <div className="text-lg sm:text-2xl text-zinc-300 leading-normal font-medium max-w-[95%] flex items-center justify-center text-center">
-                  <MarkdownDisplay content={currentCard.back} raw={true} className="text-inherit !leading-inherit" />
+                  {renderCardContent(currentCard.back || currentCard.front, false)}
                 </div>
               </div>
             </div>

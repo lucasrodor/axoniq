@@ -102,6 +102,12 @@ export function RichEditor({ value, onChange, placeholder, label }: RichEditorPr
           <ToolbarButton icon={<Italic size={16} />} onClick={() => insertText('_', '_')} title="Itálico" />
           <ToolbarButton icon={<List size={16} />} onClick={() => insertText('\n- ')} title="Lista" />
           <div className="w-px h-6 bg-zinc-800/50 mx-2" />
+          <ToolbarButton 
+            icon={<span className="text-xs font-black">[...]</span>} 
+            onClick={() => insertText('{{c1::', '}}')} 
+            title="Criar Lacuna (Cloze)" 
+          />
+          <div className="w-px h-6 bg-zinc-800/50 mx-2" />
           <input
             type="file"
             ref={fileInputRef}
@@ -119,14 +125,24 @@ export function RichEditor({ value, onChange, placeholder, label }: RichEditorPr
       )}
 
       {/* Content */}
-      <div className="relative min-h-[180px]">
+      <div className="relative min-h-[180px] flex flex-col">
         {activeTab === 'edit' ? (
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            className="w-full h-full min-h-[180px] p-6 bg-transparent text-zinc-100 text-sm focus:outline-none resize-y placeholder-zinc-700"
-          />
+          <>
+            <textarea
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full flex-1 min-h-[180px] p-6 bg-transparent text-zinc-100 text-sm focus:outline-none resize-none placeholder-zinc-700"
+            />
+            <div className="px-5 py-2.5 bg-blue-500/5 border-t border-zinc-800/50 flex items-center gap-3">
+               <div className="p-1 rounded bg-blue-500/10 text-blue-400">
+                  <Edit3 size={10} />
+               </div>
+               <p className="text-[9px] font-medium text-zinc-500 tracking-wide uppercase">
+                  Dica: Use <code className="text-blue-400 bg-blue-500/10 px-1 rounded">{"{{c1::resposta}}"}</code> para criar lacunas. Elas aparecerão como <span className="text-blue-400 font-bold">[...]</span> durante o estudo.
+               </p>
+            </div>
+          </>
         ) : (
           <div className="p-6 prose prose-sm dark:prose-invert max-w-none prose-img:rounded-2xl">
             {value ? (
@@ -147,7 +163,7 @@ function ToolbarButton({ icon, onClick, disabled, title }: { icon: any, onClick:
       onClick={(e) => { e.preventDefault(); onClick(); }}
       disabled={disabled}
       title={title}
-      className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-50"
+      className="p-2 rounded-lg hover:bg-white/10 text-zinc-500 hover:text-white transition-colors disabled:opacity-50"
     >
       {icon}
     </button>

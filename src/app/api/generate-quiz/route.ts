@@ -132,108 +132,68 @@ END OF DATA`
       })
     })
 
-    let completion
-    try {
-      completion = await openai.chat.completions.create({
-        model: MODEL_SMART,
-        messages: [
-          {
-            role: 'system',
-            content: `Você é um professor de medicina sênior especializado em criar questões para provas de residência de alto nível.
+    // ── Geração Paralela por Lotes (Otimização de Velocidade) ──
+    const BATCH_SIZE = 5
+    const numBatches = Math.ceil(quantity / BATCH_SIZE)
+    const batches = Array.from({ length: numBatches }, (_, i) => {
+      const currentBatchSize = (i === numBatches - 1) ? (quantity - (i * BATCH_SIZE)) : BATCH_SIZE
+      return currentBatchSize
+    })
 
-Sua tarefa é gerar ${quantity} questões de qualidade igual ou superior a essas provas, baseadas EXCLUSIVAMENTE no conteúdo médico fornecido.
+    console.log(`[Quiz] Iniciando geração de ${quantity} questões em ${numBatches} lotes paralelos.`)
 
-## REGRAS DE QUALIDADE (OBRIGATÓRIO)
-1. ESTRUTURA: Minicasso clínico terminando em "?" ou comando direto.
-2. OPCÕES: 5 opções plausíveis. Sem "Todas as anteriores".
-3. EXPLICAÇÃO: Texto fluido e direto. 
-   - PROIBIDO: Rótulos como "Mecanismo:", "Justificativa:", "Raciocínio:" ou frases como "Por que os distratores estão errados".
-   - REGRAS: Justifique a correta e refute os distratores referindo-se a eles por LETRAS (a, b, c, d, e). 
-   - CONSISTÊNCIA: Antes de gerar a explicação, verifique se a letra que você está usando (ex: 'a') corresponde exatamente à opção na posição correta do seu array 'options'. Se a correta é a terceira opção, ela DEVE ser referida como 'c'.
-   - FORMATO: Use letras minúsculas (a, b, c, d, e) entre aspas simples. Termine com uma frase curta de "Conceito-chave".
-4. ALEATORIEDADE: Distribua a resposta correta de forma aleatória no array 'options' e garanta que as letras na 'explanation' acompanhem essa distribuição.
-
-## REGRA CRÍTICA DE RESPOSTA CORRETA:
-No campo "correct_answer_text", copie EXATAMENTE o texto da alternativa correta tal como aparece no array "options". Caractere por caractere, sem resumir, sem reescrever, sem alterar pontuação. O sistema usa esse texto para localizar a resposta correta programaticamente.
-
-## EXEMPLO DE QUESTÃO BOA (FAÇA ASSIM)
-{
-  "question": "Mulher de 52 anos, IMC 31, diagnosticada com DM2 há 2 meses. Qual o mecanismo de ação principal do medicamento de primeira linha indicado?",
-  "options": [
-    "Inibição da gliconeogênese hepática e melhora da sensibilidade periférica à insulina",
-    "Estímulo direto à secreção de insulina pelas células beta-pancreáticas",
-    "Inibição da alfa-glicosidase intestinal",
-    "Bloqueio do cotransportador SGLT2",
-    "Agonismo do receptor GLP-1"
-  ],
-  "correct_answer_text": "Inibição da gliconeogênese hepática e melhora da sensibilidade periférica à insulina",
-  "explanation": "A metformina atua inibindo a gliconeogênese hepática e aumentando a sensibilidade periférica. A alternativa 'b' descreve sulfonilureias. Conceito-chave: metformina é a primeira linha no DM2.",
-  "difficulty": "medium"
-}
-
-Distribua entre easy, medium e hard.`
-          },
-          {
-            role: 'user',
-            content: userMessageContent
-          }
-        ],
-        response_format: zodResponseFormat(QuizListSchema, 'quiz_list'),
-      })
-    } catch (apiError: any) {
-      console.warn('⚠️ OpenAI Quiz Image Error, retrying with text only:', apiError.message)
-      
-      if (apiError.message.includes('image') || apiError.message.includes('download') || apiError.message.includes('timeout')) {
-        completion = await openai.chat.completions.create({
+    const generationTasks = batches.map(async (batchSize, index) => {
+      try {
+        const completion = await openai.chat.completions.create({
           model: MODEL_SMART,
           messages: [
             {
               role: 'system',
-              content: `Você é um professor de medicina sênior especializado em criar questões de alto nível.
+              content: `Você é um professor de medicina sênior especializado em criar questões de alto nível. Gere ${batchSize} questões baseadas no conteúdo médico fornecido.
               
-Sua tarefa é gerar ${quantity} questões baseadas no texto.
-
-REGRAS: 
-- Justificativa fluida, sem rótulos (Mecanismo, Justificativa, etc).
-- Use letras (a, b, c) para referir-se às alternativas.
-- Use "correct_answer_text" com o texto exato da resposta.
-- Termine com Conceito-chave.`
+## REGRAS DE QUALIDADE
+- Justifique a correta e refute os distratores por LETRAS ('a', 'b', 'c'...).
+- CONSISTÊNCIA: A letra usada na explicação DEVE ser a mesma da posição no array 'options' (0=a, 1=b, 2=c, 3=d, 4=e).
+- ALEATORIEDADE: Distribua a resposta correta aleatoriamente.
+- FORMATO: Use 'correct_answer_text' com o texto EXATO da opção correta.
+- DISTRIBUIÇÃO: Varie entre fácil, médio e difícil.`
             },
             {
               role: 'user',
-              content: `Generate ${quantity} quiz questions based strictly on the following text: \n\n ${text.substring(0, 50000)}`
+              content: userMessageContent
             }
           ],
           response_format: zodResponseFormat(QuizListSchema, 'quiz_list'),
         })
-      } else {
-        throw apiError
-      }
-    }
 
-    // Log AI Usage (tokens)
+        const content = completion.choices[0].message.content || ''
+        const parsed = JSON.parse(content)
+        return { 
+          questions: parsed.questions || [], 
+          usage: completion.usage 
+        }
+      } catch (err) {
+        console.error(`[Quiz] Erro no lote ${index}:`, err)
+        return { questions: [], usage: null }
+      }
+    })
+
+    const results = await Promise.all(generationTasks)
+    const questionsRaw = results.map(r => r.questions).flat().filter(Boolean)
+    
+    // Agregar logs de uso
+    const totalTokens = results.reduce((acc, curr) => ({
+      prompt_tokens: acc.prompt_tokens + (curr.usage?.prompt_tokens || 0),
+      completion_tokens: acc.completion_tokens + (curr.usage?.completion_tokens || 0),
+      total_tokens: acc.total_tokens + (curr.usage?.total_tokens || 0),
+    }), { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 })
+
     logAiUsage({
       userId: user.id,
       actionType: 'quiz',
-      modelName: completion.model,
-      usage: completion.usage
+      modelName: MODEL_SMART,
+      usage: totalTokens
     })
-
-    const content = completion.choices[0].message.content || ''
-    let questionsRaw: any[] = []
-
-    try {
-      const parsed = JSON.parse(content)
-      questionsRaw = parsed.questions || []
-    } catch {
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/)
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[1])
-          questionsRaw = parsed.questions || []
-        } catch { /* give up */ }
-      }
-    }
 
     if (questionsRaw.length === 0) {
       await supabaseAdmin.from('quizzes').update({ status: 'error' }).eq('id', quiz.id)
