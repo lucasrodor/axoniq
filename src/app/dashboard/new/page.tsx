@@ -148,8 +148,15 @@ function NewSourcePageContent() {
           headers: { 'Authorization': `Bearer ${session?.access_token}` },
           body: formData
         })
+        
+        const contentType = res.headers.get("content-type")
+        if (!res.ok) {
+          if (res.status === 413) throw new Error('O arquivo é muito grande para o processamento direto. Tente um arquivo menor que 4.5MB ou divida-o.')
+          const data = contentType?.includes("application/json") ? await res.json() : null
+          throw new Error(data?.error || `Erro do servidor (${res.status}).`)
+        }
+        
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Erro ao processar áudio')
         sourceId = data.sourceId
       } else {
         const formData = new FormData()
@@ -161,8 +168,15 @@ function NewSourcePageContent() {
           headers: { 'Authorization': `Bearer ${session?.access_token}` },
           body: formData
         })
+        
+        const contentType = res.headers.get("content-type")
+        if (!res.ok) {
+          if (res.status === 413) throw new Error('Os arquivos somados excedem o limite de 4.5MB. Tente enviar menos arquivos ou arquivos menores.')
+          const data = contentType?.includes("application/json") ? await res.json() : null
+          throw new Error(data?.error || `Erro do servidor (${res.status}).`)
+        }
+        
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Erro ao processar conteúdo')
         sourceId = data.sourceId
       }
 
@@ -606,7 +620,7 @@ function GenerationConfigComponent({ config, onChange, onStart, isLoading }: any
                 </div>
                 <div className="text-center">
                   <p className="font-bold text-zinc-100">{config.files[0] ? config.files[0].name : 'Selecionar Áudio'}</p>
-                  <p className="text-xs text-zinc-500 mt-1">MP3, WAV ou M4A (Até 25MB)</p>
+                  <p className="text-xs text-zinc-500 mt-1">MP3, WAV ou M4A (Até 4.5MB)</p>
                 </div>
               </div>
             </div>
