@@ -387,7 +387,7 @@ export default function DeckDetailPage() {
                     <div className="mt-4 p-5 bg-red-500/5 border border-red-500/20 rounded-[1.5rem] space-y-4 animate-in slide-in-from-top-2 duration-300">
                       <p className="text-[11px] text-red-400 font-bold uppercase leading-tight tracking-wide">Ação Irreversível: Isso removerá permanentemente o deck e todos os cards vinculados.</p>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="destructive" onClick={handleDeleteDeck} className="h-9 text-[10px] font-black uppercase tracking-widest rounded-xl px-5 bg-red-600">Sim, Deletar</Button>
+                        <Button size="sm" onClick={handleDeleteDeck} className="h-9 text-[10px] font-black uppercase tracking-widest rounded-xl px-5 bg-red-600">Sim, Deletar</Button>
                         <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(false)} className="h-9 text-[10px] font-black uppercase tracking-widest rounded-xl px-5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 transition-all">Cancelar</Button>
                       </div>
                     </div>
