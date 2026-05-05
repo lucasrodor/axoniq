@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Check, ChevronsUpDown, Search } from 'lucide-react'
+import { Check, ChevronsUpDown, Search, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SPECIALTIES } from '@/lib/constants/specialties'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,14 +10,18 @@ interface SpecialtySelectorProps {
   value: string
   onChange: (value: string) => void
   className?: string
+  placeholder?: string
+  showAll?: boolean
 }
 
-export function SpecialtySelector({ value, onChange, className }: SpecialtySelectorProps) {
+export function SpecialtySelector({ value, onChange, className, placeholder, showAll }: SpecialtySelectorProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
   const containerRef = React.useRef<HTMLDivElement>(null)
 
-  const filteredSpecialties = SPECIALTIES.filter((s) =>
+  const specialtiesToList = showAll ? ["Todas as Áreas", ...SPECIALTIES] : SPECIALTIES
+
+  const filteredSpecialties = specialtiesToList.filter((s) =>
     s.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -37,12 +41,15 @@ export function SpecialtySelector({ value, onChange, className }: SpecialtySelec
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 border-zinc-800 bg-zinc-900/30 text-zinc-100 text-sm hover:border-blue-500/30 transition-all focus:outline-none focus:border-blue-500/50"
+        className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 text-zinc-100 text-sm hover:border-blue-500/30 transition-all focus:outline-none focus:border-blue-500/50 h-[46px]"
       >
-        <span className={cn("truncate", !value && "text-zinc-500")}>
-          {value || "Selecione a especialidade..."}
-        </span>
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        <div className="flex items-center gap-3 overflow-hidden">
+          <Tag size={16} className="text-zinc-500 shrink-0" />
+          <span className={cn("truncate", !value && "text-zinc-500")}>
+          {value === 'all' || value === 'Todas as Áreas' ? 'Todas as Áreas' : (value || placeholder || "Selecione a área...")}
+          </span>
+        </div>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-zinc-500" />
       </button>
 
       <AnimatePresence>
@@ -80,15 +87,15 @@ export function SpecialtySelector({ value, onChange, className }: SpecialtySelec
                     }}
                     className={cn(
                       "w-full flex items-center px-4 py-2.5 text-sm rounded-xl transition-colors text-left",
-                      value === specialty 
-                        ? "bg-blue-500/10 text-blue-400" 
+                      (value === specialty || (value === 'all' && specialty === 'Todas as Áreas')) 
+                        ? "bg-blue-500/10 text-blue-400 font-bold" 
                         : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                     )}
                   >
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        value === specialty ? "opacity-100" : "opacity-0"
+                        (value === specialty || (value === 'all' && specialty === 'Todas as Áreas')) ? "opacity-100" : "opacity-0"
                       )}
                     />
                     {specialty}

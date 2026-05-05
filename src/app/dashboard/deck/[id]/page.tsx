@@ -440,9 +440,9 @@ export default function DeckDetailPage() {
                 <Layers className="w-16 h-16 text-zinc-800 mx-auto mb-6 opacity-20" />
                 <p className="text-zinc-500 font-black uppercase tracking-[0.2em] text-xs">Este deck ainda não possui flashcards.</p>
                 <Button 
-                  variant="link" 
+                  variant="ghost" 
                   onClick={() => setIsAddingCard(true)}
-                  className="mt-2 text-blue-500 font-bold hover:text-blue-400"
+                  className="mt-2 text-blue-500 font-bold hover:text-blue-400 hover:bg-transparent p-0 h-auto"
                 >
                   Começar a criar agora
                 </Button>

@@ -155,6 +155,10 @@ export default function StudyPage({
       setTimeout(() => setCurrentIndex((prev) => prev + 1), 150)
     } else {
       setSessionComplete(true)
+      // Force refresh retention stats and dashboard data
+      if (user?.id) {
+        window.dispatchEvent(new Event('refresh-dashboard'))
+      }
       toast('Sessão concluída! Bom trabalho.', 'success')
     }
   }

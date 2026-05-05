@@ -46,9 +46,18 @@ export default function RetentionDashboard() {
   const { user } = useAuth()
   const router = useRouter()
   
-  const { data: stats, isLoading } = useSWR<RetentionStats>(user ? `retention:${user.id}` : null, dashboardFetcher)
+  const { data: stats, isLoading, mutate: mutateStats } = useSWR<RetentionStats>(user ? `retention:${user.id}` : null, dashboardFetcher)
   const { isPremium, isAdmin, isLoading: planLoading } = useSubscription()
   
+  // Listen for refresh events (e.g. after a study session)
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (user?.id) mutateStats()
+    }
+    window.addEventListener('refresh-dashboard', handleRefresh)
+    return () => window.removeEventListener('refresh-dashboard', handleRefresh)
+  }, [user?.id, mutateStats])
+
   // Para teste do Lucas: Se quisermos ver o bloqueio mesmo sendo admin,
   // podemos forçar a verificação de quem NÃO é Pro de fato.
   const loading = (isLoading && !stats) || planLoading
@@ -154,7 +163,7 @@ export default function RetentionDashboard() {
             />
             <StatMiniCard 
               label="Pico de Estudo" 
-              value={Math.max(...(stats?.heatmapData.map((d: any) => d.count) || [0]))} 
+              value={Math.max(0, ...(stats?.heatmapData.map((d: any) => d.count) || []))} 
               icon={Activity} 
               color="red" 
               subLabel="Máx Revisões/Dia"
@@ -324,7 +333,11 @@ function HeatmapGrid({ data }: { data: { date: string, count: number }[] }) {
   const days = Array.from({ length: 91 }, (_, i: number) => {
     const date = new Date()
     date.setDate(date.getDate() - (90 - i))
-    const dateStr = date.toISOString().split('T')[0]
+    // Use local date string YYYY-MM-DD for comparison
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
     const count = data.find((d: any) => d.date === dateStr)?.count || 0
     return { date, count }
   })

@@ -32,6 +32,7 @@ import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import { CustomSelect } from '@/components/ui/select'
 import MarkdownDisplay from '@/components/ui/markdown-display'
 import { SpecialtySelector } from '@/components/ui/specialty-selector'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface QuizQuestion {
   id: string
@@ -88,6 +89,7 @@ export default function QuizPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [endTime, setEndTime] = useState<Date | null>(null)
+  const hasAnswered = selectedAnswer !== null
 
   // Best score
   const [bestScore, setBestScore] = useState<number | null>(null)

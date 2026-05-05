@@ -91,6 +91,9 @@ import useSWR, { mutate } from 'swr'
 import { dashboardFetcher } from '@/lib/dashboard/fetchers'
 import { ListSkeleton, StatSkeleton, CardSkeleton } from '@/components/dashboard/skeleton'
 import { LaunchCountdownBanner } from '@/components/dashboard/launch-countdown'
+import { SPECIALTIES } from '@/lib/constants/specialties'
+import { SpecialtySelector } from '@/components/ui/specialty-selector'
+
 interface Flashcard {
   id: string
   ease_factor: number
@@ -102,6 +105,7 @@ interface Flashcard {
 interface Deck {
   id: string
   title: string
+  specialty_tag?: string
   created_at: string
   folder_id?: string | null
   flashcards?: { count: number }[]
@@ -195,6 +199,7 @@ function DashboardPageContent() {
   const [showReportLimitModal, setShowReportLimitModal] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('all')
   const [availableCredits, setAvailableCredits] = useState<number | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [showWaitlistModal, setShowWaitlistModal] = useState(false)
@@ -579,18 +584,25 @@ function DashboardPageContent() {
     setEditingItemName(currentName)
     setEditingItemType(type)
   }
-  // Search Filtering Logic
-  const filteredDecks = decks.filter((d: DeckWithStats) => 
-    d.title.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-  const filteredQuizzes = quizzes.filter((q: Quiz) => 
-    q.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    q.specialty_tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.quiz_questions?.[0]?.count?.toString().includes(searchTerm)
-  )
-  const filteredMindMaps = mindMaps.filter((m: MindMap) => 
-    m.title.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Search & Specialty Filtering Logic
+  const filteredDecks = decks.filter((d: DeckWithStats) => {
+    const matchesSearch = d.title.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSpecialty = selectedSpecialty === 'all' || d.specialty_tag === selectedSpecialty
+    return matchesSearch && matchesSpecialty
+  })
+  
+  const filteredQuizzes = quizzes.filter((q: Quiz) => {
+    const matchesSearch = q.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          q.specialty_tag?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSpecialty = selectedSpecialty === 'all' || q.specialty_tag === selectedSpecialty
+    return matchesSearch && matchesSpecialty
+  })
+
+  const filteredMindMaps = mindMaps.filter((m: MindMap) => {
+    const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSpecialty = selectedSpecialty === 'all' || m.specialty_tag === selectedSpecialty
+    return matchesSearch && matchesSpecialty
+  })
   const folderedDecks = folders.map((folder: FolderType) => ({
     folder,
     decks: filteredDecks.filter((d: DeckWithStats) => d.folder_id === folder.id)
@@ -627,24 +639,7 @@ function DashboardPageContent() {
                 Bem-vindo de volta, <span className="text-zinc-100 font-medium truncate max-w-[100px] sm:max-w-none inline-block align-bottom">{profile?.full_name || user?.email?.split('@')[0]}</span>
               </p>
             </div>
-            {/* Premium Search Bar */}
-            <div className="flex-1 max-w-md mx-4 hidden md:block">
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-blue-500 transition-colors">
-                  <span className="material-symbols-outlined text-[20px]">search</span>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Buscar decks, questões ou tópicos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-2.5 pl-10 pr-4 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all backdrop-blur-md"
-                />
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                  <span className="text-[10px] font-bold text-zinc-600 border border-zinc-800 px-1.5 py-0.5 rounded-md bg-zinc-900">⌘K</span>
-                </div>
-              </div>
-            </div>
+            {/* Global Actions */}
             <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0 w-full sm:w-auto px-1">
               <Button 
                 id="tour-create-btn"
@@ -656,7 +651,7 @@ function DashboardPageContent() {
                   activeTab === 'mindmaps' && "!bg-amber-500 hover:!bg-amber-600"
                 )} 
                 onClick={() => {
-                  if (availableCredits === 0) window.dispatchEvent(new Event('open-upgrade-modal'))
+                  if (availableCredits === 0 && !isPremium) setShowUpgradeModal(true)
                   else setShowCreateChoice(true)
                 }}
               >
@@ -765,6 +760,35 @@ function DashboardPageContent() {
             </div>
           ) : (
             <>
+              {/* Discovery & Search Bar (Moved from Top) */}
+              <div className="flex flex-col md:flex-row gap-4 mb-8 bg-zinc-900/30 border border-zinc-800/50 p-4 rounded-[2rem] backdrop-blur-sm animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="flex-1 relative group">
+                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-blue-500 transition-colors">
+                    <Search size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Pesquisar nos seus materiais..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-zinc-950/50 border border-zinc-800/80 rounded-2xl py-3 pl-12 pr-4 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
+                  />
+                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none hidden sm:flex">
+                    <span className="text-[10px] font-bold text-zinc-600 border border-zinc-800 px-1.5 py-0.5 rounded-md bg-zinc-900 uppercase tracking-widest">⌘K</span>
+                  </div>
+                </div>
+                
+                <div className="w-full md:w-64">
+                  <SpecialtySelector
+                    value={selectedSpecialty}
+                    onChange={(val) => setSelectedSpecialty(val === "Todas as Áreas" ? "all" : val)}
+                    placeholder="Todas as Áreas"
+                    showAll={true}
+                    className="!bg-transparent"
+                  />
+                </div>
+              </div>
+
               {/* Tabs Navigation */}
               <div id="tour-tabs" className="flex items-center gap-1 border-b border-zinc-800 overflow-x-auto scrollbar-none mb-10 -mx-3 px-3 sm:mx-0 sm:px-0">
             <button
@@ -1143,9 +1167,11 @@ function DashboardPageContent() {
             onChoice={(choice) => {
               setShowCreateChoice(false)
               if (choice === 'ai') {
-                router.push(`/dashboard/new?type=${activeTab === 'quizzes' ? 'quiz' : 'deck'}`)
+                const type = activeTab === 'quizzes' ? 'quiz' : activeTab === 'mindmaps' ? 'mindmap' : 'deck'
+                router.push(`/dashboard/new?type=${type}`)
               } else {
                 if (activeTab === 'quizzes') setShowNewQuizModal(true)
+                else if (activeTab === 'mindmaps') router.push('/dashboard/new?type=mindmap') // Mapas manuais são via New
                 else setShowNewDeckModal(true)
               }
             }}
