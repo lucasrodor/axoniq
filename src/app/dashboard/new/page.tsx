@@ -19,6 +19,7 @@ import {
   Trash2,
   FileAudio,
   Network,
+  Tag,
   Image as ImageIcon
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -28,6 +29,7 @@ import { UpgradeModal, LowCreditModal } from '@/components/dashboard/dashboard-m
 import { NeuronBackground } from '@/components/dashboard/neuron-background'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { SpecialtySelector } from '@/components/ui/specialty-selector'
 
 type GenerationStep = 'upload' | 'generating' | 'done'
 type Status = 'waiting' | 'loading' | 'done' | 'error'
@@ -54,6 +56,7 @@ function NewSourcePageContent() {
     sourceType: 'document' as 'document' | 'text' | 'audio',
     files: [] as File[],
     text: '',
+    specialtyTag: '',
     generateFlashcards: initialType === 'deck' || !initialType,
     generateQuiz: initialType === 'quiz',
     generateMindMap: initialType === 'mindmap'
@@ -192,6 +195,7 @@ function NewSourcePageContent() {
         const fd = new FormData()
         fd.append('sourceId', sourceId)
         fd.append('quantity', '20')
+        if (config.specialtyTag) fd.append('specialtyTag', config.specialtyTag)
         
         tasks.push(
           fetch('/api/generate-flashcards', {
@@ -228,7 +232,11 @@ function NewSourcePageContent() {
               'Authorization': `Bearer ${session?.access_token}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ sourceId, quantity: 15 })
+            body: JSON.stringify({ 
+              sourceId, 
+              quantity: 15,
+              specialtyTag: config.specialtyTag 
+            })
           }).then(async res => {
             const data = await res.json()
             if (!res.ok) throw new Error(data.error)
@@ -533,6 +541,17 @@ function GenerationConfigComponent({ config, onChange, onStart, isLoading }: any
 
   return (
     <div className="space-y-6 text-left">
+      <div className="space-y-4 mb-8">
+        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
+          <Tag size={12} className="text-blue-500" />
+          Qual é a área de estudo?
+        </p>
+        <SpecialtySelector 
+          value={config.specialtyTag} 
+          onChange={(val) => onChange({ ...config, specialtyTag: val })} 
+        />
+      </div>
+
       <div className="flex p-1.5 bg-zinc-900/80 border border-zinc-800 rounded-2xl">
         <button
           onClick={() => onChange({ ...config, sourceType: 'document', files: [] })}

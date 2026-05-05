@@ -16,6 +16,7 @@ import {
   Folder,
   Plus,
   Loader2,
+  Tag,
 } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -23,11 +24,13 @@ import { CustomSelect } from '@/components/ui/select'
 import { RichEditor } from '@/components/editor/RichEditor'
 import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import MarkdownDisplay from '@/components/ui/markdown-display'
+import { SpecialtySelector } from '@/components/ui/specialty-selector'
 
 interface Deck {
   id: string
   title: string
   description?: string
+  specialty_tag?: string
   created_at: string
   folder_id?: string | null
 }
@@ -41,6 +44,10 @@ interface Flashcard {
 interface FolderType {
   id: string
   name: string
+}
+
+function renderCloze(text: string) {
+  return text.replace(/\{\{c\d+::(.*?)\}\}/g, '[...]')
 }
 
 export default function DeckDetailPage() {
@@ -59,6 +66,7 @@ export default function DeckDetailPage() {
   const [isEditingDeck, setIsEditingDeck] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [editSpecialty, setEditSpecialty] = useState('')
 
   // Card editing
   const [editingCardId, setEditingCardId] = useState<string | null>(null)
@@ -101,6 +109,7 @@ export default function DeckDetailPage() {
         setDeck(deckRes.data)
         setEditTitle(deckRes.data.title)
         setEditDescription(deckRes.data.description || '')
+        setEditSpecialty(deckRes.data.specialty_tag || '')
         setSelectedFolderId(deckRes.data.folder_id || '')
       }
       if (cardsRes.data) setFlashcards(cardsRes.data)
@@ -124,6 +133,7 @@ export default function DeckDetailPage() {
       .update({
         title: editTitle.trim(),
         description: editDescription.trim() || null,
+        specialty_tag: editSpecialty || null,
       })
       .eq('id', deckId)
 
@@ -132,7 +142,7 @@ export default function DeckDetailPage() {
     } else {
       setDeck((prev) =>
         prev
-          ? { ...prev, title: editTitle.trim(), description: editDescription.trim() }
+          ? { ...prev, title: editTitle.trim(), description: editDescription.trim(), specialty_tag: editSpecialty }
           : prev
       )
       setIsEditingDeck(false)
@@ -142,75 +152,62 @@ export default function DeckDetailPage() {
 
   const handleDeleteDeck = async () => {
     // Delete flashcards first, then deck
-    await supabase.from('flashcards').delete().eq('deck_id', deckId)
+    await supabase.from('flashcards').delete().eq('id', deckId)
     const { error } = await supabase.from('decks').delete().eq('id', deckId)
 
     if (error) {
       toast('Erro ao deletar deck.', 'error')
     } else {
-      toast('Deck deletado.', 'success')
+      toast('Deck deletado!', 'success')
       router.push('/dashboard')
     }
   }
 
   // --- Card CRUD ---
-  const startEditCard = (card: Flashcard) => {
-    setEditingCardId(card.id)
-    setEditFront(card.front)
-    setEditBack(card.back)
-  }
-
-  const cancelEditCard = () => {
-    setEditingCardId(null)
-    setEditFront('')
-    setEditBack('')
-  }
-
   const handleSaveCard = async (cardId: string) => {
-    if (!editFront.trim() || !editBack.trim()) return
-
     const { error } = await supabase
       .from('flashcards')
-      .update({ front: editFront.trim(), back: editBack.trim() })
+      .update({
+        front: editFront,
+        back: editBack,
+      })
       .eq('id', cardId)
 
     if (error) {
       toast('Erro ao salvar flashcard.', 'error')
     } else {
       setFlashcards((prev) =>
-        prev.map((c) =>
-          c.id === cardId
-            ? { ...c, front: editFront.trim(), back: editBack.trim() }
-            : c
-        )
+        prev.map((c) => (c.id === cardId ? { ...c, front: editFront, back: editBack } : c))
       )
-      cancelEditCard()
+      setEditingCardId(null)
       toast('Flashcard atualizado!', 'success')
     }
   }
 
-  const handleCreateCard = async () => {
+  const handleAddCard = async () => {
+    if (!newFront || !newBack) return
     setIsSubmitting(true)
-
     const { data, error } = await supabase
       .from('flashcards')
-      .insert({
-        deck_id: deckId,
-        front: newFront.trim(),
-        back: newBack.trim(),
-        due_date: new Date().toISOString()
-      })
+      .insert([
+        {
+          deck_id: deckId,
+          front: newFront,
+          back: newBack,
+          type: 'qa',
+        },
+      ])
       .select()
       .single()
 
     if (error) {
-      toast('Erro ao criar flashcard.', 'error')
-    } else {
+      toast('Erro ao adicionar flashcard.', 'error')
+    } else if (data) {
       setFlashcards((prev) => [...prev, data])
       setNewFront('')
       setNewBack('')
       setIsAddingCard(false)
-      toast('Flashcard criado!', 'success')
+      toast('Flashcard adicionado!', 'success')
     }
     setIsSubmitting(false)
   }
@@ -218,22 +215,37 @@ export default function DeckDetailPage() {
   const handleDeleteCard = async (cardId: string) => {
     const { error } = await supabase
       .from('flashcards')
-      .delete()
-      .eq('id', cardId)
+      .delete().eq('id', cardId)
 
     if (error) {
       toast('Erro ao deletar flashcard.', 'error')
     } else {
       setFlashcards((prev) => prev.filter((c) => c.id !== cardId))
-      toast('Flashcard removido.', 'success')
+      toast('Flashcard removido!', 'success')
+    }
+  }
+
+  // --- Folder move ---
+  const handleMoveToFolder = async (folderId: string) => {
+    setSelectedFolderId(folderId)
+    const { error } = await supabase
+      .from('decks')
+      .update({ folder_id: folderId || null })
+      .eq('id', deckId)
+
+    if (error) {
+      toast('Erro ao mover deck.', 'error')
+    } else {
+      toast('Deck movido!', 'success')
     }
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
-        <div className="animate-pulse text-[var(--muted-foreground)]">
-          Carregando...
+      <div className="min-h-screen bg-[#09090B] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+          <p className="text-zinc-500 text-sm font-medium animate-pulse">Carregando Deck...</p>
         </div>
       </div>
     )
@@ -241,311 +253,257 @@ export default function DeckDetailPage() {
 
   if (!deck) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <p className="text-[var(--muted-foreground)]">Deck não encontrado.</p>
-          <Link href="/dashboard">
-            <Button variant="outline">Voltar ao Painel</Button>
-          </Link>
-        </div>
+      <div className="min-h-screen bg-[#09090B] flex items-center justify-center p-4">
+        <DashboardEmptyState
+          title="Deck não encontrado"
+          description="O deck que você está procurando não existe ou foi removido."
+          icon={Layers}
+          actionLabel="Voltar ao Início"
+          onAction={() => router.push('/dashboard')}
+        />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#09090B] p-3 sm:p-6 md:p-12 relative overflow-x-hidden selection:bg-blue-500/30">
-      {/* Background Aurora */}
-      <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="max-w-4xl mx-auto animate-in fade-in duration-700 relative z-10">
-        {/* Navigation */}
-        <div className="mb-10">
-          <Link href="/dashboard">
+    <div className="min-h-screen bg-[#09090B] text-zinc-100 p-4 sm:p-6 md:p-8 selection:bg-blue-500/30">
+      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
+        {/* Header Navigation */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard" className="p-2 hover:bg-zinc-800/50 rounded-xl transition-all group">
+              <ChevronLeft className="w-6 h-6 text-zinc-400 group-hover:text-white group-hover:-translate-x-1 transition-all" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-white uppercase">{deck.title}</h1>
+              <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-0.5 flex items-center gap-2">
+                <Layers size={12} className="text-blue-500" />
+                Coleção de {flashcards.length} Flashcards
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="-ml-3 text-zinc-500 hover:text-white hover:bg-zinc-900/50 transition-all group px-4 rounded-xl"
+              className="rounded-xl border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-400 hover:text-white px-4 h-11 font-bold transition-all"
+              onClick={() => setIsEditingDeck(true)}
             >
-              <ChevronLeft size={16} className="mr-1 group-hover:-translate-x-1 transition-transform" />
-              PAINEL
+              <Settings2 className="w-4 h-4 mr-2" /> Editar Deck
             </Button>
-          </Link>
+            <Button
+              className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-6 h-11 font-black shadow-[0_0_20px_rgba(37,99,235,0.25)] transition-all active:scale-95 group"
+              onClick={() => router.push(`/dashboard/deck/${deckId}/study`)}
+              disabled={flashcards.length === 0}
+            >
+              <Play className="w-4 h-4 mr-2 fill-current" /> ESTUDAR AGORA
+            </Button>
+          </div>
         </div>
 
-        {/* Deck Header */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12 px-2">
-          <div className="flex-1 min-w-0">
-            {isEditingDeck ? (
-              <div className="space-y-4 max-w-2xl bg-zinc-900/50 p-6 sm:p-8 rounded-3xl border border-zinc-800/50 backdrop-blur-xl shadow-2xl">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] ml-1">Título do Deck</label>
+        {/* Deck Info Section (Full Width Top) */}
+        <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2.5rem] p-8 sm:p-10 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/50 to-transparent group-hover:from-blue-400 transition-colors" />
+          
+          {isEditingDeck ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Título do Deck</label>
                   <input
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full text-2xl font-black bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 text-zinc-100 transition-all"
-                    autoFocus
+                    className="w-full text-sm bg-zinc-950/50 border border-zinc-800 rounded-xl px-5 py-4 focus:outline-none focus:border-blue-500/50 text-zinc-100 transition-all font-bold"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Descrição</label>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Descrição</label>
                   <textarea
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder="O que este deck aborda..."
-                    className="w-full text-sm bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 text-zinc-300 min-h-[100px] transition-all"
+                    className="w-full text-sm bg-zinc-950/50 border border-zinc-800 rounded-xl px-5 py-4 focus:outline-none focus:border-blue-500/50 text-zinc-300 min-h-[120px] transition-all leading-relaxed"
                   />
                 </div>
-                <div className="flex gap-2 pt-2">
-                  <Button size="sm" onClick={handleSaveDeck} className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-6">
-                    <Check size={14} className="mr-1.5" /> Salvar Alterações
+              </div>
+              
+              <div className="space-y-6 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Área de Estudo</label>
+                  <SpecialtySelector value={editSpecialty} onChange={setEditSpecialty} />
+                </div>
+                
+                <div className="flex flex-wrap gap-3 pt-4">
+                  <Button size="lg" onClick={handleSaveDeck} className="bg-blue-600 hover:bg-blue-500 text-white rounded-2xl px-10 h-14 font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+                    <Check size={18} className="mr-2" /> Salvar Alterações
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-zinc-500 hover:text-zinc-100"
-                    onClick={() => setIsEditingDeck(false)}
-                  >
-                    <X size={14} className="mr-1.5" /> Cancelar
+                  <Button size="lg" variant="ghost" onClick={() => setIsEditingDeck(false)} className="text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 rounded-2xl px-8 h-14 font-bold transition-all">
+                    Cancelar
                   </Button>
                 </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+              <div className="md:col-span-8 space-y-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-wider">
+                    {deck.specialty_tag || 'Geral'}
+                  </span>
+                  {deck.folder_id && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <Folder size={10} />
+                      {folders.find(f => f.id === deck.folder_id)?.name || 'Pasta'}
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Descrição do Deck</h3>
+                <p className="text-zinc-300 text-sm md:text-base leading-relaxed font-medium max-w-3xl">
+                  {deck.description || 'Sem descrição cadastrada para este deck.'}
+                </p>
+              </div>
+              
+              <div className="md:col-span-4 space-y-6 pt-4 md:pt-0">
+                <div className="space-y-2">
+                  <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-3">Organização</h3>
+                  <CustomSelect
+                    value={selectedFolderId}
+                    onChange={handleMoveToFolder}
+                    options={[
+                      { value: '', label: 'Sem Pasta' },
+                      ...folders.map(f => ({ value: f.id, label: f.name }))
+                    ]}
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
+                    className="text-[10px] font-black text-red-500/40 hover:text-red-500 uppercase tracking-widest transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 size={12} /> Excluir Coleção Completa
+                  </button>
+                  {showDeleteConfirm && (
+                    <div className="mt-4 p-5 bg-red-500/5 border border-red-500/20 rounded-[1.5rem] space-y-4 animate-in slide-in-from-top-2 duration-300">
+                      <p className="text-[11px] text-red-400 font-bold uppercase leading-tight tracking-wide">Ação Irreversível: Isso removerá permanentemente o deck e todos os cards vinculados.</p>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="destructive" onClick={handleDeleteDeck} className="h-9 text-[10px] font-black uppercase tracking-widest rounded-xl px-5 bg-red-600">Sim, Deletar</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(false)} className="h-9 text-[10px] font-black uppercase tracking-widest rounded-xl px-5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 transition-all">Cancelar</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Cards Section (Grid Layout) */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3">
+              <h2 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.3em]">Unidades de Aprendizado</h2>
+              <span className="bg-zinc-900 border border-zinc-800 text-zinc-500 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
+                {flashcards.length}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setIsAddingCard(true)}
+              className="bg-zinc-100 hover:bg-white text-zinc-900 rounded-xl px-6 h-10 font-black text-[10px] tracking-widest uppercase shadow-lg active:scale-95 transition-all"
+            >
+              <Plus size={16} className="mr-2" /> Adicionar Card
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {isAddingCard && (
+              <div className="md:col-span-2 bg-zinc-900/80 border-2 border-blue-600/50 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-500">
+                <h3 className="text-sm font-black text-blue-500 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+                  <Plus size={18} /> Novo Flashcard Manual
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <RichEditor value={newFront} onChange={setNewFront} label="FRENTE (PERGUNTA)" placeholder="Ex: Qual o principal sintoma da... ?" />
+                  <RichEditor value={newBack} onChange={setNewBack} label="VERSO (RESPOSTA)" placeholder="Ex: Dor torácica opressiva..." />
+                </div>
+                <div className="flex justify-end gap-3 pt-8 border-t border-zinc-800/50 mt-8">
+                  <Button variant="ghost" size="sm" onClick={() => setIsAddingCard(false)} className="text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 font-bold uppercase tracking-widest text-[10px] px-6 transition-all">Descartar</Button>
+                  <Button size="sm" onClick={handleAddCard} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-10 h-12 font-black uppercase tracking-widest text-[11px] shadow-lg">
+                    {isSubmitting ? 'Salvando...' : 'Confirmar Criação'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {flashcards.length === 0 && !isAddingCard ? (
+              <div className="md:col-span-2 py-24 text-center bg-zinc-900/20 border-2 border-dashed border-zinc-800/50 rounded-[3rem]">
+                <Layers className="w-16 h-16 text-zinc-800 mx-auto mb-6 opacity-20" />
+                <p className="text-zinc-500 font-black uppercase tracking-[0.2em] text-xs">Este deck ainda não possui flashcards.</p>
+                <Button 
+                  variant="link" 
+                  onClick={() => setIsAddingCard(true)}
+                  className="mt-2 text-blue-500 font-bold hover:text-blue-400"
+                >
+                  Começar a criar agora
+                </Button>
               </div>
             ) : (
-              <>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-zinc-100 break-words mb-2 leading-tight">
-                  {deck.title}
-                </h1>
-                {deck.description && (
-                  <p className="text-zinc-400 mt-2 text-sm sm:text-base leading-relaxed max-w-2xl">
-                    {deck.description}
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center gap-2 mt-4">
-                  <span className="text-[9px] sm:text-[10px] font-black text-blue-400 bg-blue-500/5 border border-blue-500/20 px-3 py-1.5 rounded-lg uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-                    {flashcards.length} FLASHCARDS
-                  </span>
-                  <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-lg uppercase tracking-[0.2em]">
-                    GERADO DIA {new Date(deck.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                {/* Folder selector */}
-                {folders.length > 0 && (
-                  <div className="mt-8">
-                    <CustomSelect
-                      className="w-full max-w-[300px]"
-                      label="Pasta de Destino"
-                      options={[
-                        { value: '', label: 'Sem pasta' },
-                        ...folders.map((f) => ({ value: f.id, label: f.name }))
-                      ]}
-                      value={selectedFolderId}
-                      onChange={async (val) => {
-                        const folderId = val || null
-                        setSelectedFolderId(val)
-                        await supabase.from('decks').update({ folder_id: folderId }).eq('id', deckId)
-                        toast('Deck movido com sucesso!', 'success')
+              flashcards.map((card) => (
+                <div key={card.id} className="bg-zinc-900/40 border border-zinc-800/80 rounded-[2.5rem] p-8 group hover:border-blue-500/30 transition-all hover:bg-zinc-900/60 shadow-lg hover:shadow-blue-500/5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-20">
+                    <button
+                      onClick={() => {
+                        setEditingCardId(card.id)
+                        setEditFront(card.front)
+                        setEditBack(card.back)
                       }}
-                      icon={<Folder size={16} className="text-blue-500" />}
-                    />
+                      className="p-2.5 bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-blue-500 hover:border-blue-500/50 rounded-xl transition-all shadow-xl"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCard(card.id)}
+                      className="p-2.5 bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-red-500 hover:border-red-500/50 rounded-xl transition-all shadow-xl"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                )}
-              </>
+
+                  {editingCardId === card.id ? (
+                    <div className="space-y-6">
+                      <RichEditor value={editFront} onChange={setEditFront} label="FRENTE" />
+                      <RichEditor value={editBack} onChange={setEditBack} label="VERSO" />
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button size="sm" onClick={() => handleSaveCard(card.id)} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-6 h-10 font-bold shadow-lg">
+                          <Check size={14} className="mr-1.5" /> Salvar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingCardId(null)} className="text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 font-bold px-6 transition-all">Cancelar</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-8 pt-2">
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1">PERGUNTA</p>
+                        <div className="text-zinc-100 font-bold leading-relaxed text-sm md:text-base pr-20">
+                          <MarkdownDisplay content={renderCloze(card.front)} />
+                        </div>
+                      </div>
+                      <div className="pt-6 border-t border-zinc-800/50 space-y-3">
+                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1">RESPOSTA</p>
+                        <div className="text-zinc-300 text-sm md:text-base leading-relaxed font-medium">
+                          <MarkdownDisplay content={card.back} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
             )}
           </div>
-
-          {/* Actions */}
-          {!isEditingDeck && (
-            <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 w-full sm:w-auto">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-zinc-400 hover:text-zinc-100 transition-colors border border-zinc-800 sm:border-none p-4 sm:p-2"
-                onClick={() => setIsEditingDeck(true)}
-              >
-                <Pencil size={14} className="mr-1.5" /> Editar
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors border border-red-800/20 sm:border-none p-4 sm:p-2"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                <Trash2 size={14} className="mr-1.5" /> Deletar
-              </Button>
-              <Link href={`/dashboard/study?decks=${deckId}`} className="col-span-2 sm:col-span-1">
-                <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl h-14 sm:h-10 sm:px-6 font-black uppercase tracking-[0.1em] text-[10px] shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95">
-                  <Play size={14} className="mr-2 fill-current" /> ESTUDAR AGORA
-                </Button>
-              </Link>
-            </div>
-          )}
         </div>
-
-        {/* Delete Confirmation */}
-        {showDeleteConfirm && (
-          <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8 mb-12 animate-in zoom-in duration-300 backdrop-blur-xl shadow-[0_0_50px_rgba(239,68,68,0.05)]">
-            <p className="text-red-400 font-bold mb-6 text-lg tracking-tight">
-              Ação Irreversível: Deletar este deck e todos os{' '}
-              <span className="text-white px-2 py-0.5 bg-red-500/20 rounded-lg">{flashcards.length}</span> flashcards?
-            </p>
-            <div className="flex gap-3">
-              <Button
-                size="lg"
-                className="bg-red-600 hover:bg-red-500 text-white rounded-xl px-8 font-bold transition-all shadow-lg shadow-red-500/10"
-                onClick={handleDeleteDeck}
-              >
-                Sim, Deletar Tudo
-              </Button>
-              <Button
-                variant="ghost"
-                size="lg"
-                className="text-zinc-400 hover:text-zinc-100 rounded-xl px-8"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Flashcards Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg sm:text-xl font-bold text-zinc-100 uppercase tracking-[0.2em]">Flashcards</h2>
-          {!isAddingCard && (
-            <Button size="sm" onClick={() => setIsAddingCard(true)} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-500/10 transition-all hover:-translate-y-0.5">
-              <Plus size={16} className="mr-1.5" /> Novo Card
-            </Button>
-          )}
-        </div>
-
-        {/* Add Card Form */}
-        {isAddingCard && (
-          <div className="bg-zinc-900/50 border border-blue-500/30 rounded-3xl p-8 mb-12 animate-in slide-in-from-top-4 duration-500 backdrop-blur-xl shadow-2xl">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                <Plus size={16} /> Adicionar Novo Conhecimento
-              </h3>
-              <Button variant="ghost" size="icon" onClick={() => setIsAddingCard(false)} className="text-zinc-500 hover:text-zinc-100">
-                <X size={20} />
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 items-start">
-              <RichEditor
-                value={newFront}
-                onChange={setNewFront}
-                label="Frente (Pergunta/Conceito)"
-                placeholder="Ex: Qual a tríade da meningite?"
-              />
-              <RichEditor
-                value={newBack}
-                onChange={setNewBack}
-                label="Verso (Resposta/Definição)"
-                placeholder="Ex: Febre, rigidez de nuca e alteração..."
-              />
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" className="text-zinc-500 hover:text-zinc-100" onClick={() => setIsAddingCard(false)}>Cancelar</Button>
-              <Button 
-                onClick={handleCreateCard} 
-                className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-10 font-bold shadow-lg shadow-blue-500/20" 
-                disabled={!newFront.trim() || !newBack.trim() || isSubmitting}
-              >
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Criar Flashcard
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Flashcards */}
-        {flashcards.length === 0 ? (
-          <DashboardEmptyState
-            title="Sua Unidade de Conhecimento está Vazia"
-            description="Este deck ainda não possui flashcards. Adicione cards manualmente ou use o menu de criação para importar do seu material de estudo."
-            icon={Layers}
-            actionLabel="CRIAR PRIMEIRO CARD"
-            onAction={() => setIsAddingCard(true)}
-            color="blue"
-            className="border-dashed"
-          />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {flashcards.map((card) => (
-              <div
-                key={card.id}
-                className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-8 shadow-xl group relative backdrop-blur-xl hover:border-blue-500/30 transition-all duration-300 min-w-0"
-              >
-                {editingCardId === card.id ? (
-                  /* Edit Mode */
-                  <div className="space-y-6">
-                    <RichEditor
-                      value={editFront}
-                      onChange={setEditFront}
-                      label="Pergunta"
-                    />
-                    <RichEditor
-                      value={editBack}
-                      onChange={setEditBack}
-                      label="Resposta"
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleSaveCard(card.id)} className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-6 font-bold">
-                        <Check size={14} className="mr-1.5" /> Salvar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-zinc-500 hover:text-zinc-100"
-                        onClick={cancelEditCard}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  /* View Mode */
-                  <>
-                    <div className="mb-6 pb-6 border-b border-zinc-800/50">
-                      <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">
-                        Pergunta
-                      </span>
-                      <div className="mt-4 prose prose-sm dark:prose-invert text-zinc-100 max-w-none prose-p:leading-relaxed">
-                        <MarkdownDisplay content={card.front.replace(/\{\{c\d::(.*?)\}\}/g, '[...]')} />
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
-                        Resposta
-                      </span>
-                      <div className="mt-4 prose prose-sm dark:prose-invert text-zinc-400 max-w-none prose-p:leading-relaxed">
-                        <MarkdownDisplay content={card.back.replace(/\{\{c\d::(.*?)\}\}/g, '**$1**')} />
-                      </div>
-                    </div>
-                    {/* Hover Actions */}
-                    <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                      <button
-                        onClick={() => startEditCard(card)}
-                        className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-blue-500 hover:border-blue-500/30 transition-all shadow-2xl"
-                        title="Editar"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCard(card.id)}
-                        className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-red-500 hover:border-red-500/30 transition-all shadow-2xl"
-                        title="Deletar"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )
 }
+
+import { Settings2 } from 'lucide-react'

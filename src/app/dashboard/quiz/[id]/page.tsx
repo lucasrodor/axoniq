@@ -6,15 +6,32 @@ import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import {
-  ChevronLeft, Loader2, HelpCircle, CheckCircle2,
-  XCircle, ArrowRight, RotateCcw, Trophy, Clock,
-  Tag, BarChart3, Plus, Trash2, Pencil, Check, X,
-  Settings2, ListChecks, MessageSquare, Play
+  ChevronLeft, 
+  Loader2, 
+  HelpCircle, 
+  CheckCircle2,
+  XCircle, 
+  ArrowRight, 
+  RotateCcw, 
+  Trophy, 
+  Clock,
+  Tag, 
+  BarChart3, 
+  Plus, 
+  Trash2, 
+  Pencil, 
+  Check, 
+  X,
+  Settings2, 
+  ListChecks, 
+  MessageSquare, 
+  Play
 } from 'lucide-react'
 import { RichEditor } from '@/components/editor/RichEditor'
 import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import { CustomSelect } from '@/components/ui/select'
 import MarkdownDisplay from '@/components/ui/markdown-display'
+import { SpecialtySelector } from '@/components/ui/specialty-selector'
 
 interface QuizQuestion {
   id: string
@@ -89,6 +106,11 @@ export default function QuizPage() {
   const [qOptionExplanations, setQOptionExplanations] = useState<string[]>(['', '', '', '', ''])
   const [qDifficulty, setQDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
 
+  // Header editing
+  const [isEditingHeader, setIsEditingHeader] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editSpecialty, setEditSpecialty] = useState('')
+
   // Load quiz data
   useEffect(() => {
     async function loadQuiz() {
@@ -105,6 +127,8 @@ export default function QuizPage() {
       }
 
       setQuiz(quizData)
+      setEditTitle(quizData.title)
+      setEditSpecialty(quizData.specialty_tag)
 
       const { data: questionsData } = await supabase
         .from('quiz_questions')
@@ -160,6 +184,25 @@ export default function QuizPage() {
       selectedAnswer: index,
       isCorrect,
     }])
+  }
+
+  const handleSaveHeader = async () => {
+    if (!editTitle.trim()) return
+    const { error } = await supabase
+      .from('quizzes')
+      .update({
+        title: editTitle.trim(),
+        specialty_tag: editSpecialty || null,
+      })
+      .eq('id', quizId)
+
+    if (error) {
+      toast('Erro ao salvar cabeçalho.', 'error')
+    } else {
+      setQuiz((prev) => prev ? { ...prev, title: editTitle.trim(), specialty_tag: editSpecialty } : prev)
+      setIsEditingHeader(false)
+      toast('Cabeçalho atualizado!', 'success')
+    }
   }
 
   const handleSaveQuestion = async () => {
@@ -416,19 +459,64 @@ export default function QuizPage() {
         {/* ======================== */}
         {step === 'start' && isManaging && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center justify-between pb-8 border-b border-zinc-800/50">
-              <div>
-                <h2 className="text-2xl font-black text-zinc-100 tracking-tight uppercase tracking-[0.1em]">{quiz.title}</h2>
-                <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">Gerenciamento de Unidades de Simulação</p>
-              </div>
+            <div className="flex items-center justify-between pb-4">
+              <h2 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.3em]">Gerenciamento Geral</h2>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setIsManaging(false)} 
-                className="text-zinc-500 hover:text-zinc-100 bg-zinc-950 border border-zinc-800 rounded-xl px-6 transition-all active:scale-95"
+                className="text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 bg-zinc-950 border border-zinc-800 rounded-xl px-6 transition-all active:scale-95 h-9 font-bold"
               >
                 Sair do Gerenciamento
               </Button>
+            </div>
+
+            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-[2rem] p-8 mb-8">
+              {!isEditingHeader ? (
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-black text-zinc-100 tracking-tight uppercase tracking-[0.1em]">{quiz.title}</h2>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-black text-blue-400 bg-blue-400/5 border border-blue-400/20 px-4 py-1.5 rounded-lg uppercase tracking-[0.2em] shadow-sm">
+                        {quiz.specialty_tag}
+                      </span>
+                      <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Configuração Geral do Simulado</p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setIsEditingHeader(true)}
+                    className="text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 border border-zinc-800 rounded-xl px-4 transition-all"
+                  >
+                    <Pencil size={14} className="mr-2" /> Editar Detalhes
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Título do Simulado</label>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full text-sm bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500/50 text-zinc-100 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Área de Estudo</label>
+                    <SpecialtySelector value={editSpecialty} onChange={setEditSpecialty} />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button size="sm" onClick={handleSaveHeader} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-6 font-bold h-10 shadow-lg shadow-blue-500/20">
+                      <Check size={14} className="mr-2" /> Salvar Alterações
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setIsEditingHeader(false)} className="text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 rounded-xl px-6 font-bold h-10 transition-all">
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Questions List */}
@@ -616,7 +704,7 @@ export default function QuizPage() {
                           variant="ghost" 
                           onClick={() => { setIsAddingQuestion(false); setEditingQuestionId(null); }}
                           disabled={isSubmitting}
-                          className="text-zinc-500 hover:text-zinc-300 font-bold uppercase tracking-widest text-[10px]"
+                          className="text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 font-bold uppercase tracking-widest text-[10px] px-6 transition-all"
                         >
                           Descartar
                         </Button>
@@ -798,139 +886,102 @@ export default function QuizPage() {
 
             {/* Explanation */}
             {showExplanation && (currentQuestion.explanation || (selectedAnswer !== null && currentQuestion.option_explanations?.[selectedAnswer])) && (
-              <div className="bg-blue-600/5 border border-blue-500/20 rounded-[2rem] p-8 mb-10 animate-in slide-in-from-bottom-4 duration-500 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-blue-500/10 rounded-lg">
-                    <MessageSquare size={16} className="text-blue-400" />
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900/80 border border-blue-500/20 rounded-[2rem] p-8 mb-10 shadow-xl"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <HelpCircle size={16} className="text-blue-500" />
                   </div>
-                  <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">Justificativa</h4>
+                  <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em]">Análise de Desempenho</h4>
                 </div>
-                <div className="text-sm text-zinc-300 leading-relaxed max-w-none prose prose-invert prose-blue">
-                  <MarkdownDisplay content={(selectedAnswer !== null && currentQuestion.option_explanations?.[selectedAnswer]) || currentQuestion.explanation} />
+                
+                {selectedAnswer !== null && currentQuestion.option_explanations?.[selectedAnswer] && (
+                  <div className="mb-6 p-4 bg-zinc-950/50 rounded-2xl border border-zinc-800/50">
+                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                      <MessageSquare size={12} /> Sua Escolha
+                    </p>
+                    <p className="text-sm text-zinc-300 font-medium">{currentQuestion.option_explanations[selectedAnswer]}</p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <BarChart3 size={12} /> Comentário Técnico
+                  </p>
+                  <div className="text-zinc-300 text-sm leading-relaxed font-medium">
+                    <MarkdownDisplay content={currentQuestion.explanation} />
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {/* Next button */}
-            {selectedAnswer !== null && (
+            {/* Footer actions */}
+            <div className="flex items-center justify-between pb-20">
+              <div className="text-xs font-bold text-zinc-600 uppercase tracking-widest">
+                {hasAnswered ? 'Unidade Concluída' : 'Aguardando Resposta...'}
+              </div>
               <Button
                 onClick={handleNext}
-                className="w-full h-16 bg-zinc-100 text-zinc-900 hover:bg-white rounded-[1.25rem] text-sm font-black uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:scale-[1.01] active:scale-[0.98] animate-in fade-in slide-in-from-bottom-2 duration-300"
+                disabled={!hasAnswered}
+                className="bg-blue-600 hover:bg-blue-500 text-white rounded-2xl h-14 px-10 font-black uppercase tracking-widest text-xs shadow-[0_0_30px_rgba(37,99,235,0.2)] transition-all active:scale-95 group/next disabled:opacity-30 disabled:grayscale"
               >
-                {currentIndex < questions.length - 1 ? (
-                  <>PRÓXIMA QUESTÃO <ArrowRight size={18} className="ml-2" /></>
-                ) : (
-                  <>FINALIZAR SIMULAÇÃO <BarChart3 size={18} className="ml-2" /></>
-                )}
+                {currentIndex < questions.length - 1 ? 'Próxima Questão' : 'Ver Resultados'}
+                <ArrowRight size={16} className="ml-2 group-hover/next:translate-x-1 transition-transform" />
               </Button>
-            )}
+            </div>
           </div>
         )}
-
 
         {/* ======================== */}
         {/* RESULTS SCREEN           */}
         {/* ======================== */}
         {step === 'results' && (
-          <div className="animate-in fade-in zoom-in-95 duration-700 max-w-2xl mx-auto">
-            <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2.5rem] p-10 md:p-14 backdrop-blur-2xl shadow-2xl relative overflow-hidden text-center group">
-              <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <div className="animate-in fade-in zoom-in-95 duration-700">
+            <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[3rem] p-8 sm:p-12 backdrop-blur-2xl shadow-2xl text-center relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent opacity-50 pointer-events-none" />
               
               <div className="relative z-10">
-                <div className="w-20 h-20 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
-                  <Trophy size={32} className="text-blue-500" />
+                <div className="p-8 bg-emerald-500/10 border border-emerald-500/20 rounded-full inline-block mb-8 shadow-[0_0_50px_rgba(16,185,129,0.1)]">
+                  <Trophy size={64} className="text-emerald-500" />
                 </div>
 
-                <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-4">Eficiência de Resposta</h2>
+                <h1 className="text-4xl sm:text-5xl font-black text-zinc-100 mb-2 tracking-tight uppercase">Simulado Finalizado</h1>
+                <p className="text-zinc-500 font-bold uppercase tracking-[0.3em] text-xs mb-12">Performance Analítica Consolidada</p>
 
-                {/* Score */}
-                <div className={`text-8xl font-black mb-4 tracking-tighter bg-clip-text text-transparent bg-gradient-to-b ${
-                  scorePercent >= 80 ? 'from-emerald-400 to-emerald-600' :
-                  scorePercent >= 60 ? 'from-amber-400 to-amber-600' :
-                  'from-red-400 to-red-600'
-                }`}>
-                  {scorePercent}%
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
-                  <div className="px-5 py-2 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center gap-3">
-                    <CheckCircle2 size={16} className="text-emerald-500" />
-                    <span className="text-xs font-bold text-zinc-300">{score} de {questions.length} ACERTOS</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+                  <div className="p-6 bg-zinc-950/50 border border-zinc-800 rounded-3xl">
+                    <div className="text-3xl font-black text-blue-500 mb-1">{scorePercent}%</div>
+                    <div className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Aproveitamento</div>
                   </div>
-                  {startTime && endTime && (
-                    <div className="px-5 py-2 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center gap-3">
-                      <Clock size={16} className="text-blue-500" />
-                      <span className="text-xs font-bold text-zinc-300">{formatTime(startTime, endTime)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Performance message */}
-                <div className={`inline-block px-10 py-4 rounded-2xl mb-12 border ${
-                  scorePercent >= 80 ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' :
-                  scorePercent >= 60 ? 'bg-amber-500/5 border-amber-500/20 text-amber-400' :
-                  'bg-red-500/5 border-red-500/20 text-red-400'
-                }`}>
-                  <span className="font-black text-lg uppercase tracking-widest">
-                    {scorePercent >= 80 ? 'Desempenho de Elite' :
-                     scorePercent >= 60 ? 'Bom Progresso' :
-                     'Necessita Revisão'}
-                  </span>
-                </div>
-
-                {/* Incorrect questions summary */}
-                {answers.filter(a => !a.isCorrect).length > 0 && (
-                  <div className="text-left mt-8 pt-8 border-t border-zinc-800/50">
-                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                       Falhas de Retenção <span className="text-red-500">({answers.filter(a => !a.isCorrect).length})</span>
-                    </h3>
-                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                      {answers.filter(a => !a.isCorrect).map((answer, idx) => {
-                        const q = questions.find(q => q.id === answer.questionId)
-                        if (!q) return null
-                        return (
-                          <div key={idx} className="p-5 bg-zinc-950/50 border border-zinc-800/50 rounded-2xl group hover:border-red-500/30 transition-all">
-                            <div className="text-sm font-bold text-zinc-300 mb-3 group-hover:text-zinc-100 transition-colors">
-                                <MarkdownDisplay content={q.question} />
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-[11px] font-bold text-red-400 flex items-center gap-2">
-                                <X size={14} /> Opção: {q.options[answer.selectedAnswer]}
-                              </p>
-                              <p className="text-[11px] font-black text-emerald-500 flex items-center gap-2">
-                                <Check size={14} /> Correto: {q.options[q.correct_answer]}
-                              </p>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                  <div className="p-6 bg-zinc-950/50 border border-zinc-800 rounded-3xl">
+                    <div className="text-3xl font-black text-emerald-500 mb-1">{score} / {questions.length}</div>
+                    <div className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Acertos</div>
                   </div>
-                )}
+                  <div className="p-6 bg-zinc-950/50 border border-zinc-800 rounded-3xl">
+                    <div className="text-3xl font-black text-violet-500 mb-1">{startTime && endTime ? formatTime(startTime, endTime) : '--'}</div>
+                    <div className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Tempo Total</div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Button
+                    onClick={handleStart}
+                    className="w-full sm:w-auto px-10 h-14 bg-zinc-100 text-zinc-900 hover:bg-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all active:scale-95"
+                  >
+                    <RotateCcw size={16} className="mr-2" /> Reiniciar Simulação
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/dashboard')}
+                    className="w-full sm:w-auto px-10 h-14 border-zinc-800 text-zinc-400 hover:text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all"
+                  >
+                    Voltar ao Painel
+                  </Button>
+                </div>
               </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-4 mt-8">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="flex-1 h-16 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all active:scale-95"
-                onClick={handleStart}
-              >
-                <RotateCcw size={18} className="mr-3" />
-                Reiniciar Ciclo
-              </Button>
-              <Button
-                variant="ghost"
-                size="lg"
-                className="flex-1 h-16 bg-blue-600/10 border border-blue-500/30 text-blue-400 hover:bg-blue-600/20 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all active:scale-95"
-                onClick={() => router.push('/dashboard')}
-              >
-                <ChevronLeft size={18} className="mr-3" />
-                Menu Principal
-              </Button>
             </div>
           </div>
         )}
@@ -938,4 +989,3 @@ export default function QuizPage() {
     </div>
   )
 }
-
