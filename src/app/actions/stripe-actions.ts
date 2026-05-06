@@ -41,39 +41,45 @@ export async function createCheckoutSession(priceId: string) {
     }
   }
 
-  const stripe = getStripe()
-  
-  const sessionConfig: any = {
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
+  try {
+    const stripe = getStripe()
+    
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    
+    const sessionConfig: any = {
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      subscription_data: {
+        trial_period_days: 7,
       },
-    ],
-    mode: 'subscription',
-    subscription_data: {
-      trial_period_days: 7,
-    },
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_SESSION_ID}${!user ? '&new_user=true' : ''}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/teste-planos`,
-    metadata: {
-      supabase_user_id: user?.id || '',
-      plan_interval: 'monthly', // Padrão para o teste
-    },
+      success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}${!user ? '&new_user=true' : ''}`,
+      cancel_url: `${siteUrl}/teste-planos`,
+      metadata: {
+        supabase_user_id: user?.id || '',
+        plan_interval: 'monthly',
+      },
+    }
+
+    if (user) {
+      sessionConfig.client_reference_id = user.id
+      sessionConfig.customer_email = user.email
+      sessionConfig.metadata.supabase_user_id = user.id
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig)
+
+    if (!session.url) {
+      return { error: 'Falha ao criar sessão de checkout.' }
+    }
+
+    return { url: session.url }
+  } catch (err: any) {
+    console.error('❌ [Stripe Checkout Error]:', err)
+    return { error: err.message || 'Ocorreu um erro ao processar seu pagamento.' }
   }
-
-  // Se o usuário estiver logado, vinculamos o ID dele
-  if (user) {
-    sessionConfig.client_reference_id = user.id
-    sessionConfig.customer_email = user.email
-    sessionConfig.metadata.supabase_user_id = user.id
-  }
-
-  const session = await stripe.checkout.sessions.create(sessionConfig)
-
-  if (!session.url) {
-    return { error: 'Falha ao criar sessão de checkout.' }
-  }
-
-  return { url: session.url }
 }
