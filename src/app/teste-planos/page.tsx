@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 
 const plans = [
   {
+    id: 'monthly' as const,
     name: 'Mensal',
     priceId: 'price_1TQ5rKDGo6c9XEzCjUnL9wb9',
     price: 'R$ 29,90',
@@ -23,6 +24,7 @@ const plans = [
     gateway: 'stripe'
   },
   {
+    id: 'semiannual' as const,
     name: 'Semestral',
     checkoutUrl: 'https://pay.kirvano.com/211b8bc5-8f73-450e-bc51-444aee40f87f?split=6',
     priceId: 'price_1TQ5rrDGo6c9XEzCDw2OVsTV',
@@ -43,6 +45,7 @@ const plans = [
     gateway: 'kirvano'
   },
   {
+    id: 'annual' as const,
     name: 'Anual',
     checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=12',
     priceId: 'price_1TQ5s6DGo6c9XEzCSHjjmLoR',
@@ -81,8 +84,8 @@ export default function TestePlanosPage() {
         return
       }
 
-      if (plan.priceId) {
-        const result = await createCheckoutSession(plan.priceId)
+      if (plan.gateway === 'stripe') {
+        const result = await createCheckoutSession(plan.id)
         if (result.url) {
           window.location.href = result.url
         } else if (result.error) {

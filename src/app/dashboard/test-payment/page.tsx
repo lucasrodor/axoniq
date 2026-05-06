@@ -15,7 +15,7 @@ export default function TestPaymentPage() {
         
         <button
           onClick={async () => {
-            const result = await createCheckoutSession(priceMonthly)
+            const result = await createCheckoutSession('monthly')
             if (result.url) window.location.href = result.url
             else if (result.error) alert(result.error)
           }}

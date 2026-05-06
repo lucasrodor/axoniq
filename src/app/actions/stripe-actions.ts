@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-export async function createCheckoutSession(priceId: string) {
+export async function createCheckoutSession(planType: 'monthly' | 'semiannual' | 'annual') {
   const cookieStore = await cookies()
   
   const supabase = createServerClient(
@@ -21,29 +21,37 @@ export async function createCheckoutSession(priceId: string) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    // Se não estiver logado, redireciona para o checkout normal (o webhook criará a conta)
+    // Se não estiver logado, redireciona para o checkout normal
   } else {
-    // 1. Verificar se o usuário já tem uma assinatura ativa
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('status, stripe_customer_id')
       .eq('user_id', user.id)
       .single()
 
-    // 2. Se já for Pro (ativo ou em triagem), manda para o portal de gerenciamento em vez de novo checkout
     if (subscription?.status === 'active' || subscription?.status === 'trialing') {
       const stripe = getStripe()
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: subscription.stripe_customer_id!,
-        return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/account`,
+        return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard/account`,
       })
-      redirect(portalSession.url)
+      return { url: portalSession.url }
     }
   }
 
   try {
     const stripe = getStripe()
     
+    // Buscar o ID do preço do ENV de acordo com o plano
+    let priceId = ''
+    if (planType === 'monthly') priceId = process.env.STRIPE_PRICE_MONTHLY || ''
+    else if (planType === 'semiannual') priceId = process.env.STRIPE_PRICE_SEMIANNUAL || ''
+    else if (planType === 'annual') priceId = process.env.STRIPE_PRICE_ANNUAL || ''
+
+    if (!priceId) {
+      return { error: `Configuração do plano ${planType} não encontrada (STRIPE_PRICE_${planType.toUpperCase()})` }
+    }
+
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
     
     const sessionConfig: any = {
@@ -61,7 +69,7 @@ export async function createCheckoutSession(priceId: string) {
       cancel_url: `${siteUrl}/teste-planos`,
       metadata: {
         supabase_user_id: user?.id || '',
-        plan_interval: 'monthly',
+        plan_interval: planType,
       },
     }
 
