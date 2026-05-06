@@ -11,8 +11,8 @@ export async function getUsersList(page: number = 1, limit: number = 10, search:
  
     let query = supabase
       .from('profiles')
-      .select('id, full_name, plan, is_admin, is_whitelisted, updated_at', { count: 'exact' })
-      .order('updated_at', { ascending: false })
+      .select('id, full_name, plan, is_admin, is_whitelisted, updated_at, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
       .range(from, to)
 
     if (search) {
@@ -23,11 +23,8 @@ export async function getUsersList(page: number = 1, limit: number = 10, search:
 
     if (error) throw error
 
-    // Fetch emails from auth only for these IDs to be super fast
+    // Fetch emails from auth for these 10 IDs
     const userIds = profiles?.map(p => p.id) || []
-    
-    // Fallback: list all if we can't filter admin.listUsers (it doesn't support filter by IDs easily in one go)
-    // But we fetch only 10, so it's already much faster
     const { data: authData } = await supabase.auth.admin.listUsers()
     const emailMap = new Map(authData?.users?.map(u => [u.id, u.email]) || [])
 
@@ -47,6 +44,7 @@ export async function getUsersList(page: number = 1, limit: number = 10, search:
       isAdmin: p.is_admin || false,
       isWhitelisted: p.is_whitelisted || false,
       subscription: subMap.get(p.id) || null,
+      created_at: p.created_at
     }))
 
     return { 

@@ -14,7 +14,11 @@ export default function TestPaymentPage() {
         </p>
         
         <button
-          onClick={() => createCheckoutSession(priceMonthly)}
+          onClick={async () => {
+            const result = await createCheckoutSession(priceMonthly)
+            if (result.url) window.location.href = result.url
+            else if (result.error) alert(result.error)
+          }}
           className="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 active:scale-95"
         >
           Assinar Plano Pro (Teste)

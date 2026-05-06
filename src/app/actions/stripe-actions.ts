@@ -72,8 +72,8 @@ export async function createCheckoutSession(priceId: string) {
   const session = await stripe.checkout.sessions.create(sessionConfig)
 
   if (!session.url) {
-    throw new Error('Falha ao criar sessão de checkout.')
+    return { error: 'Falha ao criar sessão de checkout.' }
   }
 
-  redirect(session.url)
+  return { url: session.url }
 }

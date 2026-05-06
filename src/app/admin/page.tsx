@@ -339,6 +339,123 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-10">
+          {/* Secondary Stats - User Management */}
+          <section className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl overflow-hidden">
+            <div className="p-8 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold">Gestão de Usuários</h2>
+                <p className="text-sm text-zinc-500 mt-1">Gerencie planos e whitelist dos usuários registrados.</p>
+              </div>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <input 
+                  type="text"
+                  placeholder="Buscar por email..."
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors w-full sm:w-64"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto relative">
+              {usersLoading && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                  <RefreshCcw className="w-6 h-6 text-blue-500 animate-spin" />
+                </div>
+              )}
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-zinc-950/50">
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">Usuário</th>
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">Plano</th>
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest text-center">Whitelist</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/50">
+                  {(users || []).map((u: any) => (
+                    <tr key={u.id} className="group hover:bg-zinc-800/20 transition-colors">
+                      <td className="px-8 py-5">
+                        <div className="font-bold text-zinc-100 text-sm">{u.fullName}</div>
+                        <div className="text-xs text-zinc-500 mt-0.5">{u.email}</div>
+                        <div className="text-[10px] text-zinc-500 mt-1 font-bold uppercase tracking-wider">Inscrito em {new Date(u.created_at).toLocaleDateString('pt-BR')}</div>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
+                          u.isAdmin 
+                            ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
+                            : u.isWhitelisted || u.subscription?.status === 'active' || u.subscription?.status === 'trialing'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
+                        }`}>
+                          {u.isAdmin ? 'ADMIN' : u.isWhitelisted ? 'WHITELIST' : u.subscription?.status === 'active' ? 'PRO' : u.subscription?.status === 'trialing' ? 'TRIAL' : 'FREE'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 text-center">
+                        {!u.isAdmin && (
+                          <button
+                            onClick={async () => {
+                              const result = await toggleWhitelist(u.id, u.isWhitelisted)
+                              if (result.success) {
+                                setUsers(prev => prev.map((p: any) => p.id === u.id ? { ...p, isWhitelisted: result.newValue } : p))
+                                toast(`Whitelist ${result.newValue ? 'ativada' : 'removida'} para ${u.email}`, 'success')
+                              } else {
+                                toast(result.error || 'Erro ao atualizar whitelist.', 'error')
+                              }
+                            }}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                              u.isWhitelisted
+                                ? 'bg-blue-600 text-white hover:bg-blue-500'
+                                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 border border-zinc-700/50'
+                            }`}
+                          >
+                            {u.isWhitelisted ? '✓ Ativo' : 'Ativar'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {(!users || users.length === 0) && !usersLoading && (
+                    <tr>
+                      <td colSpan={3} className="px-8 py-20 text-center">
+                        <p className="text-zinc-500">Nenhum usuário encontrado.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Users Pagination */}
+            <div className="px-8 py-4 border-t border-zinc-800 flex items-center justify-between bg-zinc-900/30">
+              <span className="text-xs text-zinc-500">Página {usersPage} de {usersTotalPages}</span>
+              <div className="flex gap-2">
+                <button 
+                  disabled={usersPage === 1 || usersLoading}
+                  onClick={() => {
+                    const newPage = usersPage - 1
+                    setUsersPage(newPage)
+                    loadUsers(newPage, userSearchTerm)
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
+                >
+                  Anterior
+                </button>
+                <button 
+                  disabled={usersPage >= usersTotalPages || usersLoading}
+                  onClick={() => {
+                    const newPage = usersPage + 1
+                    setUsersPage(newPage)
+                    loadUsers(newPage, userSearchTerm)
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
+          </section>
+
           {/* Waitlist Table */}
           <section className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl overflow-hidden">
             <div className="p-8 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -454,121 +571,6 @@ export default function AdminDashboard() {
                     const newPage = waitlistPage + 1
                     setWaitlistPage(newPage)
                     loadWaitlist(newPage)
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
-                >
-                  Próximo
-                </button>
-              </div>
-            </div>
-          </section>
-          {/* Secondary Stats - User Management */}
-          <section className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl overflow-hidden">
-            <div className="p-8 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold">Gestão de Usuários</h2>
-                <p className="text-sm text-zinc-500 mt-1">Gerencie planos e whitelist dos usuários registrados.</p>
-              </div>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input 
-                  type="text"
-                  placeholder="Buscar por email..."
-                  value={userSearchTerm}
-                  onChange={(e) => setUserSearchTerm(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors w-full sm:w-64"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-x-auto relative">
-              {usersLoading && (
-                <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-20 flex items-center justify-center">
-                  <RefreshCcw className="w-6 h-6 text-blue-500 animate-spin" />
-                </div>
-              )}
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-zinc-950/50">
-                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">Usuário</th>
-                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest">Plano</th>
-                    <th className="px-8 py-4 text-xs font-bold text-zinc-500 uppercase tracking-widest text-center">Whitelist</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/50">
-                  {(users || []).map((u: any) => (
-                    <tr key={u.id} className="group hover:bg-zinc-800/20 transition-colors">
-                      <td className="px-8 py-5">
-                        <div className="font-bold text-zinc-100 text-sm">{u.fullName}</div>
-                        <div className="text-xs text-zinc-500 mt-0.5">{u.email}</div>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
-                          u.isAdmin 
-                            ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
-                            : u.isWhitelisted || u.subscription?.status === 'active' || u.subscription?.status === 'trialing'
-                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                              : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
-                        }`}>
-                          {u.isAdmin ? 'ADMIN' : u.isWhitelisted ? 'WHITELIST' : u.subscription?.status === 'active' ? 'PRO' : u.subscription?.status === 'trialing' ? 'TRIAL' : 'FREE'}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 text-center">
-                        {!u.isAdmin && (
-                          <button
-                            onClick={async () => {
-                              const result = await toggleWhitelist(u.id, u.isWhitelisted)
-                              if (result.success) {
-                                setUsers(prev => prev.map((p: any) => p.id === u.id ? { ...p, isWhitelisted: result.newValue } : p))
-                                toast(`Whitelist ${result.newValue ? 'ativada' : 'removida'} para ${u.email}`, 'success')
-                              } else {
-                                toast(result.error || 'Erro ao atualizar whitelist.', 'error')
-                              }
-                            }}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                              u.isWhitelisted
-                                ? 'bg-blue-600 text-white hover:bg-blue-500'
-                                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 border border-zinc-700/50'
-                            }`}
-                          >
-                            {u.isWhitelisted ? '✓ Ativo' : 'Ativar'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {(!users || users.length === 0) && !usersLoading && (
-                    <tr>
-                      <td colSpan={3} className="px-8 py-20 text-center">
-                        <p className="text-zinc-500">Nenhum usuário encontrado.</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Users Pagination */}
-            <div className="px-8 py-4 border-t border-zinc-800 flex items-center justify-between bg-zinc-900/30">
-              <span className="text-xs text-zinc-500">Página {usersPage} de {usersTotalPages}</span>
-              <div className="flex gap-2">
-                <button 
-                  disabled={usersPage === 1 || usersLoading}
-                  onClick={() => {
-                    const newPage = usersPage - 1
-                    setUsersPage(newPage)
-                    loadUsers(newPage, userSearchTerm)
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
-                >
-                  Anterior
-                </button>
-                <button 
-                  disabled={usersPage >= usersTotalPages || usersLoading}
-                  onClick={() => {
-                    const newPage = usersPage + 1
-                    setUsersPage(newPage)
-                    loadUsers(newPage, userSearchTerm)
                   }}
                   className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs hover:text-white disabled:opacity-30 transition-all"
                 >

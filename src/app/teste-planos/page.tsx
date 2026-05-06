@@ -82,7 +82,12 @@ export default function TestePlanosPage() {
       }
 
       if (plan.priceId) {
-        await createCheckoutSession(plan.priceId)
+        const result = await createCheckoutSession(plan.priceId)
+        if (result.url) {
+          window.location.href = result.url
+        } else if (result.error) {
+          alert(result.error)
+        }
       }
     } catch (error) {
       console.error(error)
