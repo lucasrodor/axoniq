@@ -70,8 +70,13 @@ export function UpgradeGate({ feature, description, children }: UpgradeGateProps
         return
       }
 
-      if (plan.priceId) {
-        await createCheckoutSession(plan.priceId)
+      if (plan.gateway === 'stripe') {
+        const result = await createCheckoutSession(plan.id as any)
+        if (result.url) {
+          window.location.href = result.url
+        } else if (result.error) {
+          alert(result.error)
+        }
       }
     } catch (error) {
       console.error('Upgrade error:', error)
