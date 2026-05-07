@@ -32,7 +32,8 @@ import {
   AlertCircle,
   User,
   Search,
-  Crown
+  Crown,
+  FileArchive
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -93,6 +94,7 @@ import { ListSkeleton, StatSkeleton, CardSkeleton } from '@/components/dashboard
 import { LaunchOfferBanner } from '@/components/dashboard/launch-offer-banner'
 import { SPECIALTIES } from '@/lib/constants/specialties'
 import { SpecialtySelector } from '@/components/ui/specialty-selector'
+import { AnkiImportModal } from '@/components/dashboard/anki-import-modal'
 
 interface Flashcard {
   id: string
@@ -203,6 +205,7 @@ function DashboardPageContent() {
   const [availableCredits, setAvailableCredits] = useState<number | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [showWaitlistModal, setShowWaitlistModal] = useState(false)
+  const [showAnkiImport, setShowAnkiImport] = useState(false)
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -666,6 +669,17 @@ function DashboardPageContent() {
                 <FolderPlus size={14} className="mr-2 text-zinc-500 group-hover/btn:text-blue-500 transition-colors" /> 
                 Nova Pasta
               </Button>
+              {activeTab === 'decks' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowAnkiImport(true)} 
+                  className="whitespace-nowrap rounded-2xl border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all duration-500 group/btn"
+                >
+                  <FileArchive size={14} className="mr-2 text-zinc-500 group-hover/btn:text-emerald-500 transition-colors" /> 
+                  Importar do Anki
+                </Button>
+              )}
               {/* Spacer to push profile to the right on mobile */}
               <div className="flex-1 sm:hidden" />
               {/* Perfil e Ações movidos para a Sidebar */}
@@ -1178,6 +1192,11 @@ function DashboardPageContent() {
             }}
           />
         )}
+        <AnkiImportModal 
+          isOpen={showAnkiImport}
+          onClose={() => setShowAnkiImport(false)}
+          onSuccess={() => mutate(`decks:${user?.id}`)}
+        />
         {deletingItem && (
           <DeleteConfirmationModal
             key="delete-item-modal"

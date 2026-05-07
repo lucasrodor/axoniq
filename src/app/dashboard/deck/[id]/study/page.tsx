@@ -288,7 +288,15 @@ export default function StudyPage({
               )
             }
           }
-          return <span key={i} className="inline">{part}</span>
+          return (
+            <MarkdownDisplay 
+              key={i} 
+              content={part} 
+              raw={true} 
+              as="span" 
+              className="[&>p]:inline [&>p]:m-0 [&_img]:mx-auto [&_img]:my-4 [&_img]:block [&_img]:rounded-xl [&_img]:shadow-lg" 
+            />
+          )
         })}
       </>
     )

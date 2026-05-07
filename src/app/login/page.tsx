@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
@@ -135,10 +136,18 @@ function LoginPageContent() {
 
 
 
-          <div className="text-center text-sm space-y-2">
-            <a href="/forgot-password" className="block text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors text-xs">
+          <div className="text-center text-sm space-y-4">
+            <Link href="/forgot-password" 
+                  className="block text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors text-xs">
               Esqueceu a senha?
-            </a>
+            </Link>
+            
+            <p className="text-[var(--muted-foreground)]">
+              Não tem uma conta?{' '}
+              <Link href="/sign-up" className="font-semibold text-[var(--foreground)] hover:underline">
+                Cadastre-se agora
+              </Link>
+            </p>
           </div>
         </div>
       </div>
