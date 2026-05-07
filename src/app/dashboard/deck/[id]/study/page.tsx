@@ -276,19 +276,19 @@ export default function StudyPage({
             const [_, answer, hint] = match
             if (isFront) {
               return (
-                <span key={i} className="bg-blue-500/20 px-2 py-0.5 rounded text-blue-400 border border-blue-500/30 font-mono text-[0.8em] mx-1">
+                <span key={i} className="inline-flex items-center align-middle bg-blue-500/20 px-2.5 py-0.5 rounded-lg text-blue-300 border border-blue-500/40 font-mono text-[0.8em] mx-1 leading-tight">
                   {hint || '...'}
                 </span>
               )
             } else {
               return (
-                <span key={i} className="text-emerald-400 font-bold border-b border-emerald-500/30 mx-1">
+                <span key={i} className="inline text-emerald-400 font-bold border-b border-emerald-500/40 mx-1">
                   {answer}
                 </span>
               )
             }
           }
-          return <MarkdownDisplay key={i} content={part} raw={true} as="span" className="text-inherit !leading-inherit" />
+          return <span key={i} className="inline">{part}</span>
         })}
       </>
     )
@@ -360,7 +360,7 @@ export default function StudyPage({
               style={{ backfaceVisibility: 'hidden' }}
             >
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-zinc-100 leading-normal px-4 sm:px-6 flex items-center justify-center text-center">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-zinc-100 leading-relaxed px-4 sm:px-6 text-center w-full">
                   {renderCardContent(currentCard.front, true)}
                 </h2>
               </div>
@@ -378,7 +378,7 @@ export default function StudyPage({
               }}
             >
               <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <div className="text-lg sm:text-2xl text-zinc-300 leading-normal font-medium max-w-[95%] flex items-center justify-center text-center">
+                <div className="text-lg sm:text-2xl text-zinc-300 leading-relaxed font-medium max-w-[95%] text-center">
                   {renderCardContent(currentCard.back || currentCard.front, false)}
                 </div>
               </div>

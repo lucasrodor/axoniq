@@ -81,6 +81,16 @@ export const trackCompleteRegistration = () => {
   }
 }
 
+export const trackInitiateCheckout = (value?: number, currency: string = 'BRL') => {
+  if (typeof window !== 'undefined' && window.fbq) {
+    if (value) {
+      window.fbq('track', 'InitiateCheckout', { value, currency })
+    } else {
+      window.fbq('track', 'InitiateCheckout')
+    }
+  }
+}
+
 export const trackPurchase = (value: number, currency: string = 'BRL') => {
   if (typeof window !== 'undefined' && window.fbq) {
     window.fbq('track', 'Purchase', { value, currency })

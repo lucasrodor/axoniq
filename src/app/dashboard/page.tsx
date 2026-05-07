@@ -90,7 +90,7 @@ import {
 import useSWR, { mutate } from 'swr'
 import { dashboardFetcher } from '@/lib/dashboard/fetchers'
 import { ListSkeleton, StatSkeleton, CardSkeleton } from '@/components/dashboard/skeleton'
-import { LaunchCountdownBanner } from '@/components/dashboard/launch-countdown'
+import { LaunchOfferBanner } from '@/components/dashboard/launch-offer-banner'
 import { SPECIALTIES } from '@/lib/constants/specialties'
 import { SpecialtySelector } from '@/components/ui/specialty-selector'
 
@@ -627,7 +627,7 @@ function DashboardPageContent() {
         <div className="relative z-10 space-y-8 p-3 sm:p-4 md:p-8 max-w-7xl mx-auto">
         
         {/* Launch Countdown Banner */}
-        <LaunchCountdownBanner onOpenWaitlist={() => setShowWaitlistModal(true)} />
+        <LaunchOfferBanner isLaunchWeek={isLaunchWeek} />
 
         {/* Header - Unified with Bento Search */}
         <header className="flex flex-col md:flex-row md:items-start justify-between pb-4 md:pb-8 gap-3 px-1 sm:px-0">
@@ -1116,6 +1116,7 @@ function DashboardPageContent() {
             <ReportsTab 
               reports={reports}
               isPremium={isPremium} 
+              isLaunchWeek={isLaunchWeek}
               onUpgrade={() => window.dispatchEvent(new Event('open-upgrade-modal'))} 
               onGenerateReport={() => setShowReportLimitModal(true)}
             />
@@ -1249,7 +1250,7 @@ function LegendItem({ color, label }: { color: string, label: string }) {
     </span>
   )
 }
-function ReportsTab({ reports, isPremium, onUpgrade, onGenerateReport }: { reports: PerformanceReport[], isPremium: boolean, onUpgrade: () => void, onGenerateReport: () => void }) {
+function ReportsTab({ reports, isPremium, onUpgrade, onGenerateReport, isLaunchWeek }: { reports: PerformanceReport[], isPremium: boolean, onUpgrade: () => void, onGenerateReport: () => void, isLaunchWeek?: boolean }) {
 
   if (!isPremium) {
     return (
@@ -1257,6 +1258,7 @@ function ReportsTab({ reports, isPremium, onUpgrade, onGenerateReport }: { repor
         <UpgradeGate 
           feature="Análise Neural de Desempenho"
           description="Desbloqueie relatórios gerados por IA que analisam seus padrões de estudo e recomendam os tópicos exatos que você deve revisar hoje."
+          isLaunchWeek={isLaunchWeek}
         />
         <div className="flex justify-center">
           <Button onClick={onUpgrade} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 rounded-2xl font-bold gap-2">

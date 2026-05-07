@@ -1,17 +1,21 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Crown, Zap, Lock, CheckCircle2, TrendingDown } from 'lucide-react'
+import { Crown, Zap, Lock, CheckCircle2, TrendingDown, Flame, Infinity } from 'lucide-react'
 import { createCheckoutSession } from '@/app/actions/stripe-actions'
 import { useState } from 'react'
+
+const KIRVANO_LIFETIME_URL = 'https://pay.kirvano.com/25185e6c-b93f-4b75-986e-b3c2214e36e4'
 
 interface UpgradeGateProps {
   feature: string
   description?: string
   children?: React.ReactNode
+  /** When false (isLaunchWeek=false), monetization is active → show lifetime offer */
+  isLaunchWeek?: boolean
 }
 
-const PLANS = [
+const RECURRING_PLANS = [
   {
     id: 'monthly',
     name: 'Mensal',
@@ -19,7 +23,7 @@ const PLANS = [
     description: 'Flexibilidade total mês a mês',
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_1TQ5rKDGo6c9XEzCjUnL9wb9',
     badge: null,
-    gateway: 'stripe'
+    gateway: 'stripe' as const
   },
   {
     id: 'semiannual',
@@ -29,7 +33,7 @@ const PLANS = [
     checkoutUrl: 'https://pay.kirvano.com/211b8bc5-8f73-450e-bc51-444aee40f87f?split=6',
     badge: 'Mais Vendido',
     save: '15% OFF',
-    gateway: 'kirvano'
+    gateway: 'kirvano' as const
   },
   {
     id: 'annual',
@@ -39,7 +43,7 @@ const PLANS = [
     checkoutUrl: 'https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=12',
     badge: 'Melhor Valor',
     save: '30% OFF',
-    gateway: 'kirvano'
+    gateway: 'kirvano' as const
   }
 ]
 
@@ -51,19 +55,19 @@ const FEATURES = [
   'Acesso Prioritário a Novas Funções'
 ]
 
-export function UpgradeGate({ feature, description, children }: UpgradeGateProps) {
+export function UpgradeGate({ feature, description, children, isLaunchWeek = false }: UpgradeGateProps) {
+  const showLifetime = !isLaunchWeek  // monetization active = show lifetime card
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  const handleUpgrade = async (plan: typeof PLANS[0]) => {
+  const handleUpgrade = async (plan: typeof RECURRING_PLANS[0]) => {
     setLoadingId(plan.id)
     try {
       if (plan.gateway === 'kirvano' && plan.checkoutUrl) {
         const { supabase } = await import('@/lib/supabase/client')
         const { data: { user } } = await supabase.auth.getUser()
-        
+
         let url = plan.checkoutUrl
         if (user) {
-          // Passamos o email para autocompletar e o ID no parâmetro src para rastreamento no webhook
           url += `&email=${encodeURIComponent(user.email || '')}&src=${user.id}`
         }
         window.location.href = url
@@ -80,6 +84,23 @@ export function UpgradeGate({ feature, description, children }: UpgradeGateProps
       }
     } catch (error) {
       console.error('Upgrade error:', error)
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleLifetime = async () => {
+    setLoadingId('lifetime')
+    try {
+      const { supabase } = await import('@/lib/supabase/client')
+      const { data: { user } } = await supabase.auth.getUser()
+      let url = KIRVANO_LIFETIME_URL
+      if (user) {
+        url += `?email=${encodeURIComponent(user.email || '')}&src=${user.id}`
+      }
+      window.location.href = url
+    } catch (e) {
+      window.open(KIRVANO_LIFETIME_URL, '_blank')
     } finally {
       setLoadingId(null)
     }
@@ -107,13 +128,62 @@ export function UpgradeGate({ feature, description, children }: UpgradeGateProps
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-zinc-100 mb-3 sm:mb-4 tracking-tight leading-tight">
           {feature}
         </h2>
-        <p className="text-xs sm:text-sm text-zinc-400 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-2">
+        <p className="text-xs sm:text-sm text-zinc-400 mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed px-2">
           {description || 'Este recurso é exclusivo para assinantes Pro. Escolha o melhor plano para você e libere o potencial máximo do seu aprendizado.'}
         </p>
 
-        {/* Pricing Grid */}
+        {/* Lifetime offer highlight — only when monetization active */}
+        {showLifetime && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="relative mb-6 rounded-2xl bg-gradient-to-r from-amber-950/80 via-orange-950/80 to-amber-950/80 border border-amber-500/40 p-5 sm:p-6 text-left overflow-hidden"
+          >
+            {/* Glow */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/70 to-transparent" />
+            <div className="absolute inset-0 bg-amber-500/[0.03] pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 relative z-10">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                  <Infinity className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-amber-400 font-black text-xs uppercase tracking-widest">Oferta de Lançamento</span>
+                    <span className="bg-red-500/20 text-red-400 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-red-500/20 uppercase tracking-wide">Encerra 20/05</span>
+                  </div>
+                  <p className="text-zinc-100 font-black text-base sm:text-lg leading-tight">
+                    Plano Vitalício — Pague uma vez, use para sempre
+                  </p>
+                  <p className="text-zinc-400 text-xs mt-0.5">
+                    <span className="line-through text-zinc-600 mr-2">R$ 598</span>
+                    <span className="text-amber-400 font-bold">R$ 336 à vista</span>
+                    <span className="text-zinc-500 mx-1">ou</span>
+                    <span className="text-zinc-300 font-bold">10x R$ 40</span>
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                onClick={handleLifetime}
+                disabled={!!loadingId}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="shrink-0 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 hover:brightness-110 transition-all disabled:opacity-60 whitespace-nowrap"
+              >
+                {loadingId === 'lifetime'
+                  ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  : <><Flame className="w-4 h-4" /> Garantir Vitalício</>
+                }
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Pricing Grid — recurring plans */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
-          {PLANS.map((plan) => (
+          {RECURRING_PLANS.map((plan) => (
             <motion.div
               key={plan.id}
               whileHover={{ y: -5 }}
@@ -147,8 +217,8 @@ export function UpgradeGate({ feature, description, children }: UpgradeGateProps
                 onClick={() => handleUpgrade(plan)}
                 disabled={!!loadingId}
                 className={`mt-auto w-full py-3 sm:py-3.5 rounded-2xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
-                  plan.badge 
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20' 
+                  plan.badge
+                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20'
                     : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
                 }`}
               >

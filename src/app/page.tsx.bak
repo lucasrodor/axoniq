@@ -6,248 +6,7 @@ import Image from 'next/image'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 import { supabase } from '@/lib/supabase/client'
-import { trackLead, trackInitiateCheckout } from '@/components/meta-pixel'
-import { Check, Zap, Shield, Clock, Star, Crown, Flame } from 'lucide-react'
-
-const DEADLINE = new Date('2026-05-20T03:00:00Z') // 19/05 23:59 BRT
-
-function useCountdown() {
-  const [t, setT] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-  useEffect(() => {
-    const tick = () => {
-      const diff = DEADLINE.getTime() - Date.now()
-      if (diff <= 0) { setT({ days: 0, hours: 0, minutes: 0, seconds: 0 }); return }
-      setT({ days: Math.floor(diff/86400000), hours: Math.floor((diff%86400000)/3600000), minutes: Math.floor((diff%3600000)/60000), seconds: Math.floor((diff%60000)/1000) })
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [])
-  return t
-}
-
-function AnnouncementBar({ onVisibilityChange }: { onVisibilityChange: (v: boolean) => void }) {
-  const t = useCountdown()
-  const [visible, setVisible] = useState(true)
-  const handleClose = () => { setVisible(false); onVisibilityChange(false) }
-  useEffect(() => { onVisibilityChange(true) }, [])
-  if (!visible) return null
-  return (
-    <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-      className="fixed top-0 left-0 right-0 bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white py-2.5 px-4 text-center z-[70]">
-      <div className="flex items-center justify-center gap-3 flex-wrap text-xs sm:text-sm font-bold">
-        <Flame className="w-4 h-4 animate-pulse shrink-0" />
-        <span>Oferta Vitalícia de Lançamento encerra em:</span>
-        <span className="font-mono bg-black/20 px-2 py-0.5 rounded-lg">
-          {String(t.days).padStart(2,'0')}d:{String(t.hours).padStart(2,'00')}h:{String(t.minutes).padStart(2,'0')}m:{String(t.seconds).padStart(2,'0')}s
-        </span>
-        <a href="#oferta-lancamento" className="underline hover:no-underline">Ver oferta →</a>
-      </div>
-      <button onClick={handleClose} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 text-lg">×</button>
-    </motion.div>
-  )
-}
-
-function LaunchOfferSection() {
-  const t = useCountdown()
-  return (
-    <section id="oferta-lancamento" className="py-20 px-6 relative overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-amber-500/5 rounded-full blur-[120px]" />
-      </div>
-      <div className="max-w-4xl mx-auto relative z-10">
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-full animate-pulse">
-            <Flame className="w-3 h-3" /> Oferta Exclusiva de Lançamento
-          </span>
-          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-black uppercase tracking-widest rounded-full">
-            <Clock className="w-3 h-3" /> Tempo Limitado
-          </span>
-          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-black uppercase tracking-widest rounded-full">
-            <Crown className="w-3 h-3 text-amber-400" /> Acesso Vitalício
-          </span>
-        </div>
-        <h2 className="text-4xl md:text-6xl font-black text-center tracking-tight mb-4 text-zinc-100">
-          Pague uma vez.{' '}
-          <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">Use para sempre.</span>
-        </h2>
-        <p className="text-center text-zinc-400 text-lg mb-10 max-w-2xl mx-auto">
-          Essa oferta existe porque estamos no lançamento. Quando encerrar, só haverá planos mensais.
-        </p>
-        <div className="flex items-center justify-center gap-4 sm:gap-8 mb-10">
-          {[{l:'Dias',v:t.days},{l:'Horas',v:t.hours},{l:'Min',v:t.minutes},{l:'Seg',v:t.seconds}].map(item => (
-            <div key={item.l} className="flex flex-col items-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-zinc-900 border border-amber-500/30 rounded-2xl flex items-center justify-center">
-                <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono tabular-nums">{String(item.v).padStart(2,'0')}</span>
-              </div>
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-2">{item.l}</span>
-            </div>
-          ))}
-        </div>
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          className="relative bg-gradient-to-b from-zinc-900 to-zinc-950 border border-amber-500/20 rounded-[2.5rem] shadow-2xl">
-          {/* Top glow line inside card */}
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent rounded-t-[2.5rem]" />
-          {/* Badge floats above, with enough padding so it's not clipped */}
-          <div className="flex justify-center pt-5 pb-4">
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-black text-[10px] font-black uppercase tracking-widest px-6 py-2 rounded-full whitespace-nowrap shadow-lg shadow-amber-500/30">
-              ⚡ Melhor Custo-Benefício
-            </div>
-          </div>
-          <div className="px-8 sm:px-12 pb-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 mb-4">
-              <Crown className="w-6 h-6 text-amber-400" />
-              <span className="text-amber-400 font-black text-sm uppercase tracking-widest">Plano Vitalício · Fundadores</span>
-            </div>
-            <div className="flex items-center justify-center gap-3 mb-2">
-              <span className="text-zinc-500 line-through text-xl font-bold">R$ 598</span>
-              <span className="bg-red-500/20 text-red-400 text-xs font-black px-2 py-1 rounded-lg border border-red-500/30">44% OFF</span>
-            </div>
-            <div className="text-6xl sm:text-7xl font-black text-zinc-100 mb-3">R$ 336</div>
-            <div className="text-amber-400 font-bold text-xl mb-1">ou 10x de R$ 40,00</div>
-            <div className="text-zinc-500 text-sm">Pagamento único · Sem mensalidades · Sem renovação</div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10 max-w-2xl mx-auto">
-            {[
-              [Zap, 'IA ilimitada: flashcards, quizzes e mapas mentais'],
-              [Check, 'Todas as atualizações e novas features inclusas'],
-              [Check, 'Uploads ilimitados de PDFs e slides'],
-              [Check, 'Análise de desempenho detalhada com IA'],
-              [Shield, 'Garantia total de 7 dias — risco zero'],
-              [Star, 'Suporte prioritário por WhatsApp'],
-            ].map(([Icon, text], i) => (
-              <div key={i} className="flex items-center gap-3 bg-zinc-900/50 rounded-xl px-4 py-3 border border-zinc-800">
-                <div className="w-5 h-5 bg-amber-500/20 rounded-full flex items-center justify-center shrink-0">
-                  <Icon className="w-3 h-3 text-amber-400" />
-                </div>
-                <span className="text-sm text-zinc-300">{text as string}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-col items-center gap-3">
-            <motion.a
-              href="https://pay.kirvano.com/25185e6c-b93f-4b75-986e-b3c2214e36e4"
-              target="_blank" rel="noopener noreferrer"
-              onClick={() => trackInitiateCheckout(336)}
-              whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}
-              className="w-full max-w-md py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xl rounded-2xl text-center shadow-2xl shadow-amber-500/30">
-              Garantir Acesso Vitalício Agora
-            </motion.a>
-            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider text-center">🔒 Pagamento seguro · Garantia de 7 dias</p>
-          </div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  )
-}
-
-function PlansSection() {
-  const [loading, setLoading] = useState<string|null>(null)
-  const handleStripe = async (plan: 'monthly'|'semiannual'|'annual') => {
-    trackInitiateCheckout()
-    setLoading(plan)
-    try {
-      const { createCheckoutSession } = await import('@/app/actions/stripe-actions')
-      const r = await createCheckoutSession(plan)
-      if (r.url) window.location.href = r.url
-      else if (r.error) alert(r.error)
-    } catch(e){console.error(e)} finally{setLoading(null)}
-  }
-  const handleKirvano = (url: string) => { 
-    trackInitiateCheckout()
-    window.location.href = url 
-  }
-  const BASE_FEATURES = ['Créditos ilimitados','Flashcards e quizzes','Mapas mentais','Relatórios de desempenho','Revisão espaçada','Suporte prioritário']
-  const plans = [
-    { id:'monthly', name:'Mensal', price:'R$ 29,90', period:'/mês', badge:null, badgeColor:'', desc:'Flexibilidade total.', total:'', cta:'Assinar Mensal', action:()=>handleStripe('monthly'), bonus: null },
-    { id:'semiannual', name:'Semestral', price:'R$ 24,98', period:'/mês', badge:'Mais Popular', badgeColor:'blue', desc:'6 meses com desconto.', total:'R$ 131,90 à vista', cta:'Assinar Semestral', action:()=>handleKirvano('https://pay.kirvano.com/211b8bc5-8f73-450e-bc51-444aee40f87f?split=6'), bonus: '+ 15% de desconto vs. mensal' },
-    { id:'annual', name:'Anual', price:'R$ 19,98', period:'/mês', badge:'33% OFF', badgeColor:'amber', desc:'12 meses com maior desconto.', total:'R$ 195,00 à vista', cta:'Assinar Anual', action:()=>handleKirvano('https://pay.kirvano.com/d0f26a81-6eec-4348-8236-c8a2de41c490?split=12'), bonus: '+ 33% de desconto vs. mensal' },
-  ]
-  return (
-    <section id="planos" className="py-24 px-6 bg-zinc-950 relative overflow-hidden">
-      {/* Aurora background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] animate-[float-slow_18s_ease-in-out_infinite]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] animate-[float-slow_22s_ease-in-out_infinite_reverse]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[80px]" />
-      </div>
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-full mb-6">
-            <Star className="w-3 h-3" /> Planos Recorrentes
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-100 mb-4">Prefere pagar mensalmente?</h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">Cancele quando quiser. Sem fidelidade.</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6 items-start">
-          {plans.map((p, i) => (
-            <motion.div key={p.id} initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay: i*0.1 }}
-              whileHover={{ y: -8, scale: p.badge === 'Mais Popular' ? 1.07 : 1.03, transition: { duration: 0.25, ease: [0.22,1,0.36,1] } }}
-              className={`relative flex flex-col rounded-3xl p-8 cursor-pointer transition-shadow ${
-                p.badge === 'Mais Popular'
-                  ? 'bg-gradient-to-b from-zinc-900/80 to-zinc-950 border border-blue-500/30 shadow-xl shadow-blue-500/10 scale-105 z-10 hover:shadow-2xl hover:shadow-blue-500/20 hover:border-blue-400/50'
-                  : 'bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 hover:border-zinc-600 hover:shadow-xl hover:shadow-black/40'
-              }`}>
-              {p.badge && (
-                <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full ${
-                  p.badgeColor === 'blue' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-black'
-                }`}>{p.badge}</div>
-              )}
-              <h3 className="text-lg font-bold text-zinc-100 mb-1 mt-2">{p.name}</h3>
-              <p className="text-zinc-500 text-sm mb-4">{p.desc}</p>
-              <div className="flex items-baseline gap-1 mb-1"><span className="text-4xl font-black text-zinc-100">{p.price}</span><span className="text-zinc-500 text-sm">{p.period}</span></div>
-              {p.total && <p className="text-xs text-zinc-500 mb-6">{p.total}</p>}
-              {!p.total && <div className="mb-6" />}
-              <ul className="space-y-3 mb-4 flex-1">
-                {BASE_FEATURES.map(f => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-zinc-300">
-                    <div className="w-4 h-4 bg-emerald-500/20 rounded-full flex items-center justify-center shrink-0"><Check className="w-2.5 h-2.5 text-emerald-400" /></div>{f}
-                  </li>
-                ))}
-                {p.bonus && (
-                  <li className="flex items-center gap-2.5 text-sm text-blue-400 font-bold pt-1 border-t border-zinc-800 mt-1">
-                    <div className="w-4 h-4 bg-blue-500/20 rounded-full flex items-center justify-center shrink-0"><Check className="w-2.5 h-2.5 text-blue-400" /></div>{p.bonus}
-                  </li>
-                )}
-              </ul>
-              <div className="mb-4" />
-              <button onClick={p.action} disabled={loading !== null}
-                className={`w-full py-3.5 font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center ${
-                  p.badge === 'Mais Popular' ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
-                }`}>
-                {loading === p.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : p.cta}
-              </button>
-            </motion.div>
-          ))}
-        </div>
-        <p className="text-center text-zinc-600 text-xs mt-8">🔒 Pagamento 100% seguro · Cancele quando quiser</p>
-      </div>
-    </section>
-  )
-}
-
-function GuaranteeSection() {
-  return (
-    <section className="py-16 px-6 bg-zinc-900 border-y border-zinc-800">
-      <div className="max-w-4xl mx-auto">
-        <motion.div initial={{ opacity:0, y:20 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }}
-          className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
-          <div className="w-24 h-24 bg-emerald-500/10 border-2 border-emerald-500/30 rounded-full flex items-center justify-center shrink-0 mx-auto md:mx-0">
-            <Shield className="w-12 h-12 text-emerald-400" />
-          </div>
-          <div>
-            <h3 className="text-2xl font-black text-zinc-100 mb-3">Garantia de 7 dias sem perguntas</h3>
-            <p className="text-zinc-400 leading-relaxed max-w-2xl">
-              Se por qualquer motivo você não ficar satisfeito nos primeiros 7 dias após a compra, devolvemos 100% do seu dinheiro. Sem burocracia, sem questionamentos. Você não tem nada a perder.
-            </p>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  )
-}
+import { trackLead } from '@/components/meta-pixel'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -812,15 +571,13 @@ export default function LandingPage() {
   const router = useRouter()
   const [mobileMenu, setMobileMenu] = useState(false)
   const [chartInView, setChartInView] = useState(false)
-  const [announcementVisible, setAnnouncementVisible] = useState(true)
 
   return (
     <div className="min-h-screen bg-[#09090B] text-zinc-100 selection:bg-blue-600 selection:text-white">
-      <AnnouncementBar onVisibilityChange={setAnnouncementVisible} />
 
 
       {/* ── Navbar ── */}
-      <nav className={`bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 fixed w-full z-50 transition-all duration-300 ${announcementVisible ? 'top-[40px]' : 'top-0'}`}>
+      <nav className="bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 fixed top-0 w-full z-50">
         <div className="flex justify-between items-center px-6 py-4 w-full max-w-7xl mx-auto relative">
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -831,8 +588,7 @@ export default function LandingPage() {
           <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 gap-8 items-center">
             <a href="#produto" className="text-zinc-400 hover:text-blue-500 font-medium transition-colors">Produto</a>
             <a href="#funcionalidades" className="text-zinc-400 hover:text-blue-500 font-medium transition-colors">Funcionalidades</a>
-            <a href="#oferta-lancamento" className="text-amber-400 hover:text-amber-300 font-bold transition-colors flex items-center gap-1"><Flame className="w-3 h-3" /> Oferta Vitalícia</a>
-            <a href="#planos" className="text-zinc-400 hover:text-blue-500 font-medium transition-colors">Planos</a>
+            <a href="#como-funciona" className="text-zinc-400 hover:text-blue-500 font-medium transition-colors">Como funciona</a>
           </div>
 
           {/* Right Actions */}
@@ -853,9 +609,6 @@ export default function LandingPage() {
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="md:hidden px-6 pb-6 flex flex-col gap-4 border-t border-zinc-800 bg-zinc-950/95">
             <a href="#produto" onClick={() => setMobileMenu(false)} className="py-2 text-zinc-300 font-medium">Produto</a>
             <a href="#funcionalidades" onClick={() => setMobileMenu(false)} className="py-2 text-zinc-300 font-medium">Funcionalidades</a>
-            <a href="#como-funciona" onClick={() => setMobileMenu(false)} className="py-2 text-zinc-300 font-medium">Como funciona</a>
-            <a href="#oferta-lancamento" onClick={() => setMobileMenu(false)} className="py-2 text-amber-400 font-bold flex items-center gap-1.5"><Flame className="w-3.5 h-3.5" /> Oferta Vitalícia</a>
-            <a href="#planos" onClick={() => setMobileMenu(false)} className="py-2 text-zinc-300 font-medium">Planos</a>
             <div className="flex flex-col gap-3 pt-2">
               <Link href="/login" className="w-full py-3 text-center text-zinc-400 font-bold border border-zinc-800 rounded-xl">Entrar</Link>
               <Link href="/sign-up" className="w-full py-3 text-center bg-blue-600 text-white font-bold rounded-xl">Cadastrar Agora</Link>
@@ -864,19 +617,19 @@ export default function LandingPage() {
         )}
       </nav>
 
-      <main className={`overflow-x-hidden transition-all duration-300 ${announcementVisible ? 'pt-[104px]' : 'pt-[64px]'}`}>
+      <main className="pt-24 overflow-x-hidden">
 
         {/* ── Hero ── */}
-        <AuroraHero onGetStarted={() => { document.getElementById('oferta-lancamento')?.scrollIntoView({ behavior: 'smooth' }) }} />
+        <AuroraHero onGetStarted={() => router.push('/sign-up')} />
 
-        {/* ── Stats ── */}
+        {/* ── Informações do Beta ── */}
         <section className="bg-zinc-900 py-12 border-y border-zinc-800">
           <div className="max-w-7xl mx-auto px-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
               {[
                 { value: '10x', label: 'Mais rápido que resumir' },
-                { value: '+90%', label: 'Retenção com IA' },
-                { value: '+32', label: 'Estudantes na plataforma' },
+                { value: '+90%', label: 'Retenção focada' },
+                { value: '100%', label: 'Gratuito no período Beta' },
               ].map((s) => (
                 <div key={s.label} className="space-y-1">
                   <div className="text-3xl font-bold text-zinc-100">{s.value}</div>
@@ -1161,15 +914,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Launch Offer ── */}
-        <LaunchOfferSection />
-
-        {/* ── Plans ── */}
-        <PlansSection />
-
-        {/* ── Guarantee ── */}
-        <GuaranteeSection />
-
         {/* ── Testimonials (Oculto para Lançamento) ── */}
         {/*
         <section className="bg-zinc-900 py-24 px-6">
@@ -1273,18 +1017,11 @@ export default function LandingPage() {
               </svg>
             </div>
             <div className="relative z-10">
-              <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Não perca a oferta de lançamento.</h2>
-              <p className="text-lg md:text-xl text-white/90 mb-4 max-w-xl mx-auto font-medium">Garanta seu acesso vitalício por R$ 336 ou comece agora com um plano mensal.</p>
-              <p className="text-white/60 text-sm mb-10">Depois do lançamento, só haverá planos mensais a partir de R$ 29,90/mês.</p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="https://pay.kirvano.com/25185e6c-b93f-4b75-986e-b3c2214e36e4" target="_blank" rel="noopener noreferrer"
-                  className="inline-block bg-amber-500 text-black px-10 py-5 rounded-2xl font-black text-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all">
-                  🚀 Garantir Acesso Vitalício
-                </a>
-                <a href="#planos" className="inline-block bg-white/10 border border-white/20 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all">
-                  Ver planos mensais
-                </a>
-              </div>
+              <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Acesse o nosso site.</h2>
+              <p className="text-lg md:text-xl text-white/90 mb-10 max-w-xl mx-auto font-medium">E crie a sua conta para revolucionar o seu estudo médico com inteligência artificial.</p>
+              <Link href="/sign-up" className="inline-block bg-white text-blue-600 px-12 py-5 rounded-2xl font-bold text-xl hover:shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all">
+                Criar minha conta agora
+              </Link>
             </div>
           </div>
         </section>
