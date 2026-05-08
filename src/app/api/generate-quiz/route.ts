@@ -23,7 +23,7 @@ const QuizQuestionSchema = z.object({
   
   explanation: z.string()
     .min(150, 'Explicação muito curta')
-    .describe('Explicação fluida justificando a correta e refutando distratores por letras (a, b, c...). NUNCA use labels como "Justificativa:".'),
+    .describe('Explicação detalhada justificando a correta e refutando distratores. Use quebras de linha duplas entre cada alternativa (ex: a) ... \n\n b) ...). NUNCA use labels como "Justificativa:".'),
   
   difficulty: z.enum(['easy', 'medium', 'hard']),
 })
@@ -153,6 +153,7 @@ END OF DATA`
               
 ## REGRAS DE QUALIDADE
 - Justifique a correta e refute os distratores por LETRAS ('a', 'b', 'c'...).
+- FORMATAÇÃO: Use quebras de linha duplas entre a explicação de cada alternativa para que fiquem em parágrafos separados.
 - CONSISTÊNCIA: A letra usada na explicação DEVE ser a mesma da posição no array 'options' (0=a, 1=b, 2=c, 3=d, 4=e).
 - ALEATORIEDADE: Distribua a resposta correta aleatoriamente.
 - FORMATO: Use 'correct_answer_text' com o texto EXATO da opção correta.

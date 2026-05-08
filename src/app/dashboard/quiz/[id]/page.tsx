@@ -914,7 +914,7 @@ export default function QuizPage() {
                     <BarChart3 size={12} /> Comentário Técnico
                   </p>
                   <div className="text-zinc-300 text-sm leading-relaxed font-medium">
-                    <MarkdownDisplay content={currentQuestion.explanation} />
+                    <MarkdownDisplay content={currentQuestion.explanation?.replace(/([a-e]\))/g, '\n\n$1').trim()} />
                   </div>
                 </div>
               </motion.div>
