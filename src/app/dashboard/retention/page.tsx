@@ -5,7 +5,7 @@ import { useAuth } from '@/components/providers/auth-provider'
 import { getRetentionStats, type RetentionStats } from '@/lib/study/retention-service'
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, Cell
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell
 } from 'recharts'
 import { 
   Brain, Target, Calendar, Zap, ChevronLeft, 
@@ -58,11 +58,7 @@ export default function RetentionDashboard() {
     return () => window.removeEventListener('refresh-dashboard', handleRefresh)
   }, [user?.id, mutateStats])
 
-  // Para teste do Lucas: Se quisermos ver o bloqueio mesmo sendo admin,
-  // podemos forçar a verificação de quem NÃO é Pro de fato.
   const loading = (isLoading && !stats) || planLoading
-
-  // Se você quiser testar o bloqueio sendo admin, mude para: !isPremium || isAdmin
   const shouldBlock = !isPremium
 
   // Custom colors for specialties
@@ -230,12 +226,18 @@ export default function RetentionDashboard() {
             <p className="text-xs text-zinc-400 mb-6 z-10">Radar de maestria por especialidade</p>
             <div className="h-[260px] w-full z-10">
                <ResponsiveContainer width="100%" height="100%">
-                 <RadarChart cx="50%" cy="50%" outerRadius="75%" data={stats?.masteryBySpecialty.slice(0, 6)}>
+                 <RadarChart cx="50%" cy="50%" outerRadius="75%" data={stats?.masteryBySpecialty.slice(0, 6).map(item => ({
+                   ...item,
+                   unifiedScore: item.quizScore !== null 
+                     ? Math.round((item.score + item.quizScore) / 2) 
+                     : item.score
+                 }))}>
                    <PolarGrid stroke="#27272A" strokeDasharray="3 3" />
                    <PolarAngleAxis dataKey="specialty" tick={{ fill: '#A1A1AA', fontSize: 11, fontWeight: 600 }} />
+                   <PolarRadiusAxis domain={[0, 100]} axisLine={false} tick={false} />
                    <Radar
                      name="Domínio"
-                     dataKey="score"
+                     dataKey="unifiedScore"
                      stroke="#10B981"
                      strokeWidth={2}
                      fill="#10B981"
@@ -258,7 +260,13 @@ export default function RetentionDashboard() {
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {stats?.masteryBySpecialty.map((item: any, idx: number) => {
                 const Icon = specialtyIcons[item.specialty] || Zap
-                const color = getSpecialtyColor(item.score)
+                
+                // Cálculo unificado idêntico ao do modal
+                const displayScore = item.quizScore !== null 
+                  ? Math.round((item.score + item.quizScore) / 2) 
+                  : item.score;
+                const displayColor = getSpecialtyColor(displayScore);
+
                 return (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
@@ -268,23 +276,23 @@ export default function RetentionDashboard() {
                     onClick={() => setSelectedSpecialty(item)}
                     className="group bg-zinc-950/50 border border-zinc-800/50 p-6 rounded-2xl hover:border-zinc-700/80 hover:bg-zinc-900/50 transition-all duration-300 relative overflow-hidden shadow-lg cursor-pointer hover:-translate-y-1"
                   >
-                    <div className="absolute top-0 left-0 w-1 h-full opacity-50" style={{ backgroundColor: color }} />
+                    <div className="absolute top-0 left-0 w-1 h-full opacity-50" style={{ backgroundColor: displayColor }} />
                     <div className="flex items-center justify-between mb-5">
                        <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl border border-zinc-800`} style={{ backgroundColor: `${color}10`, color }}>
+                          <div className={`p-2.5 rounded-xl border border-zinc-800`} style={{ backgroundColor: `${displayColor}10`, color: displayColor }}>
                              <Icon size={20} />
                           </div>
                           <span className="font-bold text-zinc-200 text-lg">{item.specialty}</span>
                        </div>
-                       <span className="text-xl font-black" style={{ color }}>{item.score}%</span>
+                       <span className="text-xl font-black" style={{ color: displayColor }}>{displayScore}%</span>
                     </div>
                     <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800/50">
                        <motion.div 
                          initial={{ width: 0 }}
-                         animate={{ width: `${item.score}%` }}
+                         animate={{ width: `${displayScore}%` }}
                          transition={{ duration: 1, delay: 0.5 }}
                          className="h-full rounded-full relative" 
-                         style={{ backgroundColor: color }}
+                         style={{ backgroundColor: displayColor }}
                        >
                          <div className="absolute inset-0 bg-white/20 w-full h-full" />
                        </motion.div>
@@ -345,18 +353,20 @@ export default function RetentionDashboard() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-3xl p-6 lg:p-8 shadow-2xl"
+              className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 lg:p-10 shadow-2xl overflow-hidden"
             >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-emerald-500 to-violet-600 opacity-50" />
+              
               <button 
                 onClick={() => setSelectedSpecialty(null)}
-                className="absolute top-6 right-6 p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors"
+                className="absolute top-6 right-6 p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all z-20"
               >
                 <X size={20} />
               </button>
               
-              <div className="flex items-center gap-4 mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-10">
                 <div 
-                  className="p-3 rounded-xl border border-zinc-800" 
+                  className="w-16 h-16 rounded-2xl border border-white/5 flex items-center justify-center shadow-2xl" 
                   style={{ 
                     backgroundColor: `${getSpecialtyColor(selectedSpecialty.score)}15`,
                     color: getSpecialtyColor(selectedSpecialty.score)
@@ -364,56 +374,133 @@ export default function RetentionDashboard() {
                 >
                   {(() => {
                     const ModalIcon = specialtyIcons[selectedSpecialty.specialty] || Zap
-                    return <ModalIcon size={28} />
+                    return <ModalIcon size={32} />
                   })()}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-white">{selectedSpecialty.specialty}</h3>
-                  <p className="text-zinc-400 text-sm">{selectedSpecialty.count} flashcards gerados no total</p>
+                  <h3 className="text-3xl font-black text-white tracking-tight">{selectedSpecialty.specialty}</h3>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-800">
+                      {selectedSpecialty.count} flashcards
+                    </span>
+                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-800">
+                      {selectedSpecialty.totalQuestions || 0} questões
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-zinc-900/50 rounded-2xl p-6 border border-zinc-800/50 mb-8">
-                <p className="text-sm text-zinc-500 font-bold uppercase tracking-wider mb-2">Progresso de Domínio</p>
-                <div className="flex items-end gap-3">
-                  <span className="text-5xl font-black" style={{ color: getSpecialtyColor(selectedSpecialty.score) }}>
-                    {selectedSpecialty.score}%
-                  </span>
-                  <span className="text-zinc-500 mb-1 font-medium">de toda a matéria gerada</span>
+              {/* OVERALL PERFORMANCE */}
+              <div className="bg-gradient-to-br from-zinc-900/40 to-zinc-950/60 rounded-3xl p-8 border border-zinc-800/50 mb-8 relative group overflow-hidden">
+                <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Desempenho de Prontidão</p>
+                    <div className="flex items-center gap-2">
+                       <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: getSpecialtyColor(
+                         selectedSpecialty.quizScore !== null 
+                           ? Math.round((selectedSpecialty.score + selectedSpecialty.quizScore) / 2) 
+                           : selectedSpecialty.score
+                       )}} />
+                       <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Mastery Level</span>
+                    </div>
+                  </div>
+                  <div className="flex items-end gap-4">
+                    <span className="text-6xl font-black leading-none tracking-tighter" style={{ 
+                      color: getSpecialtyColor(
+                        selectedSpecialty.quizScore !== null 
+                          ? Math.round((selectedSpecialty.score + selectedSpecialty.quizScore) / 2) 
+                          : selectedSpecialty.score
+                      ) 
+                    }}>
+                      {selectedSpecialty.quizScore !== null 
+                        ? Math.round((selectedSpecialty.score + selectedSpecialty.quizScore) / 2) 
+                        : selectedSpecialty.score}%
+                    </span>
+                    <div className="mb-1 space-y-1">
+                       <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Consolidado</p>
+                       <div className="h-1 w-24 bg-zinc-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-current transition-all duration-1000" style={{ 
+                            width: `${selectedSpecialty.quizScore !== null 
+                              ? Math.round((selectedSpecialty.score + selectedSpecialty.quizScore) / 2) 
+                              : selectedSpecialty.score}%`,
+                            color: getSpecialtyColor(
+                              selectedSpecialty.quizScore !== null 
+                                ? Math.round((selectedSpecialty.score + selectedSpecialty.quizScore) / 2) 
+                                : selectedSpecialty.score
+                            )
+                          }} />
+                        </div>
+                      </div>
+                    </div>
                 </div>
               </div>
 
-              <h4 className="text-sm text-zinc-500 font-bold uppercase tracking-wider mb-4">Mapeamento de Estágios</h4>
-              
-              <div className="space-y-3">
-                <StageRow 
-                  label="Novo" 
-                  count={selectedSpecialty.stages?.new || 0} 
-                  total={selectedSpecialty.count} 
-                  color="bg-blue-500" 
-                  textColor="text-blue-500"
-                />
-                <StageRow 
-                  label="Aprendendo" 
-                  count={selectedSpecialty.stages?.learning || 0} 
-                  total={selectedSpecialty.count} 
-                  color="bg-orange-500" 
-                  textColor="text-orange-500"
-                />
-                <StageRow 
-                  label="Revisão" 
-                  count={selectedSpecialty.stages?.review || 0} 
-                  total={selectedSpecialty.count} 
-                  color="bg-green-500" 
-                  textColor="text-green-500"
-                />
-                <StageRow 
-                  label="Dominado" 
-                  count={selectedSpecialty.stages?.mastered || 0} 
-                  total={selectedSpecialty.count} 
-                  color="bg-emerald-500" 
-                  textColor="text-emerald-500"
-                />
+              {/* TWO COLUMN ANALYSIS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+                {/* Column: Flashcards */}
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center gap-3 px-1">
+                     <Brain size={16} className="text-blue-500" />
+                     <h4 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Retenção Neural</h4>
+                  </div>
+                  
+                  <div className="flex-1 bg-zinc-900/30 rounded-2xl p-6 border border-zinc-800/30 flex flex-col">
+                    <div className="flex items-baseline gap-2 mb-6">
+                       <span className="text-2xl font-black text-zinc-100">{selectedSpecialty.score}%</span>
+                       <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Memória</span>
+                    </div>
+                    
+                    <div className="space-y-4 flex-1 flex flex-col justify-center">
+                      <StageRow label="Novo" count={selectedSpecialty.stages?.new || 0} total={selectedSpecialty.count} color="bg-blue-500" textColor="text-blue-500" />
+                      <StageRow label="Aprendendo" count={selectedSpecialty.stages?.learning || 0} total={selectedSpecialty.count} color="bg-orange-500" textColor="text-orange-500" />
+                      <StageRow label="Revisão" count={selectedSpecialty.stages?.review || 0} total={selectedSpecialty.count} color="bg-green-500" textColor="text-green-500" />
+                      <StageRow label="Dominado" count={selectedSpecialty.stages?.mastered || 0} total={selectedSpecialty.count} color="bg-emerald-500" textColor="text-emerald-500" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column: Quizzes */}
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center gap-3 px-1">
+                     <Target size={16} className="text-emerald-500" />
+                     <h4 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Aplicação Prática</h4>
+                  </div>
+
+                  {selectedSpecialty.quizScore !== null ? (
+                    <div className="flex-1 bg-zinc-900/30 rounded-2xl p-6 border border-zinc-800/30 flex flex-col">
+                      <div className="flex items-baseline gap-2 mb-6">
+                         <span className="text-2xl font-black text-zinc-100">{selectedSpecialty.quizScore}%</span>
+                         <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Acerto</span>
+                      </div>
+                      
+                      <div className="space-y-5 flex-1 flex flex-col justify-center">
+                        <div className="flex items-center justify-between">
+                           <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Questões</span>
+                           <span className="text-sm font-black text-zinc-200">{selectedSpecialty.totalQuestions}</span>
+                        </div>
+                        <div className="h-px bg-zinc-800/50" />
+                        <div className="flex items-center justify-between">
+                           <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Status</span>
+                           <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${selectedSpecialty.quizScore > 70 ? 'text-emerald-500 bg-emerald-500/10' : 'text-amber-500 bg-amber-500/10'}`}>
+                             {selectedSpecialty.quizScore > 70 ? 'Consolidado' : 'Em Evolução'}
+                           </span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 font-medium leading-relaxed mt-2">
+                          Sua performance clínica em {selectedSpecialty.specialty} indica um nível {selectedSpecialty.quizScore > 75 ? 'Excelente' : 'Médio'} de resolução.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 bg-zinc-950 border border-dashed border-zinc-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center group/quiz min-h-[220px]">
+                      <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center mb-4 group-hover/quiz:scale-110 transition-transform">
+                        <Zap size={20} className="text-zinc-600" />
+                      </div>
+                      <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Sem Simulados</p>
+                      <p className="text-[10px] text-zinc-600 mt-2 max-w-[180px] leading-relaxed">Responda questões para validar sua aplicação prática.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
@@ -466,11 +553,9 @@ function StatMiniCard({ label, value, icon: Icon, color, subLabel }: any) {
 }
 
 function HeatmapGrid({ data }: { data: { date: string, count: number }[] }) {
-  // Simple Mock/Logic for 90 days
   const days = Array.from({ length: 91 }, (_, i: number) => {
     const date = new Date()
     date.setDate(date.getDate() - (90 - i))
-    // Use local date string YYYY-MM-DD for comparison
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')

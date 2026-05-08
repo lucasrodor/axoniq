@@ -8,7 +8,9 @@ export interface RetentionStats {
   totalReviews: number
   masteryBySpecialty: { 
     specialty: string; 
-    score: number; 
+    score: number; // Flashcard weighted score
+    quizScore: number | null; // Quiz average (0-100) or null
+    totalQuestions: number;
     count: number;
     stages: {
       new: number;
@@ -43,7 +45,21 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
 
   if (flashcardsError) throw flashcardsError
 
-  // 2. Fetch study history for the heatmap (last 90 days)
+  // 2. Fetch Quiz Attempts (for application mastery)
+  const { data: quizAttempts, error: quizError } = await supabase
+    .from('quiz_attempts')
+    .select(`
+      score,
+      total_questions,
+      quizzes (
+        specialty_tag
+      )
+    `)
+    .eq('user_id', userId)
+
+  if (quizError) throw quizError
+
+  // 3. Fetch study history for the heatmap (last 90 days)
   const ninetyDaysAgo = subDays(new Date(), 90).toISOString()
   const { data: reviews, error: reviewsError } = await supabase
     .from('flashcard_reviews')
@@ -60,7 +76,15 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
   let earnedGlobalWeight = 0
 
   // Specialty Mastery aggregation
-  const specialtyMap: Record<string, { totalCards: number; earnedWeight: number; count: number; stages: any }> = {}
+  const specialtyMap: Record<string, { 
+    totalCards: number; 
+    earnedWeight: number; 
+    count: number; 
+    stages: any;
+    quizPoints: number;
+    quizTotal: number;
+    quizCount: number;
+  }> = {}
   
   flashcards?.forEach(card => {
     const stage = getCardStage(card as any)
@@ -79,13 +103,35 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
         totalCards: 0, 
         earnedWeight: 0, 
         count: 0,
-        stages: { new: 0, learning: 0, review: 0, mastered: 0 }
+        stages: { new: 0, learning: 0, review: 0, mastered: 0 },
+        quizPoints: 0,
+        quizTotal: 0,
+        quizCount: 0
       }
     }
     specialtyMap[specialty].totalCards++
     specialtyMap[specialty].count++
     specialtyMap[specialty].stages[stage]++
     specialtyMap[specialty].earnedWeight += weight
+  })
+
+  // Process Quiz Attempts into specialties
+  quizAttempts?.forEach(attempt => {
+    const specialty = (attempt.quizzes as any)?.specialty_tag || 'Outros'
+    if (!specialtyMap[specialty]) {
+      specialtyMap[specialty] = { 
+        totalCards: 0, 
+        earnedWeight: 0, 
+        count: 0,
+        stages: { new: 0, learning: 0, review: 0, mastered: 0 },
+        quizPoints: 0,
+        quizTotal: 0,
+        quizCount: 0
+      }
+    }
+    specialtyMap[specialty].quizPoints += attempt.score
+    specialtyMap[specialty].quizTotal += attempt.total_questions
+    specialtyMap[specialty].quizCount++
   })
 
   const globalRetention = totalGlobalWeight > 0 
@@ -96,8 +142,15 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
     specialty,
     count: stats.count,
     score: stats.totalCards > 0 ? Math.round((stats.earnedWeight / stats.totalCards) * 100) : 0,
+    quizScore: stats.quizTotal > 0 ? Math.round((stats.quizPoints / stats.quizTotal) * 100) : null,
+    totalQuestions: stats.quizTotal,
     stages: stats.stages
-  })).sort((a, b) => b.score - a.score)
+  })).sort((a, b) => {
+    // Sort by a composite score for the ranking
+    const scoreA = a.quizScore !== null ? (a.score + a.quizScore) / 2 : a.score
+    const scoreB = b.quizScore !== null ? (b.score + b.quizScore) / 2 : b.score
+    return scoreB - scoreA
+  })
 
   // Future Workload (Next 7 days)
   const now = new Date()
