@@ -238,4 +238,3 @@ Expandir as fontes de conteúdo para além de PDF.
 3. **Mobile-first thinking** — Estudantes estudam no celular
 4. **Feedback imediato** — O aluno precisa saber o que está acontecendo
 5. **Nichado > Genérico** — Comunicação, exemplos e UX voltados para medicina
- teste
