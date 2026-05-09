@@ -108,10 +108,11 @@ export function AnkiImportModal({ isOpen, onClose, onSuccess }: AnkiImportModalP
               if (isImage) {
                 try {
                   const options = {
-                    maxSizeMB: 0.6, // Reduzido de 0.8 para 0.6 para WebP
-                    maxWidthOrHeight: 1000, // Reduzido de 1280 para 1000
+                    maxSizeMB: 0.4, // Reduzido de 0.6 para 0.4 para máxima economia
+                    maxWidthOrHeight: 1000, 
                     useWebWorker: true,
-                    fileType: 'image/webp' as any // Força conversão para WebP
+                    initialQuality: 0.75, // Qualidade inicial de 75% (padrão ouro para web)
+                    fileType: 'image/webp' as any
                   }
                   processedData = await imageCompression(fileData as File, options)
                 } catch (compressError) {
