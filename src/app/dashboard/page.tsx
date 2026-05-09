@@ -95,6 +95,7 @@ import { LaunchOfferBanner } from '@/components/dashboard/launch-offer-banner'
 import { SPECIALTIES } from '@/lib/constants/specialties'
 import { SpecialtySelector } from '@/components/ui/specialty-selector'
 import { AnkiImportModal } from '@/components/dashboard/anki-import-modal'
+import { deleteDeckWithAssets } from '@/lib/study/deck-actions'
 
 interface Flashcard {
   id: string
@@ -464,10 +465,10 @@ function DashboardPageContent() {
     setEditingItemId(null)
   }
   const handleDeleteDeck = async (deckId: string) => {
-    const { error } = await supabase.from('decks').delete().eq('id', deckId)
+    const { error } = await deleteDeckWithAssets(deckId)
     if (!error) {
       mutate(`decks:${user?.id}`)
-      toast('Deck excluído.', 'success')
+      toast('Deck e imagens excluídos.', 'success')
       loadDashboard()
     } else {
       toast('Erro ao excluir deck.', 'error')

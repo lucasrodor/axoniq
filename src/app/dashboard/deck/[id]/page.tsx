@@ -4,6 +4,7 @@ import { useAuth } from '@/components/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { supabase } from '@/lib/supabase/client'
+import { deleteDeckWithAssets } from '@/lib/study/deck-actions'
 import { useEffect, useState } from 'react'
 import {
   ChevronLeft,
@@ -151,14 +152,12 @@ export default function DeckDetailPage() {
   }
 
   const handleDeleteDeck = async () => {
-    // Delete flashcards first, then deck
-    await supabase.from('flashcards').delete().eq('id', deckId)
-    const { error } = await supabase.from('decks').delete().eq('id', deckId)
-
+    const { error } = await deleteDeckWithAssets(deckId)
+    
     if (error) {
       toast('Erro ao deletar deck.', 'error')
     } else {
-      toast('Deck deletado!', 'success')
+      toast('Deck e imagens deletados!', 'success')
       router.push('/dashboard')
     }
   }

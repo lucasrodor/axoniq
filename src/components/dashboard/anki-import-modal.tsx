@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import JSZip from 'jszip'
 import initSqlJs from 'sql.js'
+import imageCompression from 'browser-image-compression'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/components/providers/auth-provider'
 import { useSubscription } from '@/hooks/useSubscription'
@@ -98,13 +99,34 @@ export function AnkiImportModal({ isOpen, onClose, onSuccess }: AnkiImportModalP
             const binFile = unzipped.file(internalName)
             if (binFile) {
               const fileData = await binFile.async('blob')
-              const fileExt = originalName.split('.').pop() || 'jpg'
+              const fileExt = originalName.split('.').pop()?.toLowerCase() || 'jpg'
+              
+              // Only compress if it's an image
+              let processedData: Blob | File = fileData
+              if (['jpg', 'jpeg', 'png', 'webp'].includes(fileExt)) {
+                try {
+                  const options = {
+                    maxSizeMB: 0.8,
+                    maxWidthOrHeight: 1280,
+                    useWebWorker: true,
+                    fileType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}` as any
+                  }
+                  processedData = await imageCompression(fileData as File, options)
+                } catch (compressError) {
+                  console.warn('Compression failed, uploading original:', compressError)
+                  processedData = fileData
+                }
+              }
+
               const fileName = `${uuidv4()}.${fileExt}`
               const filePath = `${user.id}/anki/${fileName}`
 
               const { error: uploadError } = await supabase.storage
                 .from('flashcard-images')
-                .upload(filePath, fileData, { contentType: `image/${fileExt}` })
+                .upload(filePath, processedData, { 
+                  contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+                  upsert: true
+                })
 
               if (!uploadError) {
                 const { data } = supabase.storage.from('flashcard-images').getPublicUrl(filePath)
