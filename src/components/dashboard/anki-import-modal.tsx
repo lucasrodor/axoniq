@@ -107,14 +107,16 @@ export function AnkiImportModal({ isOpen, onClose, onSuccess }: AnkiImportModalP
               
               if (isImage) {
                 try {
+                  console.log(`[AnkiImport] Original size (${originalName}):`, (fileData.size / 1024 / 1024).toFixed(2), 'MB')
                   const options = {
-                    maxSizeMB: 0.4, // Reduzido de 0.6 para 0.4 para máxima economia
-                    maxWidthOrHeight: 1000, 
+                    maxSizeMB: 0.15, // Reduzido para 150KB
+                    maxWidthOrHeight: 800, // Reduzido para 800px
                     useWebWorker: true,
-                    initialQuality: 0.75, // Qualidade inicial de 75% (padrão ouro para web)
+                    initialQuality: 0.6, 
                     fileType: 'image/webp' as any
                   }
                   processedData = await imageCompression(fileData as File, options)
+                  console.log(`[AnkiImport] Compressed size (${originalName}):`, (processedData.size / 1024 / 1024).toFixed(2), 'MB')
                 } catch (compressError) {
                   console.warn('Compression failed, uploading original:', compressError)
                   processedData = fileData

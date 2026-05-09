@@ -360,12 +360,14 @@ function StudySession() {
             {/* Front */}
             <div className="absolute inset-0 bg-zinc-900/60 border border-zinc-800/80 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl backdrop-blur-3xl flex flex-col items-center justify-center p-8 sm:p-12 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/0 via-blue-500/40 to-blue-500/0" />
-              <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-zinc-100 leading-tight tracking-tight px-4 flex flex-wrap items-center justify-center text-center">
-                  {renderCardContent(currentCard.front, true)}
-                </h2>
+              <div className="w-full max-h-full overflow-y-auto overscroll-contain custom-scrollbar flex flex-col items-center py-4">
+                <div className="my-auto w-full flex flex-wrap items-center justify-center text-center">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-zinc-100 leading-tight tracking-tight px-4 flex flex-wrap items-center justify-center text-center">
+                    {renderCardContent(currentCard.front, true)}
+                  </h2>
+                </div>
               </div>
-              <div className="absolute bottom-10 text-[10px] text-zinc-500 flex items-center gap-2 opacity-60 uppercase tracking-[0.2em] font-bold">
+              <div className="absolute bottom-10 text-[10px] text-zinc-500 flex items-center gap-2 opacity-60 uppercase tracking-[0.2em] font-bold pointer-events-none">
                 <RotateCw size={14} className="animate-spin-slow" /> Clique para revelar resposta
               </div>
             </div>
@@ -373,9 +375,11 @@ function StudySession() {
             {/* Back */}
             <div className="absolute inset-0 bg-zinc-950/80 border border-zinc-800/80 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_0_50px_rgba(16,185,129,0.05)] backdrop-blur-3xl flex flex-col items-center justify-center p-8 sm:p-12 text-center overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0" />
-              <div className="w-full max-h-full overflow-y-auto custom-scrollbar flex items-center justify-center">
-                <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-zinc-300 leading-relaxed max-w-lg flex flex-wrap items-center justify-center text-center">
-                  {renderCardContent(currentCard.back || currentCard.front, false)}
+              <div className="w-full max-h-full overflow-y-auto overscroll-contain custom-scrollbar flex flex-col items-center py-4">
+                <div className="my-auto w-full flex flex-wrap items-center justify-center text-center">
+                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-zinc-300 leading-relaxed max-w-lg flex flex-wrap items-center justify-center text-center">
+                    {renderCardContent(currentCard.back || currentCard.front, false)}
+                  </div>
                 </div>
               </div>
             </div>
