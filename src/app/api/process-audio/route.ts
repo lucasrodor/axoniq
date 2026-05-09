@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
           {
             role: 'system',
             content: `You are a medical content classifier. Determine the specialty based on this lecture transcript.
-Respond with ONLY the name (e.g. Cardiologia, Anatomia, Outros).`
+Respond with ONLY the name from this list:
+Anatomia Humana, Anatomia Radiológica, Citologia, Histologia, Embriologia, Fisiologia, Bioquímica, Biologia Celular e Molecular, Genética Médica, Genética Clínica, Microbiologia, Parasitologia, Imunologia, Alergologia e Imunologia Clínica, Farmacologia, Patologia, Biofísica, Bioética e Ética Médica, Epidemiologia, Bioestatística, Saúde Pública e Coletiva, Medicina Preventiva, Semiologia, Clínica Médica, Cirurgia Geral, Cirurgia Vascular, Cirurgia Pediátrica, Cirurgia Plástica, Pediatria, Neonatologia, Ginecologia e Obstetrícia, Mastologia, Psiquiatria, Dermatologia, Ortopedia e Traumatologia, Oftalmologia, Otorrinolaringologia, Urologia, Proctologia / Coloproctologia, Neurologia, Cardiologia, Pneumologia / Respiratório, Gastroenterologia, Endoscopia Digestiva, Endocrinologia, Nefrologia, Hematologia, Hematologia Clínica, Reumatologia, Infectologia, Geriatria, Oncologia, Medicina Esportiva, Nutrologia, Cuidados Paliativos, Medicina do Trabalho, Odontologia / Estomatologia, Medicina Legal, Toxicologia, Radiologia e Diagnóstico por Imagem, Anestesiologia, Emergência e Urgência, Medicina Intensiva (UTI), Medicina de Família e Comunidade, Saúde Mental, Outros.`
           },
           {
             role: 'user',

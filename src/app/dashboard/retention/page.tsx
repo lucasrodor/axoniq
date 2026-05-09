@@ -9,7 +9,10 @@ import {
 } from 'recharts'
 import { 
   Brain, Target, Calendar, Zap, ChevronLeft, 
-  Award, Activity, Heart, Microscope, AlertCircle, Crown, X
+  Award, Activity, Heart, Microscope, AlertCircle, Crown, X,
+  Baby, Stethoscope, Scissors, Syringe, Eye, Ear, Bone, 
+  Thermometer, Pill, Dna, Users, Scale, Radiation, Apple,
+  Trophy, Droplet, Smile, Shield, Flame
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
@@ -24,21 +27,70 @@ import { UpgradeGate } from '@/components/dashboard/upgrade-gate'
 
 // Specialty Icons Mapping
 const specialtyIcons: Record<string, any> = {
-  Cardiologia: Heart,
-  Neurologia: Brain,
-  Pneumologia: Activity,
-  Gastroenterologia: Activity,
-  Nefrologia: Activity,
-  Endocrinologia: Activity,
-  Hematologia: Activity,
-  Reumatologia: Activity,
-  Infectologia: Microscope,
-  Anatomia: Microscope,
-  Fisiologia: Target,
-  Bioquímica: Microscope,
-  Farmacologia: Zap,
-  Patologia: Microscope,
-  Outros: Zap
+  // Ciclo Básico
+  "Anatomia Humana": Microscope,
+  "Anatomia Radiológica": Radiation,
+  "Citologia": Microscope,
+  "Histologia": Microscope,
+  "Embriologia": Baby,
+  "Fisiologia": Target,
+  "Bioquímica": Microscope,
+  "Biologia Celular e Molecular": Dna,
+  "Genética Médica": Dna,
+  "Genética Clínica": Dna,
+  "Microbiologia": Microscope,
+  "Parasitologia": Microscope,
+  "Imunologia": Shield,
+  "Alergologia e Imunologia Clínica": Shield,
+  "Farmacologia": Pill,
+  "Patologia": Microscope,
+  "Biofísica": Zap,
+  
+  // Ciclo Clínico / Cirúrgico
+  "Cardiologia": Heart,
+  "Neurologia": Brain,
+  "Pneumologia / Respiratório": Activity,
+  "Gastroenterologia": Activity,
+  "Endoscopia Digestiva": Activity,
+  "Nefrologia": Activity,
+  "Endocrinologia": Activity,
+  "Hematologia": Droplet,
+  "Hematologia Clínica": Droplet,
+  "Reumatologia": Bone,
+  "Infectologia": Thermometer,
+  "Dermatologia": Flame,
+  "Psiquiatria": Smile,
+  "Saúde Mental": Smile,
+  "Pediatria": Baby,
+  "Neonatologia": Baby,
+  "Ginecologia e Obstetrícia": Heart,
+  "Mastologia": Heart,
+  "Ortopedia e Traumatologia": Bone,
+  "Oftalmologia": Eye,
+  "Otorrinolaringologia": Ear,
+  "Urologia": Target,
+  "Proctologia / Coloproctologia": Activity,
+  "Cirurgia Geral": Scissors,
+  "Cirurgia Vascular": Scissors,
+  "Cirurgia Pediátrica": Scissors,
+  "Cirurgia Plástica": Scissors,
+  
+  // Geral e Saúde Coletiva
+  "Semiologia": Stethoscope,
+  "Clínica Médica": Stethoscope,
+  "Medicina de Família e Comunidade": Users,
+  "Saúde Pública e Coletiva": Users,
+  "Medicina Preventiva": Shield,
+  "Epidemiologia": Activity,
+  "Radiologia e Diagnóstico por Imagem": Radiation,
+  "Anestesiologia": Syringe,
+  "Emergência e Urgência": Zap,
+  "Medicina Intensiva (UTI)": Activity,
+  "Medicina Esportiva": Trophy,
+  "Nutrologia": Apple,
+  "Medicina Legal": Scale,
+  "Toxicologia": AlertCircle,
+  "Outros": Zap
 }
 
 export default function RetentionDashboard() {
