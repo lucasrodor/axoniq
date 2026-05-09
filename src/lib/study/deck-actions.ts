@@ -30,24 +30,39 @@ export async function deleteDeckWithAssets(deckId: string) {
         }
       })
 
-      // 2. Remover do Storage se houver arquivos encontrados
+      // 2. Filtrar quais caminhos realmente podem ser deletados
+      // (Não podemos deletar se outra carta de OUTRO deck ainda usar a mesma imagem devido à deduplicação)
       if (pathsToDelete.length > 0) {
-        // Remove duplicatas
         const uniquePaths = Array.from(new Set(pathsToDelete))
-        
-        const { error: storageError } = await supabase.storage
-          .from('flashcard-images')
-          .remove(uniquePaths)
-          
-        if (storageError) {
-          console.error('Erro ao limpar ativos do storage:', storageError)
-          // Seguimos em frente para deletar o deck mesmo se o storage falhar
+        const verifiedPathsToDelete: string[] = []
+
+        for (const path of uniquePaths) {
+          // Verifica se existe alguma carta que NÃO pertence a este deck e usa esta imagem
+          const { count } = await supabase
+            .from('flashcards')
+            .select('*', { count: 'exact', head: true })
+            .neq('deck_id', deckId)
+            .or(`front.ilike.%${path}%,back.ilike.%${path}%`)
+
+          if (count === 0) {
+            verifiedPathsToDelete.push(path)
+          }
+        }
+
+        // 3. Remover do Storage apenas os arquivos órfãos
+        if (verifiedPathsToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('flashcard-images')
+            .remove(verifiedPathsToDelete)
+            
+          if (storageError) {
+            console.error('Erro ao limpar ativos do storage:', storageError)
+          }
         }
       }
     }
 
-    // 3. Deletar o deck (o banco de dados está configurado com ON DELETE CASCADE, 
-    // então os flashcards serão removidos automaticamente)
+    // 4. Deletar o deck
     return await supabase.from('decks').delete().eq('id', deckId)
     
   } catch (err) {

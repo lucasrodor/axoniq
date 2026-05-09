@@ -101,15 +101,17 @@ export function AnkiImportModal({ isOpen, onClose, onSuccess }: AnkiImportModalP
               const fileData = await binFile.async('blob')
               const fileExt = originalName.split('.').pop()?.toLowerCase() || 'jpg'
               
-              // Only compress if it's an image
+              // 1. Otimização e Conversão para WebP
               let processedData: Blob | File = fileData
-              if (['jpg', 'jpeg', 'png', 'webp'].includes(fileExt)) {
+              const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(fileExt)
+              
+              if (isImage) {
                 try {
                   const options = {
-                    maxSizeMB: 0.8,
-                    maxWidthOrHeight: 1280,
+                    maxSizeMB: 0.6, // Reduzido de 0.8 para 0.6 para WebP
+                    maxWidthOrHeight: 1000, // Reduzido de 1280 para 1000
                     useWebWorker: true,
-                    fileType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}` as any
+                    fileType: 'image/webp' as any // Força conversão para WebP
                   }
                   processedData = await imageCompression(fileData as File, options)
                 } catch (compressError) {
@@ -118,14 +120,24 @@ export function AnkiImportModal({ isOpen, onClose, onSuccess }: AnkiImportModalP
                 }
               }
 
-              const fileName = `${uuidv4()}.${fileExt}`
+              // 2. Deduplicação por Hash (SHA-256)
+              // Geramos um hash do conteúdo para evitar duplicatas no storage
+              const arrayBuffer = await processedData.arrayBuffer()
+              const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
+              const hashArray = Array.from(new Uint8Array(hashBuffer))
+              const fileHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+              
+              const finalExt = isImage ? 'webp' : fileExt
+              const fileName = `${fileHash}.${finalExt}`
               const filePath = `${user.id}/anki/${fileName}`
 
+              // Tentar upload (com upsert: true ele apenas sobrescreve se for idêntico, 
+              // mas o caminho sendo o hash garante a deduplicação)
               const { error: uploadError } = await supabase.storage
                 .from('flashcard-images')
                 .upload(filePath, processedData, { 
-                  contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
-                  upsert: true
+                  contentType: `image/${finalExt === 'jpg' ? 'jpeg' : finalExt}`,
+                  upsert: true 
                 })
 
               if (!uploadError) {
