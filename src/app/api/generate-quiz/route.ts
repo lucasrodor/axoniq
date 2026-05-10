@@ -143,21 +143,34 @@ END OF DATA`
     console.log(`[Quiz] Iniciando geração de ${quantity} questões em ${numBatches} lotes paralelos.`)
 
     const generationTasks = batches.map(async (batchSize, index) => {
+      // Diferenciação de temas por lote para evitar duplicidade
+      const themes = [
+        "Foco em Diagnósticos e Quadro Clínico.",
+        "Foco em Condutas Terapêuticas e Tratamento.",
+        "Foco em Fisiopatologia e Mecanismos da Doença.",
+        "Foco em Anatomia e Exames de Imagem.",
+        "Foco em Casos Clínicos Complexos."
+      ]
+      const currentTheme = themes[index % themes.length]
+
       try {
         const completion = await openai.chat.completions.create({
           model: MODEL_SMART,
           messages: [
             {
               role: 'system',
-              content: `Você é um professor de medicina sênior especializado em criar questões de alto nível. Gere ${batchSize} questões baseadas no conteúdo médico fornecido.
+              content: `Você é um professor de medicina sênior especializado em criar questões de alto nível (estilo residência médica). Gere ATÉ ${batchSize} questões baseadas no conteúdo médico fornecido.
               
-## REGRAS DE QUALIDADE
-- Justifique a correta e refute os distratores por LETRAS ('a', 'b', 'c'...).
-- FORMATAÇÃO: Use quebras de linha duplas entre a explicação de cada alternativa para que fiquem em parágrafos separados.
-- CONSISTÊNCIA: A letra usada na explicação DEVE ser a mesma da posição no array 'options' (0=a, 1=b, 2=c, 3=d, 4=e).
-- ALEATORIEDADE: Distribua a resposta correta aleatoriamente.
-- FORMATO: Use 'correct_answer_text' com o texto EXATO da opção correta.
-- DISTRIBUIÇÃO: Varie entre fácil, médio e difícil.`
+## TEMA DO LOTE (Obrigatório)
+${currentTheme}
+
+## REGRAS DE OURO (NUNCA VIOLAR)
+1. **QUALIDADE > QUANTIDADE:** Se o conteúdo fornecido for insuficiente para gerar ${batchSize} questões INÉDITAS e RELEVANTES, gere apenas o número de questões que mantiverem o alto nível técnico. É melhor entregar menos questões do que ser repetitivo ou prolixo.
+2. **UNIQUICIDADE:** Jamais repita o mesmo conceito ou pergunta em um lote. Varie os ângulos.
+3. **PADRÕES PROIBIDOS:** Evite perguntas genéricas e repetitivas como "O que está à direita?" ou "O que está à esquerda?". Transforme-as em contexto clínico.
+4. **IMAGENS:** Se houver imagens, use-as no enunciado para contextualizar.
+5. **EXPLICACÃO:** Justifique a correta e refute os distratores por LETRAS MAIÚSCULAS ('A)', 'B)', 'C)'...). Use quebras de linha duplas entre as justificativas.
+6. **CONSISTÊNCIA:** A letra usada na explicação DEVE ser a mesma da posição no array 'options' (0=A, 1=B, 2=C, 3=D, 4=E).`
             },
             {
               role: 'user',
@@ -182,6 +195,10 @@ END OF DATA`
     const results = await Promise.all(generationTasks)
     const questionsRaw = results.map(r => r.questions).flat().filter(Boolean)
     
+    // ── Agregador e De-duplicador de Questões (Melhoria de Qualidade) ──
+    const uniqueQuestions: any[] = []
+    const seenQuestionTexts = new Set<string>()
+
     // Agregar logs de uso
     const totalTokens = results.reduce((acc, curr) => ({
       prompt_tokens: acc.prompt_tokens + (curr.usage?.prompt_tokens || 0),
@@ -203,7 +220,19 @@ END OF DATA`
 
     // RESOLVER O INDEX E VALIDAR
     const resolvedQuestions = questionsRaw.map(q => {
-      // 1. Resolver o index numérico por comparação de texto
+      // 1. Verificar Duplicidade (Cross-Batch Deduplication)
+      // Normalizamos o texto para evitar variações bobas (espaços, pontuação)
+      const normalizedQuestion = q.question.toLowerCase().trim()
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+        .substring(0, 150) // Comparamos os primeiros 150 caracteres
+      
+      if (seenQuestionTexts.has(normalizedQuestion)) {
+        console.log(`[Quiz] Questão duplicada detectada e removida: ${q.question.substring(0, 50)}...`)
+        return null
+      }
+      seenQuestionTexts.add(normalizedQuestion)
+
+      // 2. Resolver o index numérico por comparação de texto
       let correctIndex = q.options.findIndex(
         (opt: string) => opt.trim().toLowerCase() === q.correct_answer_text.trim().toLowerCase()
       )
@@ -221,16 +250,16 @@ END OF DATA`
         return null
       }
 
-      // 2. Validações de Qualidade
+      // 3. Validações de Qualidade
       const hasQuestionMark = q.question.trim().endsWith('?')
-      const hasCommand = /assinale|qual|indique|aponte|determine|conduta|diagnóstico/i.test(q.question)
+      const hasCommand = /assinale|qual|indique|aponte|determine|conduta|diagnóstico|é correto|está correto|falso|verdadeiro/i.test(q.question)
       if (!hasQuestionMark && !hasCommand) return null
       
-      const normalized = q.options.map((o: string) => o.toLowerCase().trim())
-      const unique = new Set(normalized)
-      if (unique.size !== q.options.length) return null
+      const normalizedOptions = q.options.map((o: string) => o.toLowerCase().trim())
+      const uniqueOptions = new Set(normalizedOptions)
+      if (uniqueOptions.size !== q.options.length) return null
       
-      if (!q.explanation || q.explanation.length < 120) return null
+      if (!q.explanation || q.explanation.length < 100) return null
 
       return {
         ...q,

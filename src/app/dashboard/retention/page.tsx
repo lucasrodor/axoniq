@@ -12,7 +12,7 @@ import {
   Award, Activity, Heart, Microscope, AlertCircle, Crown, X,
   Baby, Stethoscope, Scissors, Syringe, Eye, Ear, Bone, 
   Thermometer, Pill, Dna, Users, Scale, Radiation, Apple,
-  Trophy, Droplet, Smile, Shield, Flame
+  Trophy, Droplet, Smile, Shield, Flame, Maximize2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
@@ -100,14 +100,25 @@ export default function RetentionDashboard() {
   const { data: stats, isLoading, mutate: mutateStats } = useSWR<RetentionStats>(user ? `retention:${user.id}` : null, dashboardFetcher)
   const { isPremium, isAdmin, isLoading: planLoading } = useSubscription()
   const [selectedSpecialty, setSelectedSpecialty] = useState<any | null>(null)
+  const [isRadarZoomed, setIsRadarZoomed] = useState(false)
   
   // Listen for refresh events (e.g. after a study session)
   useEffect(() => {
     const handleRefresh = () => {
       if (user?.id) mutateStats()
     }
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedSpecialty(null)
+        setIsRadarZoomed(false)
+      }
+    }
     window.addEventListener('refresh-dashboard', handleRefresh)
-    return () => window.removeEventListener('refresh-dashboard', handleRefresh)
+    window.addEventListener('keydown', handleEsc)
+    return () => {
+      window.removeEventListener('refresh-dashboard', handleRefresh)
+      window.removeEventListener('keydown', handleEsc)
+    }
   }, [user?.id, mutateStats])
 
   const loading = (isLoading && !stats) || planLoading
@@ -119,6 +130,17 @@ export default function RetentionDashboard() {
     if (score >= 50) return '#3B82F6' // Blue
     return '#EF4444' // Red
   }
+
+  const radarData = useMemo(() => {
+    if (!stats?.masteryBySpecialty) return []
+    // Se tiver poucas, mostra todas. Se tiver muitas, limita no card mas mostra todas no zoom.
+    return stats.masteryBySpecialty.map(item => ({
+      ...item,
+      unifiedScore: item.quizScore !== null 
+        ? Math.round((item.score + item.quizScore) / 2) 
+        : item.score
+    }))
+  }, [stats?.masteryBySpecialty])
 
   if (loading) {
     return (
@@ -222,7 +244,7 @@ export default function RetentionDashboard() {
         {stats && stats.totalCards > 0 && (
           <>
             {/* WORKLOAD FORECAST */}
-        <div className="md:col-span-8 bg-zinc-900/30 border border-zinc-800/50 rounded-3xl p-6 lg:p-8 backdrop-blur-xl relative shadow-2xl shadow-black/50">
+        <div className="md:col-span-12 lg:col-span-8 bg-zinc-900/30 border border-zinc-800/50 rounded-3xl p-6 lg:p-8 backdrop-blur-xl relative shadow-2xl shadow-black/50">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
              <Calendar size={140} />
           </div>
@@ -272,20 +294,28 @@ export default function RetentionDashboard() {
         </div>
 
         {/* MASTERY GAUGE */}
-        <div className="md:col-span-4 bg-gradient-to-b from-zinc-900/60 to-zinc-950/60 border border-zinc-800/50 rounded-3xl p-6 lg:p-8 flex flex-col items-center justify-center text-center shadow-2xl shadow-black/50 relative overflow-hidden">
+        <div className="md:col-span-12 lg:col-span-4 bg-gradient-to-b from-zinc-900/60 to-zinc-950/60 border border-zinc-800/50 rounded-3xl p-6 lg:p-8 flex flex-col shadow-2xl shadow-black/50 relative overflow-hidden group">
             <div className="absolute inset-0 bg-blue-500/5 blur-[80px] pointer-events-none" />
-            <h2 className="text-xl font-black mb-2 text-zinc-100 z-10">Mapeamento Neural</h2>
-            <p className="text-xs text-zinc-400 mb-6 z-10">Radar de maestria por especialidade</p>
+            
+            <div className="flex items-start justify-between mb-6 z-10">
+              <div className="text-left">
+                <h2 className="text-xl font-black text-zinc-100 tracking-tight">Mapeamento Neural</h2>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">Radar de Maestria</p>
+              </div>
+              <button 
+                onClick={() => setIsRadarZoomed(true)}
+                className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-blue-500/30 transition-all shadow-lg"
+                title="Expandir Mapeamento"
+              >
+                <Maximize2 size={20} />
+              </button>
+            </div>
+            
             <div className="h-[260px] w-full z-10">
                <ResponsiveContainer width="100%" height="100%">
-                 <RadarChart cx="50%" cy="50%" outerRadius="75%" data={stats?.masteryBySpecialty.slice(0, 6).map(item => ({
-                   ...item,
-                   unifiedScore: item.quizScore !== null 
-                     ? Math.round((item.score + item.quizScore) / 2) 
-                     : item.score
-                 }))}>
+                 <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData.slice(0, 6)}>
                    <PolarGrid stroke="#27272A" strokeDasharray="3 3" />
-                   <PolarAngleAxis dataKey="specialty" tick={{ fill: '#A1A1AA', fontSize: 11, fontWeight: 600 }} />
+                   <PolarAngleAxis dataKey="specialty" tick={{ fill: '#A1A1AA', fontSize: 10, fontWeight: 600 }} />
                    <PolarRadiusAxis domain={[0, 100]} axisLine={false} tick={false} />
                    <Radar
                      name="Domínio"
@@ -405,18 +435,18 @@ export default function RetentionDashboard() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 lg:p-10 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-2xl max-h-[90vh] bg-zinc-950 border border-zinc-800 rounded-[2.5rem] p-6 lg:p-10 shadow-2xl overflow-y-auto custom-scrollbar"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-emerald-500 to-violet-600 opacity-50" />
               
               <button 
                 onClick={() => setSelectedSpecialty(null)}
-                className="absolute top-6 right-6 p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all z-20"
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-zinc-400 hover:text-white transition-all z-30 shadow-xl"
               >
                 <X size={20} />
               </button>
               
-              <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-10">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-10 pr-12 sm:pr-0">
                 <div 
                   className="w-16 h-16 rounded-2xl border border-white/5 flex items-center justify-center shadow-2xl" 
                   style={{ 
@@ -553,6 +583,88 @@ export default function RetentionDashboard() {
                     </div>
                   )}
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* LIGHTBOX DO RADAR */}
+      <AnimatePresence>
+        {isRadarZoomed && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsRadarZoomed(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, rotateX: 20 }}
+              animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+              exit={{ opacity: 0, scale: 0.9, rotateX: 20 }}
+              className="relative w-full max-w-4xl max-h-[90vh] bg-zinc-950 border border-zinc-800 rounded-[3rem] p-6 sm:p-8 md:p-12 shadow-2xl overflow-y-auto custom-scrollbar"
+            >
+              <div className="absolute inset-0 bg-blue-500/5 blur-[120px] pointer-events-none" />
+              
+              <button 
+                onClick={() => setIsRadarZoomed(false)}
+                className="absolute top-4 right-4 sm:top-8 sm:right-8 p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all z-30 shadow-xl"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="text-center mb-10 px-8 sm:px-12">
+                <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">Mapeamento Neural Completo</h3>
+                <p className="text-zinc-500 font-bold uppercase tracking-[0.2em] text-[10px] sm:text-xs">Visão panorâmica da maestria por especialidade</p>
+              </div>
+
+              <div className="h-[300px] sm:h-[400px] md:h-[500px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                    <PolarGrid stroke="#27272A" />
+                    <PolarAngleAxis 
+                      dataKey="specialty" 
+                      tick={{ fill: '#A1A1AA', fontSize: 12, fontWeight: 800 }} 
+                    />
+                    <PolarRadiusAxis domain={[0, 100]} axisLine={false} tick={false} />
+                    <Radar
+                      name="Domínio"
+                      dataKey="unifiedScore"
+                      stroke="#10B981"
+                      strokeWidth={3}
+                      fill="#10B981"
+                      fillOpacity={0.4}
+                    />
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl shadow-2xl backdrop-blur-xl">
+                              <p className="text-sm font-black text-white mb-1 uppercase tracking-wider">{data.specialty}</p>
+                              <p className="text-2xl font-black text-emerald-500">{data.unifiedScore}%</p>
+                              <div className="mt-2 flex gap-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{data.count} cards</span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="mt-10 flex justify-center">
+                <Button 
+                  onClick={() => setIsRadarZoomed(false)}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-2xl px-12 h-14 font-black uppercase tracking-widest text-xs"
+                >
+                  Fechar Visualização
+                </Button>
               </div>
             </motion.div>
           </div>

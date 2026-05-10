@@ -20,6 +20,23 @@ export default function MarkdownDisplay({ content, className, raw, as: Component
     setMounted(true)
   }, [])
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedImg(null)
+    }
+    if (selectedImg) {
+      window.addEventListener('keydown', handleEsc)
+      // Prevent body scroll when lightbox is open
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      window.removeEventListener('keydown', handleEsc)
+      document.body.style.overflow = ''
+    }
+  }, [selectedImg])
+
   const baseClasses = raw 
     ? "" 
     : "prose prose-invert prose-blue max-w-none prose-p:leading-relaxed prose-headings:tracking-tight";
@@ -56,8 +73,8 @@ export default function MarkdownDisplay({ content, className, raw, as: Component
         <AnimatePresence>
           {selectedImg && (
             <div 
-              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-10 overflow-hidden"
-              onClick={(e) => e.stopPropagation()} // Impede o flip do card
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 md:p-10 overflow-hidden"
+              onClick={(e) => e.stopPropagation()} 
             >
               <motion.div 
                 initial={{ opacity: 0 }}
@@ -74,22 +91,25 @@ export default function MarkdownDisplay({ content, className, raw, as: Component
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="relative max-w-7xl w-full h-full z-10 flex flex-col items-center justify-center pointer-events-none"
+                className="relative max-w-7xl w-full h-full z-10 flex flex-col items-center justify-center pointer-events-none p-4"
               >
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImg(null);
-                  }}
-                  className="absolute top-0 right-0 sm:-top-12 sm:-right-4 p-4 bg-zinc-900/80 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-all pointer-events-auto shadow-2xl border border-zinc-800"
-                >
-                  <X size={28} />
-                </button>
+                <div className="absolute top-4 right-4 sm:top-0 sm:right-0 z-20 pointer-events-auto">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedImg(null);
+                    }}
+                    className="p-3 sm:p-4 bg-zinc-900/80 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-all shadow-2xl border border-zinc-800"
+                    title="Fechar (Esc)"
+                  >
+                    <X size={28} />
+                  </button>
+                </div>
                 
                 <img 
                   src={selectedImg} 
                   alt="Expanded view" 
-                  className="max-w-full max-h-[80vh] sm:max-h-[85vh] object-contain rounded-2xl shadow-[0_0_80px_rgba(0,0,0,0.5)] border border-zinc-800/50 pointer-events-auto"
+                  className="max-w-full max-h-[70vh] sm:max-h-[80vh] object-contain rounded-2xl shadow-[0_0_80px_rgba(0,0,0,0.5)] border border-zinc-800/50 pointer-events-auto"
                   onClick={(e) => e.stopPropagation()}
                 />
                 

@@ -23,11 +23,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event: string, session: Session | null) => {
+      (event: string, session: Session | null) => {
         setSession(session)
         setUser(session?.user ?? null)
         setIsLoading(false)
-        if (session) router.refresh() 
+        
+        // Só faz refresh se houver mudança real de login/logout, 
+        // evitando quebrar a UI em renovações de token em background
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          router.refresh()
+        }
       }
     )
 
