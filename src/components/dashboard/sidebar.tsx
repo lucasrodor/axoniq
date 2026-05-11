@@ -68,7 +68,7 @@ function SidebarItem({ href, icon, label, isCollapsed, onClick }: { href: string
 }
 
 // Subcomponente original de Créditos
-function CreditsIndicator({ used, limit, remaining, isPremium, isCollapsed, className }: any) {
+function CreditsIndicator({ used, limit, remaining, isPremium, isCollapsed, planInterval, className }: any) {
   return (
     <div className={cn("space-y-3", className)}>
       {!isCollapsed && (
@@ -117,7 +117,9 @@ function CreditsIndicator({ used, limit, remaining, isPremium, isCollapsed, clas
             )}>
                <span className="material-symbols-outlined text-[14px] fill-[1]">bolt</span>
                <span className="text-[10px] font-black uppercase tracking-tight">
-                 {isPremium ? 'Assinatura Pro Ativa' : 'Fazer Upgrade'}
+                 {isPremium 
+                   ? planInterval === 'lifetime' ? 'Plano Vitalício Ativo' : 'Assinatura Pro Ativa' 
+                   : 'Fazer Upgrade'}
                </span>
             </div>
           </div>
@@ -129,7 +131,7 @@ function CreditsIndicator({ used, limit, remaining, isPremium, isCollapsed, clas
 
 export function Sidebar() {
   const { user, signOut } = useAuth()
-  const { isPremium, credits } = useSubscription()
+  const { isPremium, credits, subscription } = useSubscription()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
@@ -264,6 +266,7 @@ export function Sidebar() {
               remaining={credits.remaining}
               isPremium={isPremium}
               isCollapsed={effectiveIsCollapsed}
+              planInterval={subscription?.interval}
               className={cn(effectiveIsCollapsed && "justify-center")}
             />
           </div>

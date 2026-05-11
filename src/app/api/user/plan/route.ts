@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
     const isWhitelisted = profile?.is_whitelisted || false
     const subscriptionStatus = subscription?.status || null
     const isSubscriptionActive = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
+    const isLifetime = subscription?.plan_interval === 'lifetime' && isSubscriptionActive
     
     const now = new Date()
     const trialEndsAt = profile?.trial_ends_at ? new Date(profile.trial_ends_at) : null
@@ -56,13 +57,12 @@ export async function GET(req: NextRequest) {
     // A pedido do admin, voltamos a controlar isso pela flag do banco,
     // para que ele possa testar fluxos de pagamento (ligando/desligando o passe livre)
     const isLaunchWeek = !isMonetizationActive
-    // A data limite continua sendo passada para a UI para o banner,
     // mas a trava de acesso é controlada pelo banco de dados.
     const LAUNCH_DEADLINE = new Date('2026-05-12T03:00:00Z')
     
-    console.log(`📊 [Plan Debug] User: ${user.email} | Sub: ${isSubscriptionActive} | LaunchPass: ${isLaunchWeek}`)
-
-    const isPremium = isLaunchWeek || isAdmin || isWhitelisted || isSubscriptionActive
+    console.log(`📊 [Plan Debug] User: ${user.email} | Sub: ${isSubscriptionActive} | Lifetime: ${isLifetime}`)
+ 
+    const isPremium = isLaunchWeek || isAdmin || isWhitelisted || isSubscriptionActive || isLifetime
 
     return NextResponse.json({
       isPremium,

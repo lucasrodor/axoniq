@@ -64,11 +64,44 @@ export function AnkiImportModal({ isOpen, onClose, onSuccess }: AnkiImportModalP
       const unzipped = await zip.loadAsync(file)
       setProgress(20)
 
-      // 3. Read the SQLite DB (collection.anki2)
-      const dbFile = unzipped.file('collection.anki2')
-      if (!dbFile) throw new Error('Formato inválido: Banco de dados não encontrado no arquivo.')
-      
-      const dbData = await dbFile.async('uint8array')
+      // 3. Read the SQLite DB (Prefer collection.anki21 if it exists, fallback to anki2)
+      let dbData: Uint8Array
+      const dbFileNew = unzipped.file('collection.anki21')
+      const dbFileOld = unzipped.file('collection.anki2')
+
+      if (dbFileNew) {
+        console.log('[AnkiImport] Found collection.anki21')
+        const data = await dbFileNew.async('uint8array')
+        
+        // Check if it's already a raw SQLite database (starts with "SQLite format 3")
+        const isRawSqlite = data[0] === 0x53 && data[1] === 0x51 && data[2] === 0x4c && data[3] === 0x69;
+        
+        if (isRawSqlite) {
+          console.log('[AnkiImport] collection.anki21 is raw SQLite')
+          dbData = data
+        } else {
+          // Try Zstandard decompression
+          try {
+            console.log('[AnkiImport] collection.anki21 is compressed (Zstandard)')
+            const dynamicImport = new Function('url', 'return import(url)');
+            const { decompress } = await dynamicImport('https://esm.sh/fzstd');
+            dbData = decompress(data)
+            console.log('[AnkiImport] Successfully decompressed anki21')
+          } catch (zstdError) {
+            console.error('Failed to decompress anki21:', zstdError)
+            // Fallback to anki2 if available
+            if (dbFileOld) {
+              dbData = await dbFileOld.async('uint8array')
+            } else {
+              throw new Error('Este arquivo está num formato comprimido (v3) que não pudemos processar. Por favor, exporte marcando "Suportar versões antigas".')
+            }
+          }
+        }
+      } else if (dbFileOld) {
+        dbData = await dbFileOld.async('uint8array')
+      } else {
+        throw new Error('Formato inválido: Banco de dados não encontrado no arquivo.')
+      }
       
       // Load WebAssembly SQLite from local public folder
       const SQL = await initSqlJs({
@@ -167,6 +200,13 @@ export function AnkiImportModal({ isOpen, onClose, onSuccess }: AnkiImportModalP
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
         const flds = row[1] as string
+        
+        // Detect Newer Anki Version placeholder (English or Portuguese)
+        if (flds.includes('Please update to the latest Anki version') || 
+            flds.includes('Atualize para a versão mais recente do Anki')) {
+          throw new Error('Este deck está no formato novo do Anki (v3) que não contém os dados. Por favor, exporte novamente do Anki marcando a opção "Suportar versões antigas do Anki" (Compatibility Mode).')
+        }
+
         const fields = flds.split('\x1f')
         
         let front = ''

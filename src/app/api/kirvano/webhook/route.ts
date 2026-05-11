@@ -30,7 +30,9 @@ export async function POST(req: Request) {
     const firstProduct = payload.products && payload.products.length > 0 ? payload.products[0] : null
     const offerName = (payload.offer?.name || payload.product?.name || firstProduct?.offer_name || firstProduct?.name || '').toLowerCase()
     let planInterval = 'semiannual'
-    if (offerName.includes('anual')) {
+    if (offerName.includes('vitalicio') || offerName.includes('vitalício')) {
+      planInterval = 'lifetime'
+    } else if (offerName.includes('anual')) {
       planInterval = 'annual'
     } else if (offerName.includes('semestral')) {
       planInterval = 'semiannual'
