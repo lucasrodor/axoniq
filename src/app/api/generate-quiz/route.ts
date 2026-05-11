@@ -34,7 +34,8 @@ const QuizListSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const { sourceId, quantity = 20, folderId, quizTitle, specialtyTag } = await req.json()
+    const body = await req.json()
+    const { sourceId, quantity = 20, folderId, quizTitle, specialtyTag, difficultyLevel = '2' } = body
 
     if (!sourceId) {
       return NextResponse.json({ error: 'No sourceId provided' }, { status: 400 })
@@ -140,7 +141,12 @@ END OF DATA`
       return currentBatchSize
     })
 
-    console.log(`[Quiz] Iniciando geração de ${quantity} questões em ${numBatches} lotes paralelos.`)
+    const difficultyMap = {
+      '1': 'Fácil (Nível 1): Foco em conceitos fundamentais, definições diretas, termos básicos e base teórica clara.',
+      '2': 'Médio (Nível 2): Foco em raciocínio clínico intermediário, diagnósticos diferenciais e aplicação prática do conteúdo com contextos clínicos moderados.',
+      '3': 'Difícil (Nível 3): Foco em casos clínicos complexos, cenários desafiadores, condutas avançadas, exceções e detalhes técnicos de alta complexidade.'
+    }
+    const difficultyDesc = difficultyMap[difficultyLevel as keyof typeof difficultyMap] || difficultyMap['2']
 
     const generationTasks = batches.map(async (batchSize, index) => {
       // Diferenciação de temas por lote para evitar duplicidade
@@ -164,13 +170,18 @@ END OF DATA`
 ## TEMA DO LOTE (Obrigatório)
 ${currentTheme}
 
+## NÍVEL DE DIFICULDADE
+${difficultyDesc}
+
 ## REGRAS DE OURO (NUNCA VIOLAR)
 1. **QUALIDADE > QUANTIDADE:** Se o conteúdo fornecido for insuficiente para gerar ${batchSize} questões INÉDITAS e RELEVANTES, gere apenas o número de questões que mantiverem o alto nível técnico. É melhor entregar menos questões do que ser repetitivo ou prolixo.
-2. **UNIQUICIDADE:** Jamais repita o mesmo conceito ou pergunta em um lote. Varie os ângulos.
-3. **PADRÕES PROIBIDOS:** Evite perguntas genéricas e repetitivas como "O que está à direita?" ou "O que está à esquerda?". Transforme-as em contexto clínico.
-4. **IMAGENS:** Se houver imagens, use-as no enunciado para contextualizar.
-5. **EXPLICACÃO:** Justifique a correta e refute os distratores por LETRAS MAIÚSCULAS ('A)', 'B)', 'C)'...). Use quebras de linha duplas entre as justificativas.
-6. **CONSISTÊNCIA:** A letra usada na explicação DEVE ser a mesma da posição no array 'options' (0=A, 1=B, 2=C, 3=D, 4=E).`
+2. **FIDELIDADE À FONTE:** Use o conteúdo fornecido como base principal. Para níveis 2 e 3, você PODE integrar conhecimentos clínicos externos complementares para criar cenários realistas e desafiadores, desde que a essência da resposta correta esteja fundamentada no material.
+3. **UNIQUICIDADE:** Jamais repita o mesmo conceito ou pergunta em um lote. Varie os ângulos.
+4. **ALEATORIEDADE DE RESPOSTA (CRÍTICO):** O sistema detectou um vício de respostas sempre na letra 'A'. Você deve QUEBRAR esse padrão forçadamente. Distribua as respostas corretas aleatoriamente entre as opções A, B, C, D e E em cada questão. Jamais coloque a maioria das respostas na mesma posição.
+5. **PADRÕES PROIBIDOS:** Evite perguntas genéricas e repetitivas como "O que está à direita?" ou "O que está à esquerda?". Transforme-as em contexto clínico.
+6. **IMAGENS:** Se houver imagens, use-as no enunciado para contextualizar.
+7. **EXPLICAÇÃO:** Justifique a correta e refute os distratores por LETRAS MAIÚSCULAS ('A)', 'B)', 'C)'...). Use quebras de linha duplas entre as justificativas.
+8. **CONSISTÊNCIA:** A letra usada na explicação DEVE ser a mesma da posição no array 'options' (0=A, 1=B, 2=C, 3=D, 4=E).`
             },
             {
               role: 'user',

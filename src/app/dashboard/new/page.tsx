@@ -59,7 +59,8 @@ function NewSourcePageContent() {
     specialtyTag: '',
     generateFlashcards: initialType === 'deck' || !initialType,
     generateQuiz: initialType === 'quiz',
-    generateMindMap: initialType === 'mindmap'
+    generateMindMap: initialType === 'mindmap',
+    difficultyLevel: '2'
   })
 
   const [genStatus, setGenStatus] = useState({
@@ -235,7 +236,8 @@ function NewSourcePageContent() {
             body: JSON.stringify({ 
               sourceId, 
               quantity: 15,
-              specialtyTag: config.specialtyTag 
+              specialtyTag: config.specialtyTag,
+              difficultyLevel: config.difficultyLevel
             })
           }).then(async res => {
             const data = await res.json()
@@ -694,6 +696,46 @@ function GenerationConfigComponent({ config, onChange, onStart, isLoading }: any
           </button>
         </div>
       </div>
+
+      {config.generateQuiz && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="space-y-4 p-5 rounded-3xl bg-emerald-500/5 border border-emerald-500/20"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] flex items-center gap-2">
+              <Sparkles size={12} />
+              Nível do Quiz
+            </p>
+            <span className="text-[10px] font-bold text-emerald-500/60 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+              {config.difficultyLevel === '1' ? 'Iniciante' : config.difficultyLevel === '2' ? 'Intermediário' : 'Avançado'}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: '1', label: 'Nível 1', desc: 'Fácil' },
+              { id: '2', label: 'Nível 2', desc: 'Médio' },
+              { id: '3', label: 'Nível 3', desc: 'Difícil' }
+            ].map((level) => (
+              <button
+                key={level.id}
+                onClick={() => onChange({ ...config, difficultyLevel: level.id })}
+                className={cn(
+                  "flex flex-col items-center gap-1 py-3 rounded-2xl border-2 transition-all",
+                  config.difficultyLevel === level.id 
+                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-100" 
+                    : "border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:border-zinc-700"
+                )}
+              >
+                <span className="text-xs font-black">{level.label}</span>
+                <span className="text-[9px] font-bold opacity-60 uppercase">{level.desc}</span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       <Button
         variant="primary"
