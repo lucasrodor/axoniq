@@ -9,7 +9,7 @@ import { useAuth } from '@/components/providers/auth-provider'
 import { useSubscription } from '@/hooks/useSubscription'
 import { v4 as uuidv4 } from 'uuid'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Upload, FileArchive, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { X, Upload, FileArchive, CheckCircle2, AlertCircle, Loader2, Crown } from 'lucide-react'
 
 interface AnkiImportModalProps {
   isOpen: boolean
