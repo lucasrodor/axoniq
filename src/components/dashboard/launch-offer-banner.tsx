@@ -260,11 +260,15 @@ import { useSubscription } from '@/hooks/useSubscription'
 export function LaunchOfferBanner({ isLaunchWeek }: { isLaunchWeek: boolean }) {
   const { isPremium, isLoading } = useSubscription()
 
-  // isLaunchWeek = true  → monetização DESATIVADA  → banner antigo pré-lançamento
-  // isLaunchWeek = false → monetização ATIVADA     → banner amber oferta vitalícia (dismissível)
-  
-  // Se a assinatura ainda está sendo verificada ou se o usuário já é Pro, não exibe o banner
-  if (isLoading || isPremium) return null
+  // Lógica inteligente de Cache Local para eliminar a demora de carregamento (Network Waterfall)
+  const isCachedFree = typeof window !== 'undefined' ? localStorage.getItem('axoniq_cached_is_premium') === 'false' : false
+  const isCachedPro = typeof window !== 'undefined' ? localStorage.getItem('axoniq_cached_is_premium') === 'true' : false
+
+  // Se já temos certeza absoluta que o usuário é Pro (via cache ou rede), oculta na hora sem delay.
+  if (isCachedPro || isPremium) return null
+
+  // Se está carregando pela primeira vez sem cache prévio, aguarda para não gerar flicker em Pro.
+  if (isLoading && !isCachedFree) return null
   
   return isLaunchWeek ? <PreLaunchBanner /> : <LifetimeOfferBanner />
 }
