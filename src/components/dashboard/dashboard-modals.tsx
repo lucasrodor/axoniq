@@ -87,45 +87,45 @@ export function CreateChoiceModal({
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-white/5 rounded-[2.5rem] p-10 w-full max-w-lg mx-4 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative" 
+        className="bg-zinc-900 border border-white/5 rounded-[2.5rem] p-8 sm:p-10 w-full max-w-lg mx-4 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative" 
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-start justify-between gap-4 mb-8 text-left">
           <div>
-            <h3 className="text-2xl font-bold text-zinc-50 tracking-tight mb-2">
+            <h3 className="text-xl sm:text-2xl font-bold text-zinc-50 tracking-tight mb-2">
               Nova Estrutura de Conhecimento
             </h3>
-            <p className="text-sm text-zinc-500">Selecione o método de processamento para seu {activeTab === 'decks' ? 'Deck' : 'Quiz'}.</p>
+            <p className="text-xs sm:text-sm text-zinc-500">Selecione o método de processamento para seu {activeTab === 'decks' ? 'Deck' : 'Quiz'}.</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-300 transition-all">
-            <X size={24} />
+          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-300 transition-all shrink-0 -mt-1 -mr-1">
+            <X size={20} />
           </button>
         </div>
         
         <div className="grid gap-4">
           <button 
             onClick={() => onChoice('ai')}
-            className="flex items-start gap-5 p-6 rounded-3xl border-2 border-zinc-800 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-left group"
+            className="flex flex-col items-start gap-4 p-6 rounded-3xl border-2 border-zinc-800 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-left group w-full"
           >
             <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 group-hover:scale-110 transition-transform duration-500">
               <Zap size={28} />
             </div>
-            <div className="pt-1">
+            <div className="w-full text-left pt-1">
               <h4 className="font-bold text-zinc-100 text-lg mb-1 group-hover:text-blue-400 transition-colors">Criar com Inteligência Artificial</h4>
-              <p className="text-sm text-zinc-500 leading-relaxed">Processamento automático de PDFs e textos. Gera conexões e cartas em segundos.</p>
+              <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">Processamento automático de PDFs e textos. Gera conexões e cartas em segundos.</p>
             </div>
           </button>
           
           <button 
             onClick={() => onChoice('manual')}
-            className="flex items-start gap-5 p-6 rounded-3xl border-2 border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-left group"
+            className="flex flex-col items-start gap-4 p-6 rounded-3xl border-2 border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-left group w-full"
           >
             <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform duration-500">
               <Pencil size={28} />
             </div>
-            <div className="pt-1">
+            <div className="w-full text-left pt-1">
               <h4 className="font-bold text-zinc-100 text-lg mb-1 group-hover:text-emerald-400 transition-colors">Criação Manual</h4>
-              <p className="text-sm text-zinc-500 leading-relaxed">Criação artesanal de conteúdo. Desenvolva suas próprias cartas e questões específicas.</p>
+              <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">Criação artesanal de conteúdo. Desenvolva suas próprias cartas e questões específicas.</p>
             </div>
           </button>
         </div>

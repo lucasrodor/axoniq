@@ -258,13 +258,13 @@ function AmberTimeSep() {
 import { useSubscription } from '@/hooks/useSubscription'
 
 export function LaunchOfferBanner({ isLaunchWeek }: { isLaunchWeek: boolean }) {
-  const { isPremium } = useSubscription()
+  const { isPremium, isLoading } = useSubscription()
 
   // isLaunchWeek = true  → monetização DESATIVADA  → banner antigo pré-lançamento
   // isLaunchWeek = false → monetização ATIVADA     → banner amber oferta vitalícia (dismissível)
   
-  // Se o usuário já é Pro, não exibe nenhuma oferta de lançamento ou vitalícia
-  if (isPremium) return null
+  // Se a assinatura ainda está sendo verificada ou se o usuário já é Pro, não exibe o banner
+  if (isLoading || isPremium) return null
   
   return isLaunchWeek ? <PreLaunchBanner /> : <LifetimeOfferBanner />
 }
