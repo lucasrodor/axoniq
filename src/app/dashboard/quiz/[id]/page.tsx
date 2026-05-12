@@ -540,7 +540,7 @@ export default function QuizPage() {
 
               {/* Add/Edit Form */}
               {(isAddingQuestion || editingQuestionId) && (
-                <div className="bg-zinc-900/80 border border-blue-500/30 rounded-[2rem] p-8 shadow-2xl animate-in zoom-in-95 duration-500 relative overflow-hidden group">
+                <div className="bg-zinc-900/80 border border-blue-500/30 rounded-[2rem] p-8 shadow-2xl animate-in zoom-in-95 duration-500 relative group">
                   <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   
                   <div className="relative z-10">

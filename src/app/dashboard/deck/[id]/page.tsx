@@ -301,7 +301,7 @@ export default function DeckDetailPage() {
         </div>
 
         {/* Deck Info Section (Full Width Top) */}
-        <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2.5rem] p-8 sm:p-10 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+        <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2.5rem] p-8 sm:p-10 backdrop-blur-xl shadow-2xl relative group">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/50 to-transparent group-hover:from-blue-400 transition-colors" />
           
           {isEditingDeck ? (

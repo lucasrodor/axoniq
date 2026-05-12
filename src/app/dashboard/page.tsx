@@ -300,6 +300,13 @@ function DashboardPageContent() {
       setActiveTab(tab)
     }
   }, [searchParams])
+  useEffect(() => {
+    // Listen for global upgrade modal requests
+    const handleOpenUpgrade = () => setShowUpgradeModal(true)
+    window.addEventListener('open-upgrade-modal', handleOpenUpgrade)
+    return () => window.removeEventListener('open-upgrade-modal', handleOpenUpgrade)
+  }, [])
+
   const handleTabChange = (tab: DashboardTab) => {
     setActiveTab(tab)
     const params = new URLSearchParams(searchParams.toString())
@@ -671,15 +678,19 @@ function DashboardPageContent() {
                 Nova Pasta
               </Button>
               {activeTab === 'decks' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowAnkiImport(true)} 
-                  className="whitespace-nowrap rounded-2xl border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all duration-500 group/btn"
+                <button 
+                  onClick={() => {
+                    if (isPremium) {
+                      setShowAnkiImport(true)
+                    } else {
+                      setShowUpgradeModal(true)
+                    }
+                  }} 
+                  className="h-10 flex items-center gap-2 px-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 hover:bg-emerald-500/5 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-500 transition-all duration-300 font-bold text-sm group/btn"
                 >
-                  <FileArchive size={14} className="mr-2 text-zinc-500 group-hover/btn:text-emerald-500 transition-colors" /> 
+                  <FileArchive size={14} className="text-zinc-500 group-hover/btn:text-emerald-500 transition-colors" /> 
                   Importar do Anki
-                </Button>
+                </button>
               )}
               {/* Spacer to push profile to the right on mobile */}
               <div className="flex-1 sm:hidden" />

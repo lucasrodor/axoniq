@@ -58,7 +58,7 @@ export function CustomSelect({
         </label>
       )}
       
-      <div className="relative">
+      <div className={cn("relative", isOpen && "z-[100]")}>
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
@@ -78,7 +78,7 @@ export function CustomSelect({
             className={cn("text-zinc-400 transition-transform duration-500 ease-in-out ml-2", isOpen && "rotate-180 text-blue-500")} 
           />
         </button>
-
+ 
         <AnimatePresence>
           {isOpen && (
             <>
@@ -95,7 +95,7 @@ export function CustomSelect({
                 animate={{ opacity: 1, y: 4, scale: 1, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: 8, scale: 0.98, filter: "blur(4px)" }}
                 transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                className="absolute z-50 w-full bg-zinc-950/95 backdrop-blur-xl border border-zinc-800/50 rounded-xl shadow-2xl overflow-hidden py-1.5 ring-1 ring-white/5"
+                className="absolute z-[110] w-full bg-zinc-950/95 backdrop-blur-xl border border-zinc-800/50 rounded-xl shadow-2xl overflow-hidden py-1.5 ring-1 ring-white/5"
               >
                 <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
                   {options.length === 0 ? (

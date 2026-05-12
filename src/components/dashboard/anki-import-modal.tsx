@@ -327,8 +327,40 @@ export function AnkiImportModal({ isOpen, onClose, onSuccess }: AnkiImportModalP
             <h2 className="text-2xl font-black text-white mb-2">Importar do Anki</h2>
             <p className="text-zinc-400 text-sm">Selecione o arquivo .apkg exportado do seu Anki.</p>
           </div>
-
-          {status === 'success' ? (
+ 
+          {!isPremium ? (
+            <div className="py-8 px-6 bg-zinc-900/50 border border-zinc-800 rounded-3xl text-center space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 text-amber-500 rounded-full border border-amber-500/20 mb-2">
+                <Crown size={14} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Recurso Premium</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-zinc-100 mb-2">Potencialize seu Estudo</h3>
+                <p className="text-zinc-500 text-sm leading-relaxed">
+                  A importação de decks externos é exclusiva para membros **AxonIQ Pro**. 
+                  Traga todo o seu conhecimento acumulado para nossa inteligência.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  onClose()
+                  // Triggers upgrade modal in parent by proximity logic or state
+                  // Since we closed this, we rely on parent to open upgrade
+                  // Alternatively, we can just say "upgrade now" and link
+                  window.dispatchEvent(new CustomEvent('open-upgrade-modal'))
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-blue-500/20 uppercase text-xs tracking-widest"
+              >
+                Fazer Upgrade Agora
+              </button>
+              <button 
+                onClick={onClose}
+                className="text-zinc-500 hover:text-zinc-300 text-xs font-medium uppercase tracking-widest"
+              >
+                Talvez depois
+              </button>
+            </div>
+          ) : status === 'success' ? (
             <div className="py-12 flex flex-col items-center text-center">
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
                 <CheckCircle2 className="w-20 h-20 text-emerald-500 mb-4" />
