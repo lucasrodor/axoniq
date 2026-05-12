@@ -20,7 +20,8 @@ import {
   FileAudio,
   Network,
   Tag,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -56,6 +57,7 @@ function NewSourcePageContent() {
     sourceType: 'document' as 'document' | 'text' | 'audio',
     files: [] as File[],
     text: '',
+    title: '',
     specialtyTag: '',
     generateFlashcards: initialType === 'deck' || !initialType,
     generateQuiz: initialType === 'quiz',
@@ -113,7 +115,8 @@ function NewSourcePageContent() {
 
   const handleStartGeneration = async () => {
     const generationId = Math.random().toString(36).substring(7)
-    const title = config.files.length > 0 ? config.files[0].name : (config.text ? 'Texto Colado' : 'Novo Material')
+    const customTitle = config.title?.trim()
+    const title = customTitle || (config.files.length > 0 ? config.files[0].name : (config.text ? 'Texto Colado' : 'Novo Material'))
     
     setIsProcessing(true)
     setStep('generating')
@@ -146,6 +149,7 @@ function NewSourcePageContent() {
       if (config.sourceType === 'audio') {
         const formData = new FormData()
         formData.append('file', config.files[0])
+        if (customTitle) formData.append('title', customTitle)
         
         const res = await fetch('/api/process-audio', {
           method: 'POST',
@@ -166,6 +170,7 @@ function NewSourcePageContent() {
         const formData = new FormData()
         config.files.forEach(file => formData.append('files', file))
         if (config.text) formData.append('text', config.text)
+        if (customTitle) formData.append('title', customTitle)
         
         const res = await fetch('/api/process-document', {
           method: 'POST',
@@ -197,6 +202,7 @@ function NewSourcePageContent() {
         fd.append('sourceId', sourceId)
         fd.append('quantity', '20')
         if (config.specialtyTag) fd.append('specialtyTag', config.specialtyTag)
+        if (customTitle) fd.append('deckTitle', customTitle)
         
         tasks.push(
           fetch('/api/generate-flashcards', {
@@ -237,7 +243,8 @@ function NewSourcePageContent() {
               sourceId, 
               quantity: 15,
               specialtyTag: config.specialtyTag,
-              difficultyLevel: config.difficultyLevel
+              difficultyLevel: config.difficultyLevel,
+              ...(customTitle ? { quizTitle: customTitle } : {})
             })
           }).then(async res => {
             const data = await res.json()
@@ -269,7 +276,11 @@ function NewSourcePageContent() {
               'Authorization': `Bearer ${session?.access_token}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ sourceId })
+            body: JSON.stringify({ 
+              sourceId,
+              specialtyTag: config.specialtyTag,
+              ...(customTitle ? { mapTitle: customTitle } : {})
+            })
           }).then(async res => {
             const data = await res.json()
             if (!res.ok) throw new Error(data.error)
@@ -530,9 +541,15 @@ function NewSourcePageContent() {
 }
 
 function GenerationConfigComponent({ config, onChange, onStart, isLoading }: any) {
+  const [compressingFileIndex, setCompressingFileIndex] = useState<number | null>(null)
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || [])
-    const updatedFiles = [...config.files, ...newFiles].slice(0, 5)
+    const validFiles = newFiles.filter(f => f.size <= 25 * 1024 * 1024)
+    if (validFiles.length < newFiles.length) {
+      alert("Alguns arquivos excedem o limite de 25MB e foram ignorados.")
+    }
+    const updatedFiles = [...config.files, ...validFiles].slice(0, 5)
     onChange({ ...config, files: updatedFiles })
   }
 
@@ -541,17 +558,70 @@ function GenerationConfigComponent({ config, onChange, onStart, isLoading }: any
     onChange({ ...config, files: updatedFiles })
   }
 
+  const handleCompress = async (index: number) => {
+    const file = config.files[index]
+    setCompressingFileIndex(index)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/compress-pdf', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Erro ao comprimir PDF.')
+      }
+
+      const blob = await res.blob()
+      const newFile = new File([blob], file.name.replace('.pdf', '-comprimido.pdf'), { type: 'application/pdf' })
+      
+      const newFiles = [...config.files]
+      newFiles[index] = newFile
+      onChange({ ...config, files: newFiles })
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setCompressingFileIndex(null)
+    }
+  }
+
+  const totalSize = config.sourceType === 'document' ? config.files.reduce((acc: number, file: File) => acc + file.size, 0) : 0
+  const maxTotalSize = 4.5 * 1024 * 1024
+  const isOverLimit = totalSize > maxTotalSize
+
   return (
     <div className="space-y-6 text-left">
-      <div className="space-y-4 mb-8">
-        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
-          <Tag size={12} className="text-blue-500" />
-          Qual é a área de estudo?
-        </p>
-        <SpecialtySelector 
-          value={config.specialtyTag} 
-          onChange={(val) => onChange({ ...config, specialtyTag: val })} 
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {/* Nome do Material */}
+        <div className="space-y-4">
+          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
+            <FileText size={12} className="text-blue-500" />
+            Nome do Material
+          </p>
+          <input 
+            type="text"
+            value={config.title || ''}
+            onChange={(e) => onChange({ ...config, title: e.target.value })}
+            placeholder="Ex: Cardiologia - ICC, Resumo Aula..."
+            className="w-full h-12 px-4 rounded-2xl border border-zinc-800 bg-zinc-900/80 text-zinc-100 text-sm focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-zinc-600 font-medium"
+          />
+        </div>
+
+        {/* Área de Estudo */}
+        <div className="space-y-4">
+          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
+            <Tag size={12} className="text-blue-500" />
+            Qual é a área de estudo?
+          </p>
+          <SpecialtySelector 
+            value={config.specialtyTag} 
+            onChange={(val) => onChange({ ...config, specialtyTag: val })} 
+          />
+        </div>
       </div>
 
       <div className="flex p-1.5 bg-zinc-900/80 border border-zinc-800 rounded-2xl">
@@ -611,16 +681,70 @@ function GenerationConfigComponent({ config, onChange, onStart, isLoading }: any
             </div>
 
             {config.files.length > 0 && (
-              <div className="grid grid-cols-1 gap-2">
-                {config.files.map((file: File, i: number) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl">
-                    {file.type.startsWith('image/') ? <ImageIcon size={18} className="text-blue-500" /> : <FileText size={18} className="text-blue-500" />}
-                    <span className="flex-1 text-xs text-zinc-300 truncate font-medium">{file.name}</span>
-                    <button onClick={() => removeFile(i)} className="text-zinc-600 hover:text-red-500 transition-colors">
-                      <Trash2 size={16} />
-                    </button>
+              <div className="grid grid-cols-1 gap-3">
+                {/* Total Size Indicator */}
+                <div className={`p-4 rounded-xl border ${isOverLimit ? 'bg-amber-500/10 border-amber-500/30' : 'bg-zinc-900/50 border-zinc-800'} shadow-sm transition-colors mb-2`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Tamanho Total</span>
+                    <span className={`text-xs font-black ${isOverLimit ? 'text-amber-500' : 'text-emerald-500'}`}>
+                      {(totalSize / 1024 / 1024).toFixed(2)} MB <span className="text-zinc-500 font-medium">/ 4.5 MB</span>
+                    </span>
                   </div>
-                ))}
+                  <div className="w-full h-1.5 bg-zinc-800/50 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                      style={{ width: `${Math.min(100, (totalSize / maxTotalSize) * 100)}%` }}
+                    />
+                  </div>
+                  {isOverLimit && (
+                    <p className="text-[11px] text-amber-500 mt-2 font-medium flex items-center gap-1.5">
+                      <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Limite excedido. Comprima PDFs ou remova arquivos.
+                    </p>
+                  )}
+                </div>
+
+                {config.files.map((file: File, i: number) => {
+                  const isPdf = file.type === 'application/pdf'
+                  const isCompressing = compressingFileIndex === i
+                  const needsCompression = isPdf && isOverLimit
+
+                  return (
+                    <div key={i} className={`flex items-center gap-3 p-3 border ${needsCompression ? 'bg-amber-500/5 border-amber-500/30' : 'bg-zinc-900/50 border-zinc-800'} rounded-xl transition-all`}>
+                      {file.type.startsWith('image/') ? <ImageIcon size={18} className="text-blue-500" /> : <FileText size={18} className="text-blue-500" />}
+                      <div className="flex-1 overflow-hidden flex items-center gap-2">
+                        <span className="text-xs text-zinc-300 truncate font-medium">{file.name}</span>
+                        <span className="text-[10px] text-zinc-500 font-bold shrink-0">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                        {isPdf && !needsCompression && (
+                          <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-wider bg-emerald-500/10 px-1.5 py-0.5 rounded-full shrink-0">
+                            Otimizado
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2 shrink-0">
+                        {needsCompression && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="border-amber-500/30 text-amber-500 hover:bg-amber-500 hover:text-white transition-all h-7 text-[10px] px-2"
+                            onClick={() => handleCompress(i)}
+                            disabled={isCompressing || isLoading}
+                          >
+                            {isCompressing ? <Loader2 size={12} className="animate-spin mr-1" /> : null}
+                            {isCompressing ? 'Comprimindo...' : 'Comprimir'}
+                          </Button>
+                        )}
+                        
+                        {!isLoading && !isCompressing && (
+                          <button onClick={() => removeFile(i)} className="p-1.5 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -742,7 +866,7 @@ function GenerationConfigComponent({ config, onChange, onStart, isLoading }: any
         size="lg"
         className="w-full h-16 rounded-2xl text-lg font-black tracking-tight mt-4 shadow-xl shadow-blue-600/20"
         onClick={onStart}
-        disabled={isLoading || (config.sourceType !== 'text' && config.files.length === 0) || (config.sourceType === 'text' && !config.text.trim()) || (!config.generateFlashcards && !config.generateQuiz && !config.generateMindMap)}
+        disabled={isLoading || compressingFileIndex !== null || (config.sourceType === 'document' && isOverLimit) || (config.sourceType !== 'text' && config.files.length === 0) || (config.sourceType === 'text' && !config.text.trim()) || (!config.generateFlashcards && !config.generateQuiz && !config.generateMindMap)}
       >
         {isLoading ? (
           <div className="flex items-center gap-3">
