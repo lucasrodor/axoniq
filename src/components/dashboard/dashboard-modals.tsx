@@ -1,15 +1,15 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  X,
-  Pencil,
-  Trash2,
-  BookOpen,
-  HelpCircle,
-  LogOut,
-  Zap,
-  Plus,
+import { 
+  X, 
+  Pencil, 
+  Trash2, 
+  BookOpen, 
+  HelpCircle, 
+  LogOut, 
+  Zap, 
+  Plus, 
   FolderPlus,
   Crown,
   CheckCircle2
@@ -24,29 +24,29 @@ interface ModalProps {
   onClose: () => void
 }
 
-export function RenameItemModal({
-  id,
-  name,
-  type,
-  onClose,
-  onRename
+export function RenameItemModal({ 
+  id, 
+  name, 
+  type, 
+  onClose, 
+  onRename 
 }: ModalProps & { id: string, name: string, type: 'deck' | 'quiz' | 'mindmap', onRename: (id: string, name: string) => void }) {
   const [newValue, setNewValue] = React.useState(name)
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-sm mx-4 shadow-2xl overflow-hidden relative"
+        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-sm mx-4 shadow-2xl overflow-hidden relative" 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute top-0 right-0 p-4">
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 transition-colors">
+           <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 transition-colors">
             <X size={18} />
           </button>
         </div>
-
+        
         <div className="flex items-center gap-4 mb-6">
           <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
             <Pencil size={24} />
@@ -58,7 +58,7 @@ export function RenameItemModal({
             </p>
           </div>
         </div>
-
+        
         <input
           type="text"
           value={newValue}
@@ -67,7 +67,7 @@ export function RenameItemModal({
           className="w-full px-5 py-4 rounded-2xl border border-zinc-800 bg-zinc-950 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 transition-all mb-6"
           autoFocus
         />
-
+        
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1 py-7 rounded-2xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-all font-black uppercase text-[10px] tracking-widest" onClick={onClose}>Cancelar</Button>
           <Button variant="primary" className="flex-1 py-7 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 font-black uppercase text-[10px] tracking-widest border-none" onClick={() => onRename(id, newValue)}>Salvar</Button>
@@ -77,55 +77,55 @@ export function RenameItemModal({
   )
 }
 
-export function CreateChoiceModal({
-  activeTab,
-  onClose,
-  onChoice
+export function CreateChoiceModal({ 
+  activeTab, 
+  onClose, 
+  onChoice 
 }: ModalProps & { activeTab: 'decks' | 'quizzes', onChoice: (choice: 'ai' | 'manual') => void }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-white/5 rounded-[2.5rem] p-10 w-full max-w-lg mx-4 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative"
+        className="bg-zinc-900 border border-white/5 rounded-[2.5rem] p-8 sm:p-10 w-full max-w-lg mx-4 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative" 
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-start justify-between gap-4 mb-8 text-left">
           <div>
-            <h3 className="text-2xl font-bold text-zinc-50 tracking-tight mb-2">
+            <h3 className="text-xl sm:text-2xl font-bold text-zinc-50 tracking-tight mb-2">
               Nova Estrutura de Conhecimento
             </h3>
-            <p className="text-sm text-zinc-500">Selecione o método de processamento para seu {activeTab === 'decks' ? 'Deck' : 'Quiz'}.</p>
+            <p className="text-xs sm:text-sm text-zinc-500">Selecione o método de processamento para seu {activeTab === 'decks' ? 'Deck' : 'Quiz'}.</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-300 transition-all">
-            <X size={24} />
+          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-300 transition-all shrink-0 -mt-1 -mr-1">
+            <X size={20} />
           </button>
         </div>
-
+        
         <div className="grid gap-4">
-          <button
+          <button 
             onClick={() => onChoice('ai')}
-            className="flex items-start gap-5 p-6 rounded-3xl border-2 border-zinc-800 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-left group"
+            className="flex flex-col items-start gap-4 p-6 rounded-3xl border-2 border-zinc-800 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-left group w-full"
           >
             <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 group-hover:scale-110 transition-transform duration-500">
               <Zap size={28} />
             </div>
-            <div className="pt-1">
+            <div className="w-full text-left pt-1">
               <h4 className="font-bold text-zinc-100 text-lg mb-1 group-hover:text-blue-400 transition-colors">Criar com Inteligência Artificial</h4>
-              <p className="text-sm text-zinc-500 leading-relaxed">Processamento automático de PDFs e textos. Gera conexões e cartas em segundos.</p>
+              <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">Processamento automático de PDFs e textos. Gera conexões e cartas em segundos.</p>
             </div>
           </button>
-
-          <button
+          
+          <button 
             onClick={() => onChoice('manual')}
-            className="flex items-start gap-5 p-6 rounded-3xl border-2 border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-left group"
+            className="flex flex-col items-start gap-4 p-6 rounded-3xl border-2 border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-left group w-full"
           >
             <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform duration-500">
               <Pencil size={28} />
             </div>
-            <div className="pt-1">
+            <div className="w-full text-left pt-1">
               <h4 className="font-bold text-zinc-100 text-lg mb-1 group-hover:text-emerald-400 transition-colors">Criação Manual</h4>
-              <p className="text-sm text-zinc-500 leading-relaxed">Criação artesanal de conteúdo. Desenvolva suas próprias cartas e questões específicas.</p>
+              <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">Criação artesanal de conteúdo. Desenvolva suas próprias cartas e questões específicas.</p>
             </div>
           </button>
         </div>
@@ -134,18 +134,18 @@ export function CreateChoiceModal({
   )
 }
 
-export function DeleteConfirmationModal({
-  title,
-  type,
-  onClose,
-  onConfirm
+export function DeleteConfirmationModal({ 
+  title, 
+  type, 
+  onClose, 
+  onConfirm 
 }: ModalProps & { title: string, type: string, onConfirm: () => void }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-sm mx-4 shadow-2xl relative"
+        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-sm mx-4 shadow-2xl relative" 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center text-center">
@@ -156,7 +156,7 @@ export function DeleteConfirmationModal({
           <p className="text-sm text-zinc-500 mb-8 max-w-xs">
             Esta ação é irreversível. Deseja remover <strong className="text-zinc-200">"{title}"</strong> permanentemente?
           </p>
-
+          
           <div className="flex w-full gap-3">
             <Button variant="outline" className="flex-1 py-7 rounded-2xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-all font-black uppercase text-[10px] tracking-widest" onClick={onClose}>Manter</Button>
             <Button variant="primary" className="flex-1 py-7 rounded-2xl !bg-red-600 hover:!bg-red-700 text-white shadow-lg shadow-red-500/20 font-black uppercase text-[10px] tracking-widest border-none" onClick={onConfirm}>Confirmar</Button>
@@ -170,10 +170,10 @@ export function DeleteConfirmationModal({
 export function LogoutModal({ onClose, onConfirm }: ModalProps & { onConfirm: () => void }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-sm mx-4 shadow-2xl"
+        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-sm mx-4 shadow-2xl" 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-4 mb-6">
@@ -197,10 +197,10 @@ export function LogoutModal({ onClose, onConfirm }: ModalProps & { onConfirm: ()
 export function ReportLimitModal({ onClose, onConfirm, loading }: ModalProps & { onConfirm: () => void, loading: boolean }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-10 w-full max-w-sm mx-4 shadow-2xl"
+        className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-10 w-full max-w-sm mx-4 shadow-2xl" 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center text-center">
@@ -225,11 +225,11 @@ export function ReportLimitModal({ onClose, onConfirm, loading }: ModalProps & {
   )
 }
 
-export function NewFolderModal({
-  value,
-  onChange,
-  onConfirm,
-  onClose
+export function NewFolderModal({ 
+  value, 
+  onChange, 
+  onConfirm, 
+  onClose 
 }: ModalProps & { value: string, onChange: (v: string) => void, onConfirm: () => void }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-top-4 duration-500 mb-8 max-w-lg mx-auto relative overflow-hiddenGroup/modal">
@@ -238,14 +238,14 @@ export function NewFolderModal({
           <X size={18} />
         </button>
       </div>
-
+      
       <h3 className="text-sm font-bold text-zinc-100 uppercase tracking-widest mb-6 flex items-center gap-3">
         <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
           <FolderPlus size={18} />
         </div>
         Nova Pasta
       </h3>
-
+      
       <div className="flex flex-col sm:flex-row gap-4">
         <input
           type="text"
@@ -265,19 +265,19 @@ export function NewFolderModal({
   )
 }
 
-export function NewDeckModal({
-  title,
-  onChange,
-  onConfirm,
-  onClose,
-  disabled
+export function NewDeckModal({ 
+  title, 
+  onChange, 
+  onConfirm, 
+  onClose, 
+  disabled 
 }: ModalProps & { title: string, onChange: (v: string) => void, onConfirm: () => void, disabled: boolean }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10 w-full max-w-sm mx-4 shadow-2xl relative"
+        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10 w-full max-w-sm mx-4 shadow-2xl relative" 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center text-center">
@@ -288,7 +288,7 @@ export function NewDeckModal({
           <p className="text-sm text-zinc-500 mb-8 max-w-xs">
             Dê um nome para sua nova coleção de flashcards personalizados.
           </p>
-
+          
           <input
             type="text"
             placeholder="Ex: Anatomia Cardíaca I"
@@ -298,7 +298,7 @@ export function NewDeckModal({
             className="w-full px-5 py-4 rounded-2xl border border-zinc-800 bg-zinc-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all mb-8 text-center"
             autoFocus
           />
-
+          
           <div className="flex w-full gap-3">
             <Button variant="outline" className="flex-1 py-7 rounded-2xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-all font-black uppercase text-[10px] tracking-widest" onClick={onClose}>Cancelar</Button>
             <Button variant="primary" className="flex-1 py-7 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 font-black uppercase text-[10px] tracking-widest border-none" onClick={onConfirm} disabled={disabled}>Criar Deck</Button>
@@ -309,19 +309,19 @@ export function NewDeckModal({
   )
 }
 
-export function NewQuizModal({
-  title,
-  onChange,
-  onConfirm,
-  onClose,
-  disabled
+export function NewQuizModal({ 
+  title, 
+  onChange, 
+  onConfirm, 
+  onClose, 
+  disabled 
 }: ModalProps & { title: string, onChange: (v: string) => void, onConfirm: () => void, disabled: boolean }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10 w-full max-w-sm mx-4 shadow-2xl relative"
+        className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10 w-full max-w-sm mx-4 shadow-2xl relative" 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center text-center">
@@ -332,7 +332,7 @@ export function NewQuizModal({
           <p className="text-sm text-zinc-500 mb-8 max-w-xs">
             Prepare um novo ambiente de teste prático personalizado.
           </p>
-
+          
           <input
             type="text"
             placeholder="Ex: Simulado Fisiologia Renal"
@@ -342,7 +342,7 @@ export function NewQuizModal({
             className="w-full px-5 py-4 rounded-2xl border border-zinc-800 bg-zinc-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all mb-8 text-center"
             autoFocus
           />
-
+          
           <div className="flex w-full gap-3">
             <Button variant="outline" className="flex-1 py-7 rounded-2xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-all font-black uppercase text-[10px] tracking-widest" onClick={onClose}>Cancelar</Button>
             <Button variant="primary" className="flex-1 py-7 rounded-2xl !bg-emerald-600 hover:!bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 font-black uppercase text-[10px] tracking-widest border-none" onClick={onConfirm} disabled={disabled}>Preparar</Button>
@@ -365,13 +365,13 @@ export function UpgradeModal({ onClose }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-3 sm:p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 40 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-5xl relative max-h-[90vh] overflow-y-auto rounded-[2rem] sm:rounded-[3rem] hide-scrollbar"
+        className="w-full max-w-5xl relative max-h-[90vh] overflow-y-auto rounded-[2rem] sm:rounded-[3rem] hide-scrollbar" 
         onClick={(e) => e.stopPropagation()}
       >
-        <button
+        <button 
           onClick={onClose}
           className="fixed top-6 right-6 p-3 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-full text-zinc-500 hover:text-white transition-all z-[70] shadow-xl"
         >
@@ -379,7 +379,7 @@ export function UpgradeModal({ onClose }: ModalProps) {
         </button>
 
         <div className="bg-zinc-950 border border-white/5 shadow-[0_0_100px_rgba(59,130,246,0.15)]">
-          <UpgradeGate
+          <UpgradeGate 
             feature="Acesso Ilimitado ao AxonIQ Pro"
             description="Seus créditos gratuitos acabaram, mas sua jornada de aprendizado não precisa parar. Desbloqueie gerações ilimitadas e muito mais."
           />
@@ -398,13 +398,13 @@ export function LowCreditModal({ onClose, onConfirm, onUpgrade, available }: Mod
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 40 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-6 sm:p-10 w-full max-w-sm mx-4 shadow-2xl relative max-h-[90vh] overflow-y-auto"
+        className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-6 sm:p-10 w-full max-w-sm mx-4 shadow-2xl relative max-h-[90vh] overflow-y-auto" 
         onClick={(e) => e.stopPropagation()}
       >
-        <button
+        <button 
           onClick={onClose}
           className="absolute top-6 right-6 p-2 bg-zinc-800 border border-zinc-700 rounded-full text-zinc-500 hover:text-white transition-all z-10"
         >
@@ -451,7 +451,7 @@ export function WaitlistModal({ onClose }: ModalProps) {
   const handleSubmit = async () => {
     if (!phone.trim() || !email.trim() || !name.trim()) return
     setLoading(true)
-
+    
     try {
       const { error } = await supabase.from('waitlist_leads').insert({
         name: name.trim(),
@@ -475,15 +475,15 @@ export function WaitlistModal({ onClose }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-2xl animate-in fade-in duration-500 p-4" onClick={onClose}>
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-zinc-950 border border-blue-500/20 rounded-[2.5rem] p-8 sm:p-12 w-full max-w-md mx-4 shadow-[0_0_50px_rgba(37,99,235,0.1)] relative overflow-hidden"
+        className="bg-zinc-950 border border-blue-500/20 rounded-[2.5rem] p-8 sm:p-12 w-full max-w-md mx-4 shadow-[0_0_50px_rgba(37,99,235,0.1)] relative overflow-hidden" 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Background Gradient */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-3xl -mr-16 -mt-16" />
-
+        
         <button onClick={onClose} className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-all">
           <X size={20} />
         </button>
@@ -495,7 +495,7 @@ export function WaitlistModal({ onClose }: ModalProps) {
 
           <AnimatePresence mode="wait">
             {!success ? (
-              <motion.div
+              <motion.div 
                 key="form"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -541,17 +541,17 @@ export function WaitlistModal({ onClose }: ModalProps) {
                     />
                   </div>
                 </div>
-
-                <Button
-                  className="w-full py-8 mt-6 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-[11px] border-none shadow-xl shadow-blue-500/20 transition-all hover:scale-[1.02]"
-                  onClick={handleSubmit}
-                  disabled={loading || !phone.trim() || !email.trim() || !name.trim()}
-                >
-                  {loading ? 'Processando...' : 'Quero Minha Oferta'}
-                </Button>
+                
+                <Button 
+                    className="w-full py-8 mt-6 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-[11px] border-none shadow-xl shadow-blue-500/20 transition-all hover:scale-[1.02]"
+                    onClick={handleSubmit}
+                    disabled={loading || !phone.trim() || !email.trim() || !name.trim()}
+                  >
+                    {loading ? 'Processando...' : 'Quero Minha Oferta'}
+                  </Button>
               </motion.div>
             ) : (
-              <motion.div
+              <motion.div 
                 key="success"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}

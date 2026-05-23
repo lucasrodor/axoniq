@@ -255,8 +255,20 @@ function AmberTimeSep() {
 
 // ---------- Main export ----------
 
+import { useSubscription } from '@/hooks/useSubscription'
+
 export function LaunchOfferBanner({ isLaunchWeek }: { isLaunchWeek: boolean }) {
-  // isLaunchWeek = true  → monetização DESATIVADA  → banner antigo pré-lançamento
-  // isLaunchWeek = false → monetização ATIVADA     → banner amber oferta vitalícia (dismissível)
+  const { isPremium, isLoading } = useSubscription()
+
+  // Lógica inteligente de Cache Local para eliminar a demora de carregamento (Network Waterfall)
+  const isCachedFree = typeof window !== 'undefined' ? localStorage.getItem('axoniq_cached_is_premium') === 'false' : false
+  const isCachedPro = typeof window !== 'undefined' ? localStorage.getItem('axoniq_cached_is_premium') === 'true' : false
+
+  // Se já temos certeza absoluta que o usuário é Pro (via cache ou rede), oculta na hora sem delay.
+  if (isCachedPro || isPremium) return null
+
+  // Se está carregando pela primeira vez sem cache prévio, aguarda para não gerar flicker em Pro.
+  if (isLoading && !isCachedFree) return null
+  
   return isLaunchWeek ? <PreLaunchBanner /> : <LifetimeOfferBanner />
 }
