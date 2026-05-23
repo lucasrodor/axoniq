@@ -90,24 +90,24 @@ export default function StudyConfigPage() {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
-            Configurar Sessão
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-100">
+            Configurar sessão de estudo
           </h1>
-          <p className="text-[var(--muted-foreground)] text-lg">
+          <p className="text-zinc-400 text-lg">
             Escolha o que você quer revisar hoje e defina sua meta.
           </p>
         </div>
 
         {/* Content Selector */}
         <section className="space-y-4">
-          <h3 className="text-sm font-bold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-2">
+          <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
             <Layers size={16} className="text-blue-500" />
             Conteúdo para Revisão
           </h3>
           <div className="grid grid-cols-1 gap-3">
             {decks.length === 0 ? (
-              <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl p-8 text-center">
-                <p className="text-[var(--muted-foreground)]">Você não tem cards pendentes para revisão no momento.</p>
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8 text-center">
+                <p className="text-zinc-500">Você não tem cards pendentes para revisão no momento.</p>
               </div>
             ) : (
               decks.map(deck => (
@@ -116,19 +116,19 @@ export default function StudyConfigPage() {
                   onClick={() => toggleDeck(deck.id)}
                   className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                     selectedDeckIds.includes(deck.id)
-                      ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 shadow-sm'
-                      : 'border-[var(--border)] bg-white dark:bg-zinc-900 opacity-60'
+                      ? 'border-blue-500/50 bg-blue-600/10 shadow-sm text-zinc-100'
+                      : 'border-zinc-800/80 bg-zinc-900/30 text-zinc-400 hover:border-zinc-700/80 hover:bg-zinc-900/50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${
-                      selectedDeckIds.includes(deck.id) ? 'bg-blue-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-[var(--muted-foreground)]'
+                      selectedDeckIds.includes(deck.id) ? 'bg-blue-600 text-white' : 'bg-zinc-950 border border-zinc-800 text-zinc-500'
                     }`}>
                       <BookOpen size={18} />
                     </div>
                     <div className="text-left">
-                      <p className="font-bold text-[var(--foreground)] line-clamp-1">{deck.title}</p>
-                      <p className="text-xs text-[var(--muted-foreground)]">{deck.dueCards} cards pendentes</p>
+                      <p className={`font-bold line-clamp-1 ${selectedDeckIds.includes(deck.id) ? 'text-zinc-100' : 'text-zinc-400'}`}>{deck.title}</p>
+                      <p className={`text-xs ${selectedDeckIds.includes(deck.id) ? 'text-blue-400' : 'text-zinc-500'}`}>{deck.dueCards} cards pendentes</p>
                     </div>
                   </div>
                   {selectedDeckIds.includes(deck.id) && <Check size={20} className="text-blue-500" />}
@@ -140,7 +140,7 @@ export default function StudyConfigPage() {
 
         {/* Meta Selector */}
         <section className="space-y-4">
-          <h3 className="text-sm font-bold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-2">
+          <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
             <Zap size={16} className="text-amber-500" />
             Meta da Sessão
           </h3>
@@ -151,12 +151,12 @@ export default function StudyConfigPage() {
                 onClick={() => setLimit(val)}
                 className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${
                   limit === val
-                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/10 text-amber-600 shadow-sm'
-                    : 'border-[var(--border)] bg-white dark:bg-zinc-900 text-[var(--muted-foreground)]'
+                    ? 'border-amber-500/50 bg-amber-500/10 text-amber-500 shadow-sm'
+                    : 'border-zinc-800 bg-zinc-900/30 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'
                 }`}
               >
-                <span className="text-lg font-bold">{val === 0 ? '∞' : val}</span>
-                <span className="text-[10px] uppercase font-bold tracking-widest">{val === 0 ? 'Tudo' : 'Cards'}</span>
+                <span className={`text-lg font-bold ${limit === val ? 'text-amber-400' : 'text-zinc-300'}`}>{val === 0 ? '∞' : val}</span>
+                <span className={`text-[10px] uppercase font-bold tracking-widest ${limit === val ? 'text-amber-500' : 'text-zinc-500'}`}>{val === 0 ? 'Tudo' : 'Cards'}</span>
               </button>
             ))}
           </div>

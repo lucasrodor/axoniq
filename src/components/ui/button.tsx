@@ -1,7 +1,7 @@
 import React from 'react'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'outline'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'none'
   size?: 'sm' | 'md' | 'lg' | 'icon'
   isLoading?: boolean
 }
@@ -13,7 +13,7 @@ export function Button({
   isLoading, 
   children, 
   ...props 
-}: ButtonProps) {
+}: ButtonProps) { 
   const baseStyles = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg tracking-tight'
   
   const variants = {
@@ -21,6 +21,7 @@ export function Button({
     secondary: 'bg-zinc-800 text-zinc-100 hover:bg-zinc-700 active:bg-zinc-600',
     outline: 'border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-100 backdrop-blur-sm',
     ghost: 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 active:bg-zinc-800 transition-all duration-200',
+    none: '',
   }
 
   const sizes = {

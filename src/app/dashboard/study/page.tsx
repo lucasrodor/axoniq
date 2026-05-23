@@ -201,7 +201,7 @@ interface DeckItem {
         {parts.map((part, i) => {
           const match = part.match(/\{\{c\d+::(.*?)(?:::(.*?))?\}\}/)
           if (match) {
-            const [_, answer, hint] = match
+            const [, answer, hint] = match
             if (isFront) {
               return (
                 <span key={i} className="bg-blue-500/20 px-2 py-0.5 rounded text-blue-400 border border-blue-500/30 font-mono text-[0.8em] mx-1">
@@ -325,7 +325,7 @@ interface DeckItem {
           )}
           <div className="flex gap-4">
             <Link href="/dashboard">
-              <Button size="lg" className="bg-zinc-900 text-zinc-100 hover:bg-zinc-800 border border-zinc-800 rounded-[2rem] px-12 h-16 font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl transition-all hover:scale-105 active:scale-95">
+              <Button variant="none" size="lg" className="bg-blue-600 hover:bg-blue-500 text-white rounded-[2rem] px-12 h-16 font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl transition-all hover:scale-105 active:scale-95 border-0">
                 Voltar ao Painel
               </Button>
             </Link>

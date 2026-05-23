@@ -13,11 +13,9 @@ import {
   Trash2,
   Pencil,
   Check,
-  X,
   Folder,
   Plus,
   Loader2,
-  Tag,
 } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -124,7 +122,7 @@ export default function DeckDetailPage() {
     }
 
     loadDeck()
-  }, [user, deckId])
+  }, [user, deckId, toast])
 
   // --- Deck CRUD ---
   const handleSaveDeck = async () => {
@@ -291,6 +289,7 @@ export default function DeckDetailPage() {
               <Settings2 className="w-4 h-4 mr-2" /> Editar Deck
             </Button>
             <Button
+              variant="none"
               className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-6 h-11 font-black shadow-[0_0_20px_rgba(37,99,235,0.25)] transition-all active:scale-95 group"
               onClick={() => router.push(`/dashboard/study?decks=${deckId}`)}
               disabled={flashcards.length === 0}
@@ -301,7 +300,7 @@ export default function DeckDetailPage() {
         </div>
 
         {/* Deck Info Section (Full Width Top) */}
-        <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2.5rem] p-8 sm:p-10 backdrop-blur-xl shadow-2xl relative group">
+        <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-[2.5rem] p-8 sm:p-10 backdrop-blur-xl shadow-2xl relative group overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/50 to-transparent group-hover:from-blue-400 transition-colors" />
           
           {isEditingDeck ? (
@@ -407,6 +406,7 @@ export default function DeckDetailPage() {
               </span>
             </div>
             <Button
+              variant="none"
               size="sm"
               onClick={() => setIsAddingCard(true)}
               className="bg-zinc-100 hover:bg-white text-zinc-900 rounded-xl px-6 h-10 font-black text-[10px] tracking-widest uppercase shadow-lg active:scale-95 transition-all"
