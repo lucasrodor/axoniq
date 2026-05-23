@@ -292,7 +292,7 @@ export default function DeckDetailPage() {
             </Button>
             <Button
               className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-6 h-11 font-black shadow-[0_0_20px_rgba(37,99,235,0.25)] transition-all active:scale-95 group"
-              onClick={() => router.push(`/dashboard/deck/${deckId}/study`)}
+              onClick={() => router.push(`/dashboard/study?decks=${deckId}`)}
               disabled={flashcards.length === 0}
             >
               <Play className="w-4 h-4 mr-2 fill-current" /> ESTUDAR AGORA

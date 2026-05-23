@@ -61,7 +61,14 @@ function StudySession() {
     easy: 0,
   })
 
-  const [allDecks, setAllDecks] = useState<any[]>([])
+interface DeckItem {
+  id: string
+  title: string
+  created_at: string
+  flashcards: { count: number }[]
+}
+
+  const [allDecks, setAllDecks] = useState<DeckItem[]>([])
   
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 15
@@ -81,9 +88,10 @@ function StudySession() {
         .order('created_at', { ascending: false })
 
       if (decksError) return
-      setAllDecks(decksData as any)
+      setAllDecks(decksData as unknown as DeckItem[])
     }
     loadDecks()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const totalPages = Math.ceil(allDecks.length / itemsPerPage)
@@ -128,6 +136,7 @@ function StudySession() {
       }
     }
     loadDueCards()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, searchParams])
 
   const handleAnswer = async (quality: Quality) => {
@@ -144,15 +153,25 @@ function StudySession() {
         quality
       )
 
-      await supabase
-        .from('flashcards')
-        .update({
-          ease_factor: result.ease_factor,
-          interval: result.interval,
-          repetition: result.repetition,
-          due_date: result.due_date,
-        })
-        .eq('id', card.id)
+      await Promise.all([
+        supabase
+          .from('flashcards')
+          .update({
+            ease_factor: result.ease_factor,
+            interval: result.interval,
+            repetition: result.repetition,
+            due_date: result.due_date,
+          })
+          .eq('id', card.id),
+        
+        user?.id ? supabase
+          .from('flashcard_reviews')
+          .insert({
+            card_id: card.id,
+            user_id: user.id,
+            quality: quality
+          }) : Promise.resolve(null)
+      ])
 
       const label = quality === 1 ? 'again' : quality === 3 ? 'hard' : quality === 4 ? 'good' : 'easy'
       setStats((prev) => ({ ...prev, [label]: prev[label] + 1 }))
@@ -245,7 +264,7 @@ function StudySession() {
                 { label: 'Difícil', val: stats.hard, color: 'text-orange-400', bg: 'bg-orange-500/5', border: 'border-orange-500/20' },
                 { label: 'Acertei', val: stats.good, color: 'text-emerald-400', bg: 'bg-emerald-500/5', border: 'border-emerald-500/20' },
                 { label: 'Fácil', val: stats.easy, color: 'text-blue-400', bg: 'bg-blue-500/5', border: 'border-blue-500/20' },
-              ].map((s: any) => (
+              ].map((s: { label: string; val: number; color: string; bg: string; border: string }) => (
                 <div key={s.label} className={cn("text-center p-6 rounded-2xl border backdrop-blur-md", s.bg, s.border)}>
                   <p className={cn("text-3xl font-black mb-1", s.color)}>{s.val}</p>
                   <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500">{s.label}</p>
@@ -257,7 +276,7 @@ function StudySession() {
           {cards.length === 0 && allDecks.length > 0 && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full mb-8">
-                {paginatedDecks.map((deck: any) => (
+                {paginatedDecks.map((deck: DeckItem) => (
                   <button
                     key={deck.id}
                     onClick={() => router.push(`/dashboard/study?decks=${deck.id}`)}
@@ -407,7 +426,7 @@ function StudySession() {
                 <button 
                   key={opt.q} 
                   disabled={saving} 
-                  onClick={() => handleAnswer(opt.q as any)} 
+                  onClick={() => handleAnswer(opt.q as Quality)} 
                   className={cn(
                     "flex flex-col items-center gap-2 p-4 rounded-2xl border bg-zinc-900/50 backdrop-blur-md transition-all duration-300 disabled:opacity-50 hover:-translate-y-1 group",
                     opt.color, opt.border, opt.hover

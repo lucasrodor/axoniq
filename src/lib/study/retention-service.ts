@@ -1,13 +1,13 @@
 import { supabase } from '@/lib/supabase/client'
-import { startOfDay, subDays, format, isSameDay } from 'date-fns'
+import { subDays, format, isSameDay } from 'date-fns'
 import { getCardStage } from '@/lib/study/spaced-repetition'
 
 export interface RetentionStats {
   globalRetention: number // 0-100
   totalCards: number
   totalReviews: number
-  masteryBySpecialty: { 
-    specialty: string; 
+  masteryBySpecialty: {
+    specialty: string;
     score: number; // Flashcard weighted score
     quizScore: number | null; // Quiz average (0-100) or null
     totalQuestions: number;
@@ -21,6 +21,10 @@ export interface RetentionStats {
   }[]
   futureWorkload: { day: string; count: number }[]
   heatmapData: { date: string; count: number }[]
+  dailyActivity: {
+    cards: { date: string; total: number; again: number; hard: number; good: number; easy: number }[]
+    quizzes: { date: string; totalQuestions: number; correctQuestions: number }[]
+  }
 }
 
 /**
@@ -51,6 +55,7 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
     .select(`
       score,
       total_questions,
+      completed_at,
       quizzes (
         specialty_tag
       )
@@ -63,7 +68,7 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
   const ninetyDaysAgo = subDays(new Date(), 90).toISOString()
   const { data: reviews, error: reviewsError } = await supabase
     .from('flashcard_reviews')
-    .select('created_at')
+    .select('created_at, quality')
     .eq('user_id', userId)
     .gte('created_at', ninetyDaysAgo)
 
@@ -76,19 +81,24 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
   let earnedGlobalWeight = 0
 
   // Specialty Mastery aggregation
-  const specialtyMap: Record<string, { 
-    totalCards: number; 
-    earnedWeight: number; 
-    count: number; 
-    stages: any;
+  const specialtyMap: Record<string, {
+    totalCards: number;
+    earnedWeight: number;
+    count: number;
+    stages: {
+      new: number;
+      learning: number;
+      review: number;
+      mastered: number;
+    };
     quizPoints: number;
     quizTotal: number;
     quizCount: number;
   }> = {}
-  
+
   flashcards?.forEach(card => {
-    const stage = getCardStage(card as any)
-    
+    const stage = getCardStage(card as unknown as Parameters<typeof getCardStage>[0])
+
     let weight = 0
     if (stage === 'learning') weight = 0.25
     else if (stage === 'review') weight = 0.50
@@ -97,11 +107,11 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
     totalGlobalWeight += 1 // Max possible weight is 1.0 per card
     earnedGlobalWeight += weight
 
-    const specialty = (card.deck as any)?.specialty_tag || 'Outros'
+    const specialty = (card.deck as unknown as { specialty_tag: string | null })?.specialty_tag || 'Outros'
     if (!specialtyMap[specialty]) {
-      specialtyMap[specialty] = { 
-        totalCards: 0, 
-        earnedWeight: 0, 
+      specialtyMap[specialty] = {
+        totalCards: 0,
+        earnedWeight: 0,
         count: 0,
         stages: { new: 0, learning: 0, review: 0, mastered: 0 },
         quizPoints: 0,
@@ -117,11 +127,11 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
 
   // Process Quiz Attempts into specialties
   quizAttempts?.forEach(attempt => {
-    const specialty = (attempt.quizzes as any)?.specialty_tag || 'Outros'
+    const specialty = (attempt.quizzes as unknown as { specialty_tag: string | null })?.specialty_tag || 'Outros'
     if (!specialtyMap[specialty]) {
-      specialtyMap[specialty] = { 
-        totalCards: 0, 
-        earnedWeight: 0, 
+      specialtyMap[specialty] = {
+        totalCards: 0,
+        earnedWeight: 0,
         count: 0,
         stages: { new: 0, learning: 0, review: 0, mastered: 0 },
         quizPoints: 0,
@@ -129,13 +139,13 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
         quizCount: 0
       }
     }
-    specialtyMap[specialty].quizPoints += attempt.score
-    specialtyMap[specialty].quizTotal += attempt.total_questions
+    specialtyMap[specialty].quizPoints += attempt.score || 0
+    specialtyMap[specialty].quizTotal += attempt.total_questions || 0
     specialtyMap[specialty].quizCount++
   })
 
-  const globalRetention = totalGlobalWeight > 0 
-    ? Math.round((earnedGlobalWeight / totalGlobalWeight) * 100) 
+  const globalRetention = totalGlobalWeight > 0
+    ? Math.round((earnedGlobalWeight / totalGlobalWeight) * 100)
     : 0
 
   const masteryBySpecialty = Object.entries(specialtyMap).map(([specialty, stats]) => ({
@@ -167,10 +177,10 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
       // Dias futuros devem contar exatamente os cards daquele dia
       count = flashcards?.filter(c => isSameDay(new Date(c.due_date), day)).length || 0
     }
-    
-    workloadDays.push({ 
-      day: i === 0 ? 'Hoje' : format(day, 'dd/MM'), 
-      count 
+
+    workloadDays.push({
+      day: i === 0 ? 'Hoje' : format(day, 'dd/MM'),
+      count
     })
   }
 
@@ -186,12 +196,71 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
     count
   }))
 
+  // Generate daily activity for the last 30 days
+  const dailyActivityCards: Record<string, { total: number; again: number; hard: number; good: number; easy: number }> = {}
+  const dailyActivityQuizzes: Record<string, { totalQuestions: number; correctQuestions: number }> = {}
+
+  // Initialize the last 30 days with 0s
+  for (let i = 29; i >= 0; i--) {
+    const d = subDays(new Date(), i)
+    const dStr = format(d, 'yyyy-MM-dd')
+    dailyActivityCards[dStr] = { total: 0, again: 0, hard: 0, good: 0, easy: 0 }
+    dailyActivityQuizzes[dStr] = { totalQuestions: 0, correctQuestions: 0 }
+  }
+
+  // Populate cards activity
+  reviews?.forEach(review => {
+    const rDate = format(new Date(review.created_at), 'yyyy-MM-dd')
+    if (dailyActivityCards[rDate]) {
+      dailyActivityCards[rDate].total++
+      const q = review.quality
+      if (q === 1) dailyActivityCards[rDate].again++
+      else if (q === 3) dailyActivityCards[rDate].hard++
+      else if (q === 4) dailyActivityCards[rDate].good++
+      else if (q === 5) dailyActivityCards[rDate].easy++
+    }
+  })
+
+  // Populate quizzes activity
+  quizAttempts?.forEach(attempt => {
+    if (!attempt.completed_at) return
+    const qDate = format(new Date(attempt.completed_at), 'yyyy-MM-dd')
+    if (dailyActivityQuizzes[qDate]) {
+      dailyActivityQuizzes[qDate].totalQuestions += attempt.total_questions || 0
+      dailyActivityQuizzes[qDate].correctQuestions += attempt.score || 0
+    }
+  })
+
+  const dailyActivity = {
+    cards: Object.entries(dailyActivityCards).map(([date, data]) => ({
+      date,
+      ...data
+    })).sort((a, b) => a.date.localeCompare(b.date)),
+    quizzes: Object.entries(dailyActivityQuizzes).map(([date, data]) => ({
+      date,
+      ...data
+    })).sort((a, b) => a.date.localeCompare(b.date))
+  }
+
+  console.log('--- DEBUG RETENTION ---')
+  console.log('reviews count:', reviews?.length)
+  console.log('last 5 reviews raw:', JSON.stringify(reviews?.slice(-5)))
+  if (reviews && reviews.length > 0) {
+    console.log('last 5 reviews formatted:', JSON.stringify(reviews.slice(-5).map(r => ({
+      raw: r.created_at,
+      formatted: format(new Date(r.created_at), 'yyyy-MM-dd')
+    }))))
+  }
+  console.log('today string:', format(new Date(), 'yyyy-MM-dd'))
+  console.log('dailyActivityCards keys:', Object.keys(dailyActivityCards))
+
   return {
     globalRetention,
     totalCards: flashcards?.length || 0,
     totalReviews: reviews?.length || 0,
     masteryBySpecialty,
     futureWorkload: workloadDays,
-    heatmapData
+    heatmapData,
+    dailyActivity
   }
 }

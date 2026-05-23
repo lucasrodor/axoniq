@@ -14,7 +14,6 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
-  const [phone, setPhone] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
@@ -32,7 +31,6 @@ export default function SignUpPage() {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: fullName.trim(),
-            phone: phone.trim(),
           },
         },
       })
@@ -53,23 +51,7 @@ export default function SignUpPage() {
     }
   }
 
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '')
-    if (digits.length <= 11) {
-      return digits
-        .replace(/(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{5})(\d)/, '$1-$2')
-        .replace(/(-\d{4})\d+?$/, '$1')
-    }
-    return digits.slice(0, 11)
-      .replace(/(\d{2})(\d)/, '($1) $2')
-      .replace(/(\d{5})(\d)/, '$1-$2')
-  }
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value)
-    setPhone(formatted)
-  }
 
   return (
     <div className="w-full h-screen grid grid-cols-1 lg:grid-cols-2">
@@ -155,22 +137,6 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="phone" className="text-xs font-medium uppercase text-[var(--muted-foreground)] tracking-wider">
-                WhatsApp / Telefone
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                placeholder="(00) 00000-0000"
-                value={phone}
-                onChange={handlePhoneChange}
-                maxLength={15}
-                className="w-full h-11 px-3 rounded-lg bg-[var(--background)] border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:border-transparent transition-all font-mono"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
               <label htmlFor="email" className="text-xs font-medium uppercase text-[var(--muted-foreground)] tracking-wider">
                 Email
               </label>
@@ -184,7 +150,7 @@ export default function SignUpPage() {
                 required
               />
             </div>
-            
+
             <div className="space-y-1">
               <label htmlFor="password" className="text-xs font-medium uppercase text-[var(--muted-foreground)] tracking-wider">
                 Senha

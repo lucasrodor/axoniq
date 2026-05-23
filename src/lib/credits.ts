@@ -83,8 +83,8 @@ export async function consumeCredit(userId: string): Promise<{ allowed: boolean;
   }
 
   // 5. Consume 1 credit atomically using RPC
-  const { error: rpcError } = await supabase.rpc('increment_credits', { 
-    target_user_id: userId 
+  const { error: rpcError } = await supabase.rpc('increment_credits', {
+    target_user_id: userId
   })
 
   if (rpcError) {
@@ -204,7 +204,7 @@ export async function refundCredit(userId: string): Promise<void> {
       .select('credits_used')
       .eq('user_id', userId)
       .single()
-    
+
     if (credits && credits.credits_used > 0) {
       await supabase
         .from('user_credits')

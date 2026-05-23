@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import useSWR from 'swr'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/components/providers/auth-provider'
@@ -54,12 +53,6 @@ export function useSubscription() {
       dedupingInterval: 30000,
     }
   )
-
-  useEffect(() => {
-    if (data !== undefined) {
-      localStorage.setItem('axoniq_cached_is_premium', String(data.isPremium))
-    }
-  }, [data])
 
   return {
     isPremium: data?.isPremium ?? false,
