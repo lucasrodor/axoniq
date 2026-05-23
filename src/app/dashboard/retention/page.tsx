@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuth } from '@/components/providers/auth-provider'
 import { type RetentionStats } from '@/lib/study/retention-service'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  LineChart, Line, Legend
+  LineChart, Line
 } from 'recharts'
 import {
   Brain, Target, Calendar, Zap, ChevronLeft,
@@ -103,6 +103,35 @@ export default function RetentionDashboard() {
   const [selectedSpecialty, setSelectedSpecialty] = useState<RetentionStats['masteryBySpecialty'][number] | null>(null)
   const [isRadarZoomed, setIsRadarZoomed] = useState(false)
   const [activityType, setActivityType] = useState<'cards' | 'quizzes'>('cards')
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+
+  const chartScrollRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      scrollContainerRef.current = node
+      node.scrollLeft = 999999
+      setTimeout(() => {
+        node.scrollLeft = 999999
+      }, 50)
+      setTimeout(() => {
+        node.scrollLeft = 999999
+      }, 300)
+    } else {
+      scrollContainerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 999999
+      const timer = setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollLeft = 999999
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [activityType, stats])
 
   const formattedCardsData = (() => {
     if (!stats?.dailyActivity?.cards) return []
@@ -388,8 +417,46 @@ export default function RetentionDashboard() {
                 </div>
               </div>
 
-              <div className="h-[320px] w-full min-w-0 relative">
-                <ResponsiveContainer width="100%" height="100%" minHeight={320}>
+              {/* Custom Fixed Legend */}
+              {activityType === 'cards' ? (
+                <div className="flex flex-wrap gap-x-4 gap-y-2 mb-6 text-xs text-zinc-400 justify-center sm:justify-start">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#3B82F6] shrink-0" />
+                    <span>Total Resolvido</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] shrink-0" />
+                    <span>Fácil</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full border border-dashed border-[#3B82F6] bg-[#3B82F6]/10 shrink-0" />
+                    <span>Bom</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full border border-dashed border-[#F59E0B] bg-[#F59E0B]/10 shrink-0" />
+                    <span>Difícil</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full border border-dashed border-[#EF4444] bg-[#EF4444]/10 shrink-0" />
+                    <span>Errei</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-x-4 gap-y-2 mb-6 text-xs text-zinc-400 justify-center sm:justify-start">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#3B82F6] shrink-0" />
+                    <span>Total de Questões</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] shrink-0" />
+                    <span>Acertos</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="w-full overflow-x-auto custom-scrollbar scroll-smooth" ref={chartScrollRef}>
+                <div className="h-[320px] w-[300%] md:w-full min-w-[900px] md:min-w-0 relative">
+                  <ResponsiveContainer width="100%" height="100%">
                   {activityType === 'cards' ? (
                     <LineChart data={formattedCardsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <XAxis
@@ -406,12 +473,6 @@ export default function RetentionDashboard() {
                       />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#18181B', border: '1px solid #27272A', borderRadius: '12px', color: '#fff' }}
-                      />
-                      <Legend 
-                        verticalAlign="top" 
-                        height={36} 
-                        iconType="circle"
-                        wrapperStyle={{ fontSize: 12, paddingBottom: 10 }}
                       />
                       <Line
                         type="monotone"
@@ -476,12 +537,6 @@ export default function RetentionDashboard() {
                       <Tooltip
                         contentStyle={{ backgroundColor: '#18181B', border: '1px solid #27272A', borderRadius: '12px', color: '#fff' }}
                       />
-                      <Legend 
-                        verticalAlign="top" 
-                        height={36} 
-                        iconType="circle"
-                        wrapperStyle={{ fontSize: 12, paddingBottom: 10 }}
-                      />
                       <Line
                         type="monotone"
                         name="Total de Questões"
@@ -504,6 +559,7 @@ export default function RetentionDashboard() {
                 </ResponsiveContainer>
               </div>
             </div>
+          </div>
 
             {/* SPECIALTY BREAKDOWN */}
             <div className="md:col-span-12 bg-zinc-900/30 border border-zinc-800/50 rounded-3xl p-6 lg:p-8 backdrop-blur-xl">
