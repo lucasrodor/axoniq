@@ -242,17 +242,7 @@ export async function getRetentionStats(userId: string): Promise<RetentionStats>
     })).sort((a, b) => a.date.localeCompare(b.date))
   }
 
-  console.log('--- DEBUG RETENTION ---')
-  console.log('reviews count:', reviews?.length)
-  console.log('last 5 reviews raw:', JSON.stringify(reviews?.slice(-5)))
-  if (reviews && reviews.length > 0) {
-    console.log('last 5 reviews formatted:', JSON.stringify(reviews.slice(-5).map(r => ({
-      raw: r.created_at,
-      formatted: format(new Date(r.created_at), 'yyyy-MM-dd')
-    }))))
-  }
-  console.log('today string:', format(new Date(), 'yyyy-MM-dd'))
-  console.log('dailyActivityCards keys:', Object.keys(dailyActivityCards))
+
 
   return {
     globalRetention,
