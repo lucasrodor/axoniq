@@ -13,8 +13,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://axoniq.com.br"),
   title: {
-    default: "AxonIQ | A IA para o Estudante de Medicina brasileiro",
+    default: "AxonIQ - O jeito mais rápido de transformar o seu conteúdo em conhecimento",
     template: "%s | AxonIQ",
   },
   description:
@@ -31,11 +32,26 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Axoniq" }],
   openGraph: {
-    title: "AxonIQ | A IA para o Estudante de Medicina brasileiro",
+    title: "AxonIQ - O jeito mais rápido de transformar o seu conteúdo em conhecimento",
     description:
       "Garanta seu acesso antecipado: transforme PDFs e vídeos em flashcards interativos e mapas mentais.",
     type: "website",
     locale: "pt_BR",
+    images: [
+      {
+        url: "/favicon.png",
+        width: 256,
+        height: 256,
+        alt: "AxonIQ Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "AxonIQ - O jeito mais rápido de transformar o seu conteúdo em conhecimento",
+    description:
+      "Garanta seu acesso antecipado: transforme PDFs e vídeos em flashcards interativos e mapas mentais.",
+    images: ["/favicon.png"],
   },
 };
 
