@@ -9,15 +9,32 @@ import { supabase } from '@/lib/supabase/client'
 import { trackLead, trackInitiateCheckout } from '@/components/meta-pixel'
 import { Check, Zap, Shield, Clock, Star, Crown, Flame } from 'lucide-react'
 
-const DEADLINE = new Date('2026-05-20T03:00:00Z') // 19/05 23:59 BRT
+function getNextSundayDeadline() {
+  const now = new Date()
+  const deadline = new Date(now)
+  const currentDay = now.getDay()
+  const daysToAdd = currentDay === 0 ? 0 : 7 - currentDay
+  deadline.setDate(now.getDate() + daysToAdd)
+  deadline.setHours(23, 59, 59, 999)
+  if (deadline.getTime() <= now.getTime()) {
+    deadline.setDate(deadline.getDate() + 7)
+  }
+  return deadline
+}
 
 function useCountdown() {
   const [t, setT] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   useEffect(() => {
+    const deadline = getNextSundayDeadline()
     const tick = () => {
-      const diff = DEADLINE.getTime() - Date.now()
+      const diff = deadline.getTime() - Date.now()
       if (diff <= 0) { setT({ days: 0, hours: 0, minutes: 0, seconds: 0 }); return }
-      setT({ days: Math.floor(diff/86400000), hours: Math.floor((diff%86400000)/3600000), minutes: Math.floor((diff%3600000)/60000), seconds: Math.floor((diff%60000)/1000) })
+      setT({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000)
+      })
     }
     tick()
     const id = setInterval(tick, 1000)
@@ -770,14 +787,14 @@ function AuroraHero({ onGetStarted }: { onGetStarted: () => void }) {
         className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6 text-zinc-100"
       >
         Conheça o jeito mais rápido de transformar o seu{' '}
-        <span className="text-blue-500">conteúdo em conhecimento.</span>
+        <span className="text-blue-500">conteúdo médico em conhecimento.</span>
       </motion.h1>
 
       <motion.p
         initial="hidden" whileInView="visible" viewport={{ once: true }} variants={blurFade} custom={2}
         className="text-lg md:text-xl text-zinc-400 mb-8 max-w-3xl mx-auto leading-relaxed"
       >
-        Estude com flashcards, quizzes e mapas mentais gerados automaticamente do seu próprio material em segundos!
+        A escolha certa para o estudante de medicina. Gere flashcards, quizzes e mapas mentais do seu próprio material de estudo em segundos!
       </motion.p>
 
       <motion.div
@@ -1170,8 +1187,7 @@ export default function LandingPage() {
         {/* ── Guarantee ── */}
         <GuaranteeSection />
 
-        {/* ── Testimonials (Oculto para Lançamento) ── */}
-        {/*
+        {/* ── Testimonials ── */}
         <section className="bg-zinc-900 py-24 px-6">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl font-bold text-center mb-16 text-zinc-100">Quem usa o Axoniq, aprova.</h2>
@@ -1182,6 +1198,7 @@ export default function LandingPage() {
                   <div className="flex text-amber-500 mb-4">{Array.from({ length: 5 }).map((_, i) => <MaterialIcon key={i} name="star" fill />)}</div>
                   <p className="text-zinc-300 mb-6 italic">{t.text}</p>
                   <div className="flex items-center gap-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img className="w-12 h-12 rounded-full object-cover" alt={t.name} src={t.img} />
                     <div>
                       <div className="font-bold text-zinc-100">{t.name}</div>
@@ -1193,7 +1210,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        */}
 
         {/* ── Plans (Oculto para Lançamento) ── */}
         {/*

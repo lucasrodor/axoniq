@@ -91,7 +91,6 @@ import {
 import useSWR, { mutate } from 'swr'
 import { dashboardFetcher } from '@/lib/dashboard/fetchers'
 import { ListSkeleton, StatSkeleton, CardSkeleton } from '@/components/dashboard/skeleton'
-import { LaunchOfferBanner } from '@/components/dashboard/launch-offer-banner'
 import { SPECIALTIES } from '@/lib/constants/specialties'
 import { SpecialtySelector } from '@/components/ui/specialty-selector'
 import { AnkiImportModal } from '@/components/dashboard/anki-import-modal'
@@ -637,8 +636,7 @@ function DashboardPageContent() {
         <NeuronBackground />
         <div className="relative z-10 space-y-8 p-3 sm:p-4 md:p-8 max-w-7xl mx-auto">
         
-        {/* Launch Countdown Banner */}
-        <LaunchOfferBanner isLaunchWeek={isLaunchWeek} />
+
 
         {/* Header - Unified with Bento Search */}
         <header className="flex flex-col md:flex-row md:items-start justify-between pb-4 md:pb-8 gap-3 px-1 sm:px-0">
