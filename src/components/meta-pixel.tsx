@@ -3,6 +3,7 @@
 import Script from 'next/script'
 import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
+import { logPixelEvent } from '@/app/actions/pixel-actions'
 
 // Declarando globalmente para o TypeScript não reclamar do window.fbq
 declare global {
@@ -25,12 +26,18 @@ export function MetaPixel() {
 
   // Toda vez que a rota mudar em um ambiente público, rastreamos um PageView
   useEffect(() => {
-    if (!isInternalRoute && typeof window !== 'undefined' && window.fbq) {
-      window.fbq('track', 'PageView')
+    if (!isInternalRoute && typeof window !== 'undefined') {
+      if (window.fbq) {
+        window.fbq('track', 'PageView')
+      }
+      logPixelEvent('PageView').catch(() => {})
       
       // Páginas importantes disparam ViewContent
       if (pathname === '/' || pathname === '/pricing' || pathname?.startsWith('/landing')) {
-        window.fbq('track', 'ViewContent')
+        if (window.fbq) {
+          window.fbq('track', 'ViewContent')
+        }
+        logPixelEvent('ViewContent').catch(() => {})
       }
     }
   }, [pathname, isInternalRoute])
@@ -66,18 +73,21 @@ export const trackViewContent = () => {
   if (typeof window !== 'undefined' && window.fbq) {
     window.fbq('track', 'ViewContent')
   }
+  logPixelEvent('ViewContent').catch(() => {})
 }
 
 export const trackLead = () => {
   if (typeof window !== 'undefined' && window.fbq) {
     window.fbq('track', 'Lead')
   }
+  logPixelEvent('Lead').catch(() => {})
 }
 
 export const trackCompleteRegistration = () => {
   if (typeof window !== 'undefined' && window.fbq) {
     window.fbq('track', 'CompleteRegistration')
   }
+  logPixelEvent('CompleteRegistration').catch(() => {})
 }
 
 export const trackInitiateCheckout = (value?: number, currency: string = 'BRL') => {
@@ -88,11 +98,13 @@ export const trackInitiateCheckout = (value?: number, currency: string = 'BRL') 
       window.fbq('track', 'InitiateCheckout')
     }
   }
+  logPixelEvent('InitiateCheckout').catch(() => {})
 }
 
 export const trackPurchase = (value: number, currency: string = 'BRL') => {
   if (typeof window !== 'undefined' && window.fbq) {
     window.fbq('track', 'Purchase', { value, currency })
   }
+  logPixelEvent('Purchase').catch(() => {})
 }
 

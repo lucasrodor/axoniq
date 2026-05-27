@@ -5,6 +5,7 @@ import { getAdminMetrics, deleteWaitlistLead, getWaitlistLeads } from '@/app/act
 import { createAlphaUser } from '@/app/actions/admin-actions'
 import { getUsersList, toggleWhitelist } from '@/app/actions/admin-user-actions'
 import { getMonetizationStatus, toggleMonetization } from '@/app/actions/system-actions'
+import { getPixelMetrics } from '@/app/actions/pixel-actions'
 import {
   Users,
   UserPlus,
@@ -19,12 +20,17 @@ import {
   ChevronRight,
   Search,
   Zap,
-  ArrowUpRight
+  ArrowUpRight,
+  Activity,
+  Calendar,
+  ChevronDown
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { CustomSelect } from '@/components/ui/select'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 
 interface AdminStats {
   totalUsers: number
@@ -76,6 +82,22 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [isMonetizationActive, setIsMonetizationActive] = useState(true)
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
+  
+  const periodOptions = [
+    { value: 'all', label: 'Todo o Período' },
+    { value: 'today', label: 'Hoje' },
+    { value: 'yesterday', label: 'Ontem' },
+    { value: '7days', label: 'Últimos 7 dias' },
+    { value: '30days', label: 'Últimos 30 dias' },
+    { value: 'this_month', label: 'Este Mês' },
+    { value: 'custom', label: 'Personalizado' },
+  ]
+
+  const [pixelMetrics, setPixelMetrics] = useState<any[]>([])
+  const [pixelLoading, setPixelLoading] = useState(false)
+  const [pixelPeriod, setPixelPeriod] = useState<'all' | 'today' | 'yesterday' | '7days' | '30days' | 'this_month' | 'custom'>('all')
+  const [pixelStartDate, setPixelStartDate] = useState('')
+  const [pixelEndDate, setPixelEndDate] = useState('')
 
   async function loadMetrics() {
     setLoading(true)
@@ -86,6 +108,15 @@ export default function AdminDashboard() {
       toast(result.error || 'Não foi possível buscar as métricas.', 'error')
     }
     setLoading(false)
+  }
+
+  async function loadPixelMetrics() {
+    setPixelLoading(true)
+    const result = await getPixelMetrics()
+    if (result.success && result.data) {
+      setPixelMetrics(result.data)
+    }
+    setPixelLoading(false)
   }
 
   async function loadWaitlist(page: number) {
@@ -118,6 +149,7 @@ export default function AdminDashboard() {
     loadWaitlist(1)
     loadUsers(1)
     loadSettings()
+    loadPixelMetrics()
   }, [])
 
   useEffect(() => {
@@ -173,6 +205,71 @@ export default function AdminDashboard() {
       }
     })
   }
+
+  // Group pixel metrics by date
+  const groupedMetrics = (pixelMetrics || []).reduce((acc: any, item: any) => {
+    const dateStr = item.event_date
+    if (!acc[dateStr]) {
+      acc[dateStr] = {}
+    }
+    acc[dateStr][item.event_name] = item.count
+    return acc
+  }, {})
+
+  const sortedDates = Object.keys(groupedMetrics).sort((a, b) => b.localeCompare(a))
+
+  // Filter dates based on active period
+  const getFilteredDates = () => {
+    const todayObj = new Date()
+    const formatDate = (date: Date) => {
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      const d = String(date.getDate()).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    }
+    
+    const todayStr = formatDate(todayObj)
+    
+    const yesterdayObj = new Date()
+    yesterdayObj.setDate(todayObj.getDate() - 1)
+    const yesterdayStr = formatDate(yesterdayObj)
+    
+    const sevenDaysAgoObj = new Date()
+    sevenDaysAgoObj.setDate(todayObj.getDate() - 7)
+    const sevenDaysAgoStr = formatDate(sevenDaysAgoObj)
+    
+    const thirtyDaysAgoObj = new Date()
+    thirtyDaysAgoObj.setDate(todayObj.getDate() - 30)
+    const thirtyDaysAgoStr = formatDate(thirtyDaysAgoObj)
+    
+    const startOfMonthStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-01`
+
+    return sortedDates.filter((dateStr) => {
+      if (pixelPeriod === 'today') return dateStr === todayStr
+      if (pixelPeriod === 'yesterday') return dateStr === yesterdayStr
+      if (pixelPeriod === '7days') return dateStr >= sevenDaysAgoStr && dateStr <= todayStr
+      if (pixelPeriod === '30days') return dateStr >= thirtyDaysAgoStr && dateStr <= todayStr
+      if (pixelPeriod === 'this_month') return dateStr >= startOfMonthStr && dateStr <= todayStr
+      if (pixelPeriod === 'custom') {
+        let matches = true
+        if (pixelStartDate) matches = matches && dateStr >= pixelStartDate
+        if (pixelEndDate) matches = matches && dateStr <= pixelEndDate
+        return matches
+      }
+      return true // 'all'
+    })
+  }
+
+  const filteredDates = getFilteredDates()
+
+  // Compute totals for the filtered dates
+  const totals = filteredDates.reduce((acc: any, dateStr: string) => {
+    const dateMetrics = groupedMetrics[dateStr]
+    Object.keys(dateMetrics).forEach((eventName) => {
+      acc[eventName] = (acc[eventName] || 0) + dateMetrics[eventName]
+    })
+    return acc
+  }, { PageView: 0, ViewContent: 0, Lead: 0, CompleteRegistration: 0, InitiateCheckout: 0, Purchase: 0 })
 
   const filteredWaitlist = (waitlist || []).filter((lead: any) => 
     lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -299,13 +396,15 @@ export default function AdminDashboard() {
               loadMetrics()
               loadWaitlist(1)
               loadUsers(1)
+              loadSettings()
+              loadPixelMetrics()
               setWaitlistPage(1)
               setUsersPage(1)
             }}
-            disabled={loading || waitlistLoading || usersLoading}
+            disabled={loading || waitlistLoading || usersLoading || pixelLoading}
             className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all disabled:opacity-50"
           >
-            <RefreshCcw className={`w-5 h-5 ${loading || waitlistLoading || usersLoading ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`w-5 h-5 ${loading || waitlistLoading || usersLoading || pixelLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </header>
@@ -453,6 +552,173 @@ export default function AdminDashboard() {
                   Próximo
                 </button>
               </div>
+            </div>
+          </section>
+
+          {/* Pixel Events Metrics Section */}
+          <section className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-3xl relative z-20">
+            <div className="p-8 border-b border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-500" /> Rastreamento do Pixel (Meta)
+                </h2>
+                <p className="text-sm text-zinc-500 mt-1">
+                  Quantidade de eventos do Pixel disparados e registrados no banco de dados.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Period Selector */}
+                <div className="w-56">
+                  <CustomSelect
+                    value={pixelPeriod}
+                    onChange={(val) => setPixelPeriod(val as any)}
+                    options={periodOptions}
+                    icon={<Calendar className="w-4 h-4" />}
+                  />
+                </div>
+
+                {/* Custom Dates Inputs */}
+                {pixelPeriod === 'custom' && (
+                  <div className="w-72 animate-in fade-in slide-in-from-right-1 duration-200">
+                    <DateRangePicker
+                      startDate={pixelStartDate}
+                      endDate={pixelEndDate}
+                      onChange={(start, end) => {
+                        setPixelStartDate(start)
+                        setPixelEndDate(end)
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-8">
+              {pixelLoading ? (
+                <div className="py-12 flex justify-center items-center">
+                  <RefreshCcw className="w-6 h-6 text-blue-500 animate-spin" />
+                </div>
+              ) : sortedDates.length === 0 ? (
+                <div className="py-12 text-center text-zinc-500">
+                  Nenhum evento do Pixel registrado até o momento.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Summary of totals for selected period */}
+                  {filteredDates.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 mb-8 bg-zinc-950/20 p-6 rounded-2xl border border-zinc-800/40">
+                      {[
+                        { label: 'PageViews', value: totals.PageView || 0, color: 'text-zinc-400' },
+                        { label: 'ViewContents', value: totals.ViewContent || 0, color: 'text-zinc-400' },
+                        { label: 'Leads', value: totals.Lead || 0, color: 'text-blue-400' },
+                        { label: 'Completes', value: totals.CompleteRegistration || 0, color: 'text-purple-400' },
+                        { label: 'InitCheckouts', value: totals.InitiateCheckout || 0, color: 'text-amber-400' },
+                        { label: 'Purchases', value: totals.Purchase || 0, color: 'text-emerald-400' },
+                      ].map((t) => (
+                        <div key={t.label} className="text-center md:text-left bg-zinc-900/10 p-3 rounded-xl border border-zinc-800/20">
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">{t.label}</span>
+                          <span className={cn("text-2xl font-black block mt-1", t.color)}>{t.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {filteredDates.length === 0 ? (
+                    <div className="py-12 text-center text-zinc-500">
+                      Nenhum evento do Pixel encontrado para o filtro selecionado.
+                    </div>
+                  ) : (
+                    <>
+                      {/* Grid Header */}
+                      <div className="hidden md:grid grid-cols-7 gap-4 px-4 py-2 text-xs font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950/30 rounded-xl">
+                        <div>Data</div>
+                        <div className="text-center">PageView</div>
+                        <div className="text-center">ViewContent</div>
+                        <div className="text-center">Lead</div>
+                        <div className="text-center">CompleteReg</div>
+                        <div className="text-center">InitCheckout</div>
+                        <div className="text-center">Purchase</div>
+                      </div>
+
+                      {/* List of dates */}
+                      {filteredDates.map((dateStr) => {
+                        const dateMetrics = groupedMetrics[dateStr]
+                        const parts = dateStr.split('-')
+                        const formattedDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr
+
+                        return (
+                          <div key={dateStr} className="grid grid-cols-1 md:grid-cols-7 gap-4 items-center p-4 bg-zinc-900/40 border border-zinc-800/50 hover:border-zinc-700/50 rounded-2xl transition-all">
+                            <div className="flex items-center gap-2 font-bold text-zinc-300">
+                              <Calendar className="w-4 h-4 text-zinc-500 md:hidden" />
+                              {formattedDate}
+                            </div>
+                            
+                            {/* PageView */}
+                            <div className="flex justify-between md:justify-center items-center gap-2">
+                              <span className="text-xs text-zinc-500 md:hidden">PageView:</span>
+                              <span className="px-2.5 py-1 bg-zinc-800 rounded-lg text-xs font-semibold text-zinc-300">
+                                {dateMetrics['PageView'] || 0}
+                              </span>
+                            </div>
+
+                            {/* ViewContent */}
+                            <div className="flex justify-between md:justify-center items-center gap-2">
+                              <span className="text-xs text-zinc-500 md:hidden">ViewContent:</span>
+                              <span className="px-2.5 py-1 bg-zinc-800 rounded-lg text-xs font-semibold text-zinc-300">
+                                {dateMetrics['ViewContent'] || 0}
+                              </span>
+                            </div>
+
+                            {/* Lead */}
+                            <div className="flex justify-between md:justify-center items-center gap-2">
+                              <span className="text-xs text-zinc-500 md:hidden">Lead:</span>
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-lg text-xs font-semibold",
+                                dateMetrics['Lead'] ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-zinc-800 text-zinc-500"
+                              )}>
+                                {dateMetrics['Lead'] || 0}
+                              </span>
+                            </div>
+
+                            {/* CompleteRegistration */}
+                            <div className="flex justify-between md:justify-center items-center gap-2">
+                              <span className="text-xs text-zinc-500 md:hidden">CompleteRegistration:</span>
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-lg text-xs font-semibold",
+                                dateMetrics['CompleteRegistration'] ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-zinc-800 text-zinc-500"
+                              )}>
+                                {dateMetrics['CompleteRegistration'] || 0}
+                              </span>
+                            </div>
+
+                            {/* InitiateCheckout */}
+                            <div className="flex justify-between md:justify-center items-center gap-2">
+                              <span className="text-xs text-zinc-500 md:hidden">InitiateCheckout:</span>
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-lg text-xs font-semibold",
+                                dateMetrics['InitiateCheckout'] ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-zinc-800 text-zinc-500"
+                              )}>
+                                {dateMetrics['InitiateCheckout'] || 0}
+                              </span>
+                            </div>
+
+                            {/* Purchase */}
+                            <div className="flex justify-between md:justify-center items-center gap-2">
+                              <span className="text-xs text-zinc-500 md:hidden">Purchase:</span>
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-lg text-xs font-bold",
+                                dateMetrics['Purchase'] ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 animate-pulse" : "bg-zinc-800 text-zinc-500"
+                              )}>
+                                {dateMetrics['Purchase'] || 0}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 
