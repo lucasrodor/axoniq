@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { trackPurchase } from '@/components/meta-pixel'
 
 function SuccessContent() {
   const searchParams = useSearchParams()
@@ -26,6 +27,28 @@ function SuccessContent() {
       setIsLoggedIn(!!session)
     })
   }, [])
+
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id')
+    const plan = searchParams.get('plan')
+    
+    // Como a Kirvano já dispara o evento Purchase automaticamente no checkout deles,
+    // nós disparamos aqui apenas se a compra for via Stripe (identificada pela presença do session_id)
+    if (sessionId) {
+      const sessionKey = `fb_tracked_purchase_${sessionId}`
+      if (typeof window !== 'undefined' && !sessionStorage.getItem(sessionKey)) {
+        const PLAN_VALUES: Record<string, number> = {
+          monthly: 29.90,
+          semiannual: 131.90,
+          annual: 195.00,
+        }
+
+        const value = (plan && PLAN_VALUES[plan]) || 29.90
+        trackPurchase(value, 'BRL')
+        sessionStorage.setItem(sessionKey, 'true')
+      }
+    }
+  }, [searchParams])
 
   const handleSetPassword = async () => {
     if (password.length < 6) {

@@ -73,7 +73,7 @@ export async function createCheckoutSession(planType: 'monthly' | 'semiannual' |
         trial_period_days: 7,
       },
       allow_promotion_codes: true,
-      success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}${!user ? '&new_user=true' : ''}`,
+      success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&plan=${planType}${!user ? '&new_user=true' : ''}`,
       cancel_url: `${siteUrl}/teste-planos`,
       metadata: {
         supabase_user_id: user?.id || '',

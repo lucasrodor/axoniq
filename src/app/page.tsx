@@ -658,21 +658,21 @@ function FlashcardDemo({ onGetStarted }: { onGetStarted: () => void }) {
 const testimonials = [
   {
     text: '"O Axoniq me economiza pelo menos 3 horas de estudo por dia. O que eu levava uma tarde inteira pra resumir no Anki, ele faz em segundos."',
-    name: 'Dra. Mariana Silva',
-    role: 'Residente de Clínica Médica',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAR1wpC5APD4jR6HIl43n6MFp92-1mCuuBNJZb-yRMKB5N-XzechW9KLMNBUjB4z2FgavnNecVU8WQZBgdXUV01-hYliXvMaxkabKXrb2EZfo0YyongCSWOR1y2bFIESghN0pRSPWn2qXisWFU0VRl-XbArjZO7IDkxOvhxLAfpFNfo1uYPSE_Eqa4YVB_0-ffxNyk2DfU14c1qzifEFGNNdFRH2lVQJG5WR6tU7L9AC091dIh8foEKC_ZTPA2ZWFV_03hMPqWoYtav',
+    name: 'Mariana Silva',
+    role: 'Estudante do 8º Semestre',
+    initials: 'MS',
   },
   {
     text: '"A IA para mapas mentais é surreal. Ela consegue conectar conceitos de farmacologia com fisiopatologia de um jeito que eu nunca vi."',
     name: 'Lucas Oliveira',
     role: 'Interno do 6º Ano',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA99IZ6n1b2oZI3Zgd2yD-glKYlhy7Me978-uCY0bj62mIuijFdWcs0FCkKVHn_DNyMjXvlVKrb_pGKaX5W6aFN2flPzYOXBacXkx7WueC4GNJS8qk914x9XneKt1dmiz_NWlZUICWbq-MFYRiEYbvXvPlAS3P41MI6Hdl-O-6rLPOEW60B4ozYCTLgnEm-_fTAjFVbKzntO5827rCc9TOAMC91eIdwXSfWifJmF6Z0K9IeXjV7TyGjIYDyJH4CFeF6NfGudc-2aNNq',
+    initials: 'LO',
   },
   {
     text: '"Passei na residência dos meus sonhos usando o Axoniq para revisar temas densos como nefrologia e infecto. Melhor investimento."',
-    name: 'Dra. Beatriz Costa',
-    role: 'Aprovada USP-SP',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBYXXAqq-RerWWtvlIfcFZWPT5RbLfEZEapCN9jSdXFOVncEcuPVMDNf8uR0LsAe1zaAJSinelQHXoqMnCP8_3_emPNPr59W9YLb7QbVz5o813_VB4ehWo-ID9uHQmhcBG3CdmJU0m7WHC0EtPG6XabPpSsUmj04wVbE9R3slLBEGTyZHAsC3QUdVKvVnoe0FmhXu6w7ByPoAlOhmnzBXYOG95SW0z5ZbV4Izfm1cnwl922V2FadIMOdS2QAMiLtZpLgT_O_azm2rpR',
+    name: 'Beatriz Costa',
+    role: 'Estudante do 12º Semestre',
+    initials: 'BC',
   },
 ]
 
@@ -1198,8 +1198,9 @@ export default function LandingPage() {
                   <div className="flex text-amber-500 mb-4">{Array.from({ length: 5 }).map((_, i) => <MaterialIcon key={i} name="star" fill />)}</div>
                   <p className="text-zinc-300 mb-6 italic">{t.text}</p>
                   <div className="flex items-center gap-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className="w-12 h-12 rounded-full object-cover" alt={t.name} src={t.img} />
+                    <div className="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-black text-sm shrink-0 uppercase tracking-wider">
+                      {t.initials}
+                    </div>
                     <div>
                       <div className="font-bold text-zinc-100">{t.name}</div>
                       <div className="text-xs text-zinc-500">{t.role}</div>

@@ -55,7 +55,6 @@ export function MetaPixel() {
           'https://connect.facebook.net/en_US/fbevents.js');
           
           fbq('init', '${PIXEL_ID}');
-          fbq('track', 'PageView');
         `,
       }}
     />
