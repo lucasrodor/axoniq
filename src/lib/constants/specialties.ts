@@ -64,5 +64,6 @@ export const SPECIALTIES = [
   "Medicina Intensiva (UTI)",
   "Medicina de Família e Comunidade",
   "Saúde Mental",
+  "Metabolismo",
   "Outros"
 ].sort((a, b) => a === "Outros" ? 1 : b === "Outros" ? -1 : a.localeCompare(b))
