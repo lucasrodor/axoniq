@@ -69,6 +69,30 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled
 }
 
+function fixCasing(text: string): string {
+  if (!text) return ''
+  
+  // Check if text is mostly uppercase
+  const letters = text.replace(/[^a-zA-ZáéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ]/g, '')
+  if (letters.length === 0) return text
+  
+  const uppercaseCount = [...letters].filter(c => c === c.toUpperCase()).length
+  const isMostlyUppercase = uppercaseCount / letters.length > 0.8
+  
+  if (!isMostlyUppercase) return text
+  
+  // Convert mostly uppercase text to sentence case
+  return text
+    .toLowerCase()
+    .replace(/(^\s*|[.!?]\s+)([a-záéíóúâêîôûãõç])/g, (match, separator, letter) => separator + letter.toUpperCase())
+    // Capitalize specific medical/scientific terms or letters representing options
+    .replace(/\b([a-e])\)/g, (match, letter) => letter.toUpperCase() + ')')
+    .replace(/\balternativa\s+([a-e])\b/gi, (match, letter) => `alternativa ${letter.toUpperCase()}`)
+    .replace(/\bopção\s+([a-e])\b/gi, (match, letter) => `opção ${letter.toUpperCase()}`)
+    .replace(/\bletra\s+([a-e])\b/gi, (match, letter) => `letra ${letter.toUpperCase()}`)
+    .replace(/\b(av|ic|ieca|bra|sglt2|dps|id|uti|pa|fc|fr|pr|qrs|qt|ekg|ecg|rn|hcg|hiv|tsh|t4|t3|pcr|vhs)\b/gi, (match) => match.toUpperCase())
+}
+
 export default function QuizPage() {
   const params = useParams()
   const router = useRouter()
@@ -905,7 +929,7 @@ export default function QuizPage() {
                     <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2 flex items-center gap-2">
                       <MessageSquare size={12} /> Sua Escolha
                     </p>
-                    <p className="text-sm text-zinc-300 font-medium">{currentQuestion.option_explanations[selectedAnswer]}</p>
+                    <p className="text-sm text-zinc-300 font-medium">{fixCasing(currentQuestion.option_explanations[selectedAnswer])}</p>
                   </div>
                 )}
 
@@ -914,7 +938,7 @@ export default function QuizPage() {
                     <BarChart3 size={12} /> Comentário Técnico
                   </p>
                   <div className="text-zinc-300 text-sm leading-relaxed font-medium">
-                    <MarkdownDisplay content={currentQuestion.explanation?.replace(/(?:\n|^)\s*([a-eA-E]\))/g, '\n\n$1').trim()} />
+                    <MarkdownDisplay content={fixCasing(currentQuestion.explanation?.replace(/(?:\n|^)\s*([a-eA-E]\))/g, '\n\n$1').trim())} />
                   </div>
                 </div>
               </motion.div>
