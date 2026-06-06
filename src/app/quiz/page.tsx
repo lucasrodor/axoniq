@@ -18,6 +18,7 @@ import {
   Sparkles,
   Star,
   Target,
+  ChevronDown,
 } from 'lucide-react'
 import { trackInitiateCheckout, trackLead } from '@/components/meta-pixel'
 import { cn } from '@/lib/utils'
@@ -48,34 +49,33 @@ const STATE_KEY = 'axoniq_quiz_state'
 
 const testimonials = [
   {
-    quote: 'Em 2 semanas usando o AxonIQ parei de fazer flashcard no Anki. Economizo umas 6h por semana.',
-    name: 'Joao',
-    detail: '4o semestre',
+    quote: 'Em 2 semanas usando o AxonIQ parei de fazer flashcard no Anki e agora economizo umas 6h por semana.',
+    name: 'Daniel',
+    detail: '4º semestre - UnB',
   },
   {
-    quote: 'Cheguei na P3 lembrando do conteudo da P1, coisa que nunca tinha acontecido.',
+    quote: 'É muito facil, eu subo o PDF das minhas anotações e já sai a revisao pronta. Meu estudo ficou muito mais produtivo.',
+    name: 'Lucas',
+    detail: '1º semestre - UniCEUB',
+  },
+  {
+    quote: 'Cheguei na P3 lembrando do conteudo da P1, coisa que nunca tinha acontecido antes.',
     name: 'Marina',
-    detail: '3o semestre',
-  },
-  {
-    quote: 'Subo o PDF e o deck ja sai com Cloze, explicacao e revisao pronta. Meu estudo ficou muito mais leve.',
-    name: 'Rafael',
-    detail: 'ciclo clinico',
+    detail: '3º semestre - UFRJ',
   },
 ]
 
 const steps: FunnelStep[] = [
   { kind: 'intro', id: 'intro' },
   { kind: 'social', id: 'social' },
-  { kind: 'lead', id: 'lead' },
   {
     kind: 'question',
     id: 'course_phase',
     question: 'Em qual fase voce ta no curso?',
     options: [
-      '1o ao 4o semestre (ciclo basico)',
-      '5o ao 8o semestre (ciclo clinico)',
-      '9o ao 12o semestre (internato)',
+      '1º ao 4º semestre (ciclo basico)',
+      '5º ao 8º semestre (ciclo clinico)',
+      '9º ao 12º semestre (internato)',
       'Me preparando pra residencia',
       'Outro',
     ],
@@ -92,12 +92,13 @@ const steps: FunnelStep[] = [
       'Honestamente, nao tenho metodo nenhum',
     ],
   },
+  { kind: 'lead', id: 'lead' },
   {
     kind: 'loading',
     id: 'loading-profile',
     title: 'Identificando seu perfil de estudo...',
-    subtitle: 'Cruzando rotina, metodo atual e pontos de atrito.',
-    duration: 1500,
+    subtitle: '',
+    duration: 4000,
   },
   { kind: 'checkpoint', id: 'checkpoint' },
   {
@@ -384,7 +385,7 @@ function ChoiceButton({ option, onClick }: { option: string; onClick: () => void
   )
 }
 
-function StepCard({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
+function StepCard({ children, wide = false, extraPadding = false }: { children: React.ReactNode; wide?: boolean; extraPadding?: boolean }) {
   return (
     <motion.section
       key="step-card"
@@ -394,11 +395,51 @@ function StepCard({ children, wide = false }: { children: React.ReactNode; wide?
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
         'mx-auto w-full px-4 pt-22 pb-8 sm:px-6 sm:pt-28 sm:pb-10',
+        extraPadding && 'pb-32 sm:pb-12',
         wide ? 'max-w-6xl' : 'max-w-2xl'
       )}
     >
       {children}
     </motion.section>
+  )
+}
+
+function LoadingStep({ duration, title }: { duration: number; title: string }) {
+  const [step, setStep] = useState(0)
+
+  const messages = [
+    "Cruzando respostas com a Curva de Esquecimento de Ebbinghaus...",
+    "Calculando o seu vazamento de retenção semanal na faculdade...",
+    "Modelando seu padrão de revisões ideais baseadas em Inteligência Artificial...",
+    "Gerando seu Relatório de Diagnóstico Personalizado..."
+  ]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStep((prev) => Math.min(prev + 1, messages.length - 1))
+    }, duration / messages.length)
+
+    return () => clearInterval(interval)
+  }, [duration, messages.length])
+
+  return (
+    <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
+      <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
+        <Loader2 className="h-10 w-10 animate-spin" />
+      </div>
+      <h2 className="mb-3 text-2xl font-black text-zinc-100 sm:text-4xl">{title}</h2>
+      <div className="max-w-md text-zinc-400 h-16 flex items-center justify-center text-sm sm:text-base px-4 font-medium leading-relaxed">
+        {messages[step]}
+      </div>
+      <div className="mt-10 h-2 w-full max-w-sm overflow-hidden rounded-full bg-zinc-800">
+        <motion.div
+          className="h-full rounded-full bg-blue-500"
+          initial={{ width: '8%' }}
+          animate={{ width: '100%' }}
+          transition={{ duration: duration / 1000, ease: 'easeInOut' }}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -409,9 +450,31 @@ export default function QuizPage() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [scaleValue, setScaleValue] = useState(5)
+  const [offerTimerSeconds, setOfferTimerSeconds] = useState(900)
+  const [activeFaqIndex, setActiveFaqIndex] = useState<number | null>(null)
 
   const activeStep = steps[stepIndex]
   const profile = useMemo(() => deriveProfile(answers), [answers])
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const getPersonalizedSubtitle = () => {
+    const phase = answers.course_phase
+    if (phase === '1º ao 4º semestre (ciclo basico)') {
+      return 'Como você completou o diagnóstico e identificamos que está no Ciclo Básico, o AxonIQ vai te ajudar a fixar anatomia, fisiologia e patologia de longo prazo para nunca mais ter que reaprender tudo do zero no ciclo clínico.'
+    }
+    if (phase === '5º ao 8º semestre (ciclo clinico)') {
+      return 'Como você completou o diagnóstico e identificamos que está no Ciclo Clínico, o AxonIQ vai te ajudar a fixar as condutas, diagnósticos e raciocínio clínico diretamente para os seus rounds e ambulatórios.'
+    }
+    if (phase === '9º ao 12º semestre (internato)' || phase === 'Me preparando pra residencia') {
+      return 'Como você completou o diagnóstico e identificamos que está focado em provas e internato, o AxonIQ vai te ajudar a revisar os grandes temas do Enare/provas sem precisar acumular revisões atrasadas no internato.'
+    }
+    return 'Como você completou o diagnóstico e demonstrou compromisso com seus estudos, liberamos os planos com 7 dias gratuitos para testar o AxonIQ completo.'
+  }
 
   const persist = useCallback(async (payload: Record<string, unknown>) => {
     try {
@@ -486,6 +549,14 @@ export default function QuizPage() {
     return () => window.clearTimeout(timeout)
   }, [activeStep, goToStep, stepIndex])
 
+  useEffect(() => {
+    if (activeStep.kind !== 'offer') return
+    const timer = setInterval(() => {
+      setOfferTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [activeStep.kind])
+
   const handleAnswer = (questionKey: string, answer: string | number) => {
     const nextAnswers = { ...answers, [questionKey]: answer }
     const nextStep = stepIndex + 1
@@ -505,11 +576,11 @@ export default function QuizPage() {
 
   const handleLeadSubmit = () => {
     const phoneDigits = lead.phone.replace(/\D/g, '')
-    if (!lead.name.trim() || !lead.email.trim() || phoneDigits.length < 10) return
+    if (!lead.name.trim() || phoneDigits.length < 10) return
 
     const cleanLead = {
       name: lead.name.trim(),
-      email: lead.email.trim(),
+      email: '',
       phone: phoneDigits,
     }
     const nextStep = stepIndex + 1
@@ -567,6 +638,8 @@ export default function QuizPage() {
     setAnswers({})
     setLead({ name: '', email: '', phone: '' })
     setScaleValue(5)
+    setOfferTimerSeconds(900)
+    setActiveFaqIndex(null)
     setStepIndex(0)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -582,13 +655,13 @@ export default function QuizPage() {
               </div>
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-blue-400">
                 <Sparkles className="h-3.5 w-3.5" />
-                Diagnostico em 1 minuto
+                Parabéns por chegar até aqui
               </div>
               <h1 className="mx-auto mb-5 max-w-[22rem] text-[2rem] font-black leading-[1.12] text-zinc-100 sm:max-w-xl sm:text-6xl sm:leading-tight">
-                Descubra como triplicar sua retencao de conteudo na medicina
+                Cansado de estudar 8h por dia e sentir que esquece tudo na semana da prova?
               </h1>
               <p className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-                Veja como estudantes de medicina estao estudando metade do tempo e aprendendo o dobro.
+                Responda a este diagnóstico de 1 minuto e descubra o método de revisão automatizada com inteligência artificial que está salvando as noites de sono dos estudantes de medicina.
               </p>
               <PrimaryButton onClick={() => goToStep(1, 'quiz_started')}>
                 Quero descobrir agora
@@ -601,43 +674,53 @@ export default function QuizPage() {
 
       case 'social':
         return (
-          <StepCard>
-            <div className="mb-8 text-center">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-emerald-400">
-                <Star className="h-3.5 w-3.5" />
-                Alunos usando AxonIQ
+          <>
+            <StepCard extraPadding={true}>
+              <div className="mb-8 text-center">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-emerald-400">
+                  <Star className="h-3.5 w-3.5" />
+                  Alunos usando AxonIQ
+                </div>
+                <h2 className="text-3xl font-black text-zinc-100 sm:text-5xl">Quem usa já sente a diferença em pouco tempo...</h2>
               </div>
-              <h2 className="text-3xl font-black text-zinc-100 sm:text-5xl">O estudo para de depender de forca bruta.</h2>
-            </div>
-            <div className="space-y-4">
-              {testimonials.map((item, index) => (
-                <motion.div
-                  key={item.name}
-                  initial={{ opacity: 0, x: 16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.08 }}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-5"
-                >
-                  <p className="mb-4 text-base font-semibold leading-relaxed text-zinc-200">&quot;{item.quote}&quot;</p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-sm font-black text-blue-400">
-                      {item.name.slice(0, 1)}
+              <div className="space-y-4">
+                {testimonials.map((item, index) => (
+                  <motion.div
+                    key={item.name}
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.08 }}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-5"
+                  >
+                    <p className="mb-4 text-base font-semibold leading-relaxed text-zinc-200">&quot;{item.quote}&quot;</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-sm font-black text-blue-400">
+                        {item.name.slice(0, 1)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-zinc-100">{item.name}</p>
+                        <p className="text-xs font-bold text-zinc-500">{item.detail}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-black text-zinc-100">{item.name}</p>
-                      <p className="text-xs font-bold text-zinc-500">{item.detail}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))}
+              </div>
+              <div className="hidden sm:flex mt-8 justify-center">
+                <PrimaryButton onClick={() => goToStep(2)}>
+                  Continuar
+                  <ArrowRight className="h-5 w-5" />
+                </PrimaryButton>
+              </div>
+            </StepCard>
+            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl p-4 flex justify-center sm:hidden">
+              <div className="w-full max-w-md">
+                <PrimaryButton onClick={() => goToStep(2)}>
+                  Continuar
+                  <ArrowRight className="h-5 w-5" />
+                </PrimaryButton>
+              </div>
             </div>
-            <div className="mt-8 text-center">
-              <PrimaryButton onClick={() => goToStep(2)}>
-                Continuar
-                <ArrowRight className="h-5 w-5" />
-              </PrimaryButton>
-            </div>
-          </StepCard>
+          </>
         )
 
       case 'lead':
@@ -648,7 +731,9 @@ export default function QuizPage() {
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
                   <MessageCircle className="h-6 w-6" />
                 </div>
-                <h2 className="text-2xl font-black text-zinc-100 sm:text-4xl">Pra personalizar seu resultado, me diz seu nome, email e WhatsApp.</h2>
+                <h2 className="text-2xl font-black text-zinc-100 sm:text-4xl">
+                  Para salvar seu progresso e carregar seu perfil de estudo, me diz seu nome e WhatsApp.
+                </h2>
               </div>
               <div className="space-y-4">
                 <label className="block">
@@ -657,16 +742,6 @@ export default function QuizPage() {
                     value={lead.name}
                     onChange={(e) => setLead({ ...lead, name: e.target.value })}
                     placeholder="Seu nome"
-                    className="h-13 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 text-sm font-bold text-zinc-100 outline-none transition focus:border-blue-500/60"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-[10px] font-black uppercase text-zinc-500">Email</span>
-                  <input
-                    value={lead.email}
-                    onChange={(e) => setLead({ ...lead, email: e.target.value })}
-                    placeholder="seu@email.com"
-                    type="email"
                     className="h-13 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 text-sm font-bold text-zinc-100 outline-none transition focus:border-blue-500/60"
                   />
                 </label>
@@ -684,7 +759,7 @@ export default function QuizPage() {
               <div className="mt-7">
                 <PrimaryButton
                   onClick={handleLeadSubmit}
-                  disabled={!lead.name.trim() || !lead.email.trim() || lead.phone.replace(/\D/g, '').length < 10}
+                  disabled={!lead.name.trim() || lead.phone.replace(/\D/g, '').length < 10}
                 >
                   Personalizar meu diagnostico
                   <ArrowRight className="h-5 w-5" />
@@ -785,56 +860,79 @@ export default function QuizPage() {
 
       case 'story':
         return (
-          <StepCard>
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6 sm:p-8">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-amber-400">
-                <Target className="h-3.5 w-3.5" />
-                Caso da Marina
-              </div>
-              <div className="mb-6 flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/10 text-2xl font-black text-blue-400">M</div>
-                <div>
-                  <h2 className="text-3xl font-black text-zinc-100">Esse e o caso da Marina</h2>
-                  <p className="font-bold text-zinc-500">3o semestre de medicina</p>
+          <>
+            <StepCard extraPadding={true}>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6 sm:p-8">
+                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-amber-400">
+                  <Target className="h-3.5 w-3.5" />
+                  Caso da Marina
                 </div>
+                <div className="mb-6 flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/10 text-2xl font-black text-blue-400">M</div>
+                  <div>
+                    <h2 className="text-3xl font-black text-zinc-100">Esse é o caso da Marina</h2>
+                    <p className="font-bold text-zinc-500">3º semestre de medicina</p>
+                  </div>
+                </div>
+                <p className="text-lg font-semibold leading-relaxed text-zinc-300">
+                  Ela tava no 3º semestre, estudava 8h por dia e chegava na prova esquecendo o que tinha visto semanas antes. Em 30 dias usando o AxonIQ, ela cortou as horas de preparacao pela metade e chegou na P2 com o conteudo organizado para revisar.
+                </p>
               </div>
-              <p className="text-lg font-semibold leading-relaxed text-zinc-300">
-                Ela tava no 3o semestre, estudava 8h por dia e chegava na prova esquecendo o que tinha visto semanas antes. Em 30 dias usando o AxonIQ, ela cortou as horas de preparacao pela metade e chegou na P2 com o conteudo organizado para revisar.
-              </p>
-              <div className="mt-8">
+              <div className="hidden sm:flex mt-8 justify-center">
+                <PrimaryButton onClick={() => goToStep(stepIndex + 1)}>
+                  Continuar
+                  <ArrowRight className="h-5 w-5" />
+                </PrimaryButton>
+              </div>
+            </StepCard>
+            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl p-4 flex justify-center sm:hidden">
+              <div className="w-full max-w-md">
                 <PrimaryButton onClick={() => goToStep(stepIndex + 1)}>
                   Continuar
                   <ArrowRight className="h-5 w-5" />
                 </PrimaryButton>
               </div>
             </div>
-          </StepCard>
+          </>
         )
 
       case 'testimonial':
         return (
-          <StepCard>
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6 sm:p-8">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-blue-400">
-                <Star className="h-3.5 w-3.5" />
-                Case de sucesso
-              </div>
-              <blockquote className="mb-6 text-2xl font-black leading-tight text-zinc-100 sm:text-4xl">
-                &quot;Eu fazia flashcard manualmente no Anki, levava 2h pra montar uns 30 cards de uma materia. Com o AxonIQ subo o PDF e em 30s tenho o deck pronto, com Cloze, explicacao e tudo. Mudou completamente meu estudo.&quot;
-              </blockquote>
-              <div className="mb-8 flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 font-black text-emerald-400">@</div>
-                <div>
-                  <p className="font-black text-zinc-100">@aluno</p>
-                  <p className="text-sm font-bold text-zinc-500">AxonIQ em rotina de prova</p>
+          <>
+            <StepCard extraPadding={true}>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6 sm:p-8">
+                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-blue-400">
+                  <Star className="h-3.5 w-3.5" />
+                  Case de sucesso
+                </div>
+                <blockquote className="mb-6 text-xl sm:text-2xl font-semibold leading-relaxed text-zinc-200 italic">
+                  &quot;Desde o cursinho eu já sabia da importância dos flashcards mas não conseguia usar porque eu gastava mais tempo fazendo do que estudando de verdade.
+                  Agora com o AxonIQ subo meu conteúdo e em 30s tenho o deck pronto e ainda posso fazer questões. Mudou completamente meu estudo.&quot;
+                </blockquote>
+                <div className="mb-8 flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 font-black text-emerald-400">@</div>
+                  <div>
+                    <p className="font-black text-zinc-100">Lucas Rodor</p>
+                    <p className="text-sm font-bold text-zinc-500">1º Semestre de Medicina</p>
+                  </div>
                 </div>
               </div>
-              <PrimaryButton onClick={() => goToStep(stepIndex + 1)}>
-                Ver meu diagnostico
-                <ArrowRight className="h-5 w-5" />
-              </PrimaryButton>
+              <div className="hidden sm:flex mt-8 justify-center">
+                <PrimaryButton onClick={() => goToStep(stepIndex + 1)}>
+                  Ver meu diagnostico
+                  <ArrowRight className="h-5 w-5" />
+                </PrimaryButton>
+              </div>
+            </StepCard>
+            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl p-4 flex justify-center sm:hidden">
+              <div className="w-full max-w-md">
+                <PrimaryButton onClick={() => goToStep(stepIndex + 1)}>
+                  Ver meu diagnostico
+                  <ArrowRight className="h-5 w-5" />
+                </PrimaryButton>
+              </div>
             </div>
-          </StepCard>
+          </>
         )
 
       case 'preview': {
@@ -842,137 +940,345 @@ export default function QuizPage() {
         const phase = answers.course_phase || 'sua fase atual'
         const time = answers.weekly_time_lost || 'tempo relevante'
         return (
-          <StepCard>
-            <div className="rounded-2xl border border-blue-500/25 bg-zinc-950/80 p-6 shadow-2xl shadow-blue-500/10 sm:p-8">
-              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-                <Check className="h-8 w-8" />
+          <>
+            <StepCard extraPadding={true}>
+              <div className="rounded-2xl border border-blue-500/25 bg-zinc-950/80 p-6 shadow-2xl shadow-blue-500/10 sm:p-8">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+                  <Check className="h-8 w-8" />
+                </div>
+                <h2 className="mb-4 text-3xl font-black leading-tight text-zinc-100 sm:text-5xl">
+                  Pronto, {name}.
+                </h2>
+                <p className="mb-5 text-lg font-semibold leading-relaxed text-zinc-300">
+                  Com base nas suas respostas, identificamos que voce e o perfil ideal pro AxonIQ.
+                </p>
+                <p className="mb-7 text-zinc-400 leading-relaxed">
+                  Voce ta no <strong className="text-zinc-100">{phase}</strong>, gasta <strong className="text-zinc-100">{time}</strong> organizando material e quer recuperar tempo + reter mais. Exatamente o problema que o AxonIQ resolve.
+                </p>
+                <div className="mb-8 grid gap-3 sm:grid-cols-3">
+                  {['Recuperacao de pelo menos 3h por semana', 'Aumento perceptivel na retencao', 'Sensacao de controle sobre os estudos'].map((item) => (
+                    <div key={item} className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
+                      <CheckCircle2 className="mb-3 h-5 w-5 text-emerald-400" />
+                      <p className="text-sm font-bold text-zinc-300">{item}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mb-8 text-sm font-bold text-zinc-500">
+                  92% dos alunos com seu perfil que comecaram a usar relataram evolucao perceptivel em 30 dias.
+                </p>
               </div>
-              <h2 className="mb-4 text-3xl font-black leading-tight text-zinc-100 sm:text-5xl">
-                Pronto, {name}.
-              </h2>
-              <p className="mb-5 text-lg font-semibold leading-relaxed text-zinc-300">
-                Com base nas suas respostas, identificamos que voce e o perfil ideal pro AxonIQ.
-              </p>
-              <p className="mb-7 text-zinc-400 leading-relaxed">
-                Voce ta no <strong className="text-zinc-100">{phase}</strong>, gasta <strong className="text-zinc-100">{time}</strong> organizando material e quer recuperar tempo + reter mais. Exatamente o problema que o AxonIQ resolve.
-              </p>
-              <div className="mb-8 grid gap-3 sm:grid-cols-3">
-                {['Recuperacao de pelo menos 3h por semana', 'Aumento perceptivel na retencao', 'Sensacao de controle sobre os estudos'].map((item) => (
-                  <div key={item} className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
-                    <CheckCircle2 className="mb-3 h-5 w-5 text-emerald-400" />
-                    <p className="text-sm font-bold text-zinc-300">{item}</p>
-                  </div>
-                ))}
+              <div className="hidden sm:flex mt-8 justify-center">
+                <PrimaryButton
+                  onClick={() => {
+                    persist({ currentStep: stepIndex + 1, resultProfile: profile, completed: true, event: 'offer_viewed' })
+                    goToStep(stepIndex + 1, 'offer_viewed')
+                  }}
+                >
+                  Veja o que separamos pra voce
+                  <ArrowRight className="h-5 w-5" />
+                </PrimaryButton>
               </div>
-              <p className="mb-8 text-sm font-bold text-zinc-500">
-                92% dos alunos com seu perfil que comecaram a usar relataram evolucao perceptivel em 30 dias.
-              </p>
-              <PrimaryButton
-                onClick={() => {
-                  persist({ currentStep: stepIndex + 1, resultProfile: profile, completed: true, event: 'offer_viewed' })
-                  goToStep(stepIndex + 1, 'offer_viewed')
-                }}
-              >
-                Veja o que separamos pra voce
-                <ArrowRight className="h-5 w-5" />
-              </PrimaryButton>
+            </StepCard>
+            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl p-4 flex justify-center sm:hidden">
+              <div className="w-full max-w-md">
+                <PrimaryButton
+                  onClick={() => {
+                    persist({ currentStep: stepIndex + 1, resultProfile: profile, completed: true, event: 'offer_viewed' })
+                    goToStep(stepIndex + 1, 'offer_viewed')
+                  }}
+                >
+                  Veja o que separamos pra voce
+                  <ArrowRight className="h-5 w-5" />
+                </PrimaryButton>
+              </div>
             </div>
-          </StepCard>
+          </>
         )
       }
 
       case 'offer':
         return (
           <StepCard wide>
-            <div className="mb-10 text-center">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-amber-400">
-                <Flame className="h-3.5 w-3.5" />
-                Condicao especial do quiz
-              </div>
-              <h2 className="mx-auto mb-4 max-w-3xl text-4xl font-black leading-tight text-zinc-100 sm:text-6xl">
-                Parabens, voce esta a um passo de transformar seus estudos.
-              </h2>
-              <p className="mx-auto max-w-2xl text-zinc-400">
-                Como voce completou o diagnostico e demonstrou compromisso com seus estudos, liberamos os planos com 7 dias gratuitos para testar o AxonIQ completo.
-              </p>
-              <div className="mx-auto mt-6 inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 font-mono text-lg font-black text-amber-300">
-                <Clock className="h-5 w-5" />
-                15:00
+            {/* Banner de Urgência Regressiva */}
+            <div className="mb-8 flex justify-center">
+              <div className="inline-flex items-center gap-2.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 font-mono text-sm font-black uppercase text-amber-400">
+                <Clock className="h-4 w-4 animate-pulse" />
+                <span>Condição especial válida por: {formatTimer(offerTimerSeconds)}</span>
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
-              {plans.map((plan, index) => (
-                <motion.div
-                  key={plan.id}
-                  initial={{ opacity: 0, y: 18 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.08 }}
-                  className={cn(
-                    'relative flex flex-col rounded-2xl border p-6 shadow-xl shadow-black/20',
-                    plan.badge === 'Mais Popular'
-                      ? 'border-blue-500/40 bg-gradient-to-b from-zinc-900/95 to-zinc-950 shadow-blue-500/10 lg:-mt-4'
-                      : 'border-zinc-800 bg-zinc-900/70'
-                  )}
-                >
-                  {plan.badge && (
-                    <div className={cn(
-                      'absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-[10px] font-black uppercase',
-                      plan.badgeColor === 'blue' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-black'
-                    )}>
-                      {plan.badge}
-                    </div>
-                  )}
-                  <h3 className="mb-1 mt-2 text-xl font-black text-zinc-100">{plan.name}</h3>
-                  <p className="mb-5 text-sm font-bold text-zinc-500">{plan.desc}</p>
-                  <div className="mb-1 flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-zinc-100">{plan.price}</span>
-                    <span className="text-sm font-bold text-zinc-500">{plan.period}</span>
-                  </div>
-                  {plan.total ? <p className="mb-6 text-xs font-bold text-zinc-500">{plan.total}</p> : <div className="mb-6 h-4" />}
-                  <ul className="mb-6 flex-1 space-y-3">
-                    {baseFeatures.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2.5 text-sm font-semibold text-zinc-300">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
-                          <Check className="h-3 w-3" />
-                        </span>
-                        {feature}
-                      </li>
-                    ))}
-                    {plan.bonus && (
-                      <li className="border-t border-zinc-800 pt-3 text-sm font-black text-blue-400">{plan.bonus}</li>
-                    )}
-                  </ul>
-                  <button
-                    type="button"
-                    onClick={() => handleCheckout(plan)}
-                    disabled={loadingPlan !== null}
+            {/* Cabeçalho */}
+            <div className="mb-12 text-center">
+              <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-500/25 bg-blue-500/10 text-blue-400">
+                <Brain className="h-8 w-8" />
+              </div>
+              <h2 className="mx-auto mb-4 max-w-3xl text-3xl font-black leading-tight text-zinc-100 sm:text-5xl">
+                Parabéns! Você está a um passo de ativar seu acesso ao AxonIQ.
+              </h2>
+              <p className="mx-auto max-w-2xl text-base font-semibold leading-relaxed text-zinc-400">
+                E como você concluiu o diagnóstico e provou estar 100% comprometido com seu futuro médico, preparamos uma condição exclusiva:
+              </p>
+              <div className="mx-auto mt-6 max-w-3xl text-sm text-zinc-300 leading-relaxed bg-zinc-900/40 p-5 rounded-xl border border-zinc-800">
+                {getPersonalizedSubtitle()}
+              </div>
+            </div>
+
+            {/* Planos Grid */}
+            <div className="grid gap-6 md:grid-cols-3">
+              {plans.map((plan, index) => {
+                const isPopular = plan.badge === 'Mais Popular'
+                return (
+                  <motion.div
+                    key={plan.id}
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.08 }}
                     className={cn(
-                      'min-h-13 w-full rounded-xl px-4 py-3 font-black transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60',
-                      plan.badge === 'Mais Popular'
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 hover:bg-blue-500'
-                        : 'bg-zinc-800 text-zinc-100 hover:bg-zinc-700'
+                      'relative flex flex-col rounded-2xl border p-6 transition-all duration-300',
+                      isPopular
+                        ? 'border-blue-500 bg-gradient-to-b from-blue-950/20 to-zinc-950/95 shadow-xl shadow-blue-500/10 lg:-mt-4 lg:mb-4'
+                        : 'border-zinc-800 bg-zinc-900/70 hover:border-zinc-700'
                     )}
                   >
-                    {loadingPlan === plan.id ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Abrindo checkout
+                    {plan.badge && (
+                      <div className={cn(
+                        'absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-wider',
+                        plan.badgeColor === 'blue' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/35' : 'bg-amber-500 text-black'
+                      )}>
+                        {plan.badge}
+                      </div>
+                    )}
+                    
+                    {/* Tag de Teste Grátis */}
+                    <div className="mb-4 flex justify-between items-center">
+                      <h3 className="text-xl font-black text-zinc-100">{plan.name}</h3>
+                      <span className="rounded-md bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black text-emerald-400 border border-emerald-500/10 uppercase">
+                        7 Dias Grátis
                       </span>
-                    ) : plan.cta}
-                  </button>
-                </motion.div>
-              ))}
+                    </div>
+
+                    <p className="mb-5 text-sm font-bold text-zinc-500">{plan.desc}</p>
+                    <div className="mb-1 flex items-baseline gap-1">
+                      <span className="text-4xl font-black text-zinc-100">{plan.price}</span>
+                      <span className="text-sm font-bold text-zinc-500">{plan.period}</span>
+                    </div>
+                    {plan.total ? <p className="mb-6 text-xs font-bold text-zinc-500">{plan.total}</p> : <div className="mb-6 h-4" />}
+                    
+                    <ul className="mb-8 flex-1 space-y-3.5">
+                      {baseFeatures.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2.5 text-sm font-semibold text-zinc-300">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+                            <Check className="h-3 w-3" />
+                          </span>
+                          {feature}
+                        </li>
+                      ))}
+                      {plan.bonus && (
+                        <li className="border-t border-zinc-800/80 pt-3.5 text-sm font-black text-blue-400 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 shrink-0 text-blue-400" />
+                          {plan.bonus}
+                        </li>
+                      )}
+                    </ul>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCheckout(plan)}
+                      disabled={loadingPlan !== null}
+                      className={cn(
+                        'min-h-13 w-full rounded-xl px-4 py-3.5 text-sm font-black transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2 shadow-md',
+                        isPopular
+                          ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-600/20'
+                          : 'bg-zinc-800 text-zinc-100 hover:bg-zinc-700 shadow-black/30'
+                      )}
+                    >
+                      {loadingPlan === plan.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Abrindo checkout...
+                        </>
+                      ) : (
+                        <>
+                          Experimentar 7 Dias Grátis
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  </motion.div>
+                )
+              })}
             </div>
 
-            <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 text-center">
-              <div className="mb-3 flex items-center justify-center gap-2 text-sm font-black text-emerald-400">
-                <ShieldCheck className="h-5 w-5" />
-                7 dias gratuitos + garantia de 7 dias
+            {/* Garantia */}
+            <div className="mx-auto mt-16 max-w-3xl rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-6 sm:p-8">
+              <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
+                <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
+                  <ShieldCheck className="h-9 w-9" />
+                  <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/5 pointer-events-none" />
+                </div>
+                <div>
+                  <h3 className="mb-2 text-lg font-black text-zinc-100">Garantia Incondicional de 15 Dias</h3>
+                  <p className="text-sm leading-relaxed text-zinc-400">
+                    O AxonIQ foi criado para transformar a sua rotina de estudos. Por isso, você conta com risco zero: use e abuse da plataforma completa. Se em até <strong>15 dias</strong> você decidir que o AxonIQ não é para você, basta solicitar o reembolso e devolveremos 100% do seu dinheiro investido. Simples assim.
+                  </p>
+                </div>
               </div>
-              <p className="text-sm leading-relaxed text-zinc-500">
-                Ao escolher um plano, voce concorda em receber comunicacoes do AxonIQ por email e WhatsApp sobre seu diagnostico, acesso e condicoes comerciais.
+            </div>
+
+            {/* Depoimentos de Alunos */}
+            <div className="mt-20">
+              <div className="text-center mb-12">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-blue-400">
+                  <Star className="h-3.5 w-3.5 fill-blue-400/20" />
+                  Comunidade AxonIQ
+                </div>
+                <h3 className="text-3xl font-black text-zinc-100 sm:text-4xl">
+                  Mais de 1.200 estudantes de medicina já confiam no AxonIQ
+                </h3>
+              </div>
+              
+              <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="flex gap-1 mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      ))}
+                    </div>
+                    <p className="text-sm leading-relaxed text-zinc-300 italic mb-6">
+                      &quot;Subir os PDFs dos meus resumos e slides e receber o deck do Anki pronto em segundos parece mágica. O AxonIQ salvou meu semestre. Não perco mais tempo fazendo card manualmente, agora só estudo.&quot;
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-sm font-black text-blue-400">
+                      C
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-zinc-100">Cairo Nascimento</p>
+                      <p className="text-xs font-bold text-zinc-500">@caironascimento · 4º semestre de Medicina</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="flex gap-1 mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      ))}
+                    </div>
+                    <p className="text-sm leading-relaxed text-zinc-300 italic mb-6">
+                      &quot;Eu já usava o Anki, mas migrar meus decks antigos pro AxonIQ foi automático. A interface é maravilhosa, muito superior ao Anki puro, e a IA gera os flashcards das aulas pra mim sem eu precisar quebrar a cabeça.&quot;
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-sm font-black text-blue-400">
+                      F
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-zinc-100">Fabia Dias</p>
+                      <p className="text-xs font-bold text-zinc-500">@fabiadias · 2º semestre de Medicina</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Próximos Passos */}
+            <div className="mt-20 max-w-4xl mx-auto">
+              <h3 className="text-2xl font-black text-zinc-100 text-center mb-10">Próximos passos...</h3>
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="relative rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
+                  <div className="absolute -top-3 left-6 h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-black text-white shadow-md shadow-blue-600/30">
+                    1
+                  </div>
+                  <h4 className="mt-2 mb-2 text-sm font-black text-zinc-200">Escolha seu plano</h4>
+                  <p className="text-xs leading-relaxed text-zinc-400">
+                    Selecione o plano que melhor se adapta à sua rotina acadêmica. A cobrança só ocorrerá após os 7 dias grátis.
+                  </p>
+                </div>
+
+                <div className="relative rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
+                  <div className="absolute -top-3 left-6 h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-black text-white shadow-md shadow-blue-600/30">
+                    2
+                  </div>
+                  <h4 className="mt-2 mb-2 text-sm font-black text-zinc-200">Acesso instantâneo</h4>
+                  <p className="text-xs leading-relaxed text-zinc-400">
+                    Você receberá seu login e senha imediatamente no seu e-mail e WhatsApp para começar na mesma hora.
+                  </p>
+                </div>
+
+                <div className="relative rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
+                  <div className="absolute -top-3 left-6 h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-black text-white shadow-md shadow-blue-600/30">
+                    3
+                  </div>
+                  <h4 className="mt-2 mb-2 text-sm font-black text-zinc-200">Suba seu material</h4>
+                  <p className="text-xs leading-relaxed text-zinc-400">
+                    Faça o upload do seu primeiro PDF ou envie seu deck do Anki e assista à IA estruturar todo o seu cronograma.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dúvidas Comuns (FAQ Accordion) */}
+            <div className="mt-20 max-w-3xl mx-auto">
+              <h3 className="text-2xl font-black text-zinc-100 text-center mb-10">Dúvidas comuns...</h3>
+              <div className="space-y-3">
+                {[
+                  {
+                    q: 'O que é o AxonIQ?',
+                    a: 'O AxonIQ é uma plataforma de estudos inteligente desenvolvida especialmente para estudantes de medicina. Unindo inteligência artificial avançada com a metodologia científica de revisão espaçada, ele automatiza a criação de flashcards, quizzes e mapas mentais direto a partir do seu material ou PDFs de aula.',
+                  },
+                  {
+                    q: 'Como o AxonIQ vai me fazer aprender mais?',
+                    a: 'Em vez de ler resumos passivos repetidamente, o AxonIQ te força a praticar a recuperação ativa da memória no momento ideal. O algoritmo calcula a curva de esquecimento do seu cérebro, identificando o momento exato em que você precisa revisar cada conceito de medicina para fixá-lo na memória de longo prazo.',
+                  },
+                  {
+                    q: 'Já uso o anki, tenho como importar os decks de lá?',
+                    a: 'Sim, totalmente! O AxonIQ possui compatibilidade total com decks do Anki (.apkg). A migração é feita em segundos com poucos cliques: você mantém seus decks antigos intactos e ganha a facilidade da IA para gerar novos cards automaticamente a partir do conteúdo novo da faculdade.',
+                  },
+                ].map((faq, index) => {
+                  const isOpen = activeFaqIndex === index
+                  return (
+                    <div key={index} className="rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden transition-all duration-200">
+                      <button
+                        type="button"
+                        onClick={() => setActiveFaqIndex(isOpen ? null : index)}
+                        className="w-full flex items-center justify-between p-5 text-left text-sm font-black text-zinc-200 hover:text-zinc-100 transition-colors"
+                      >
+                        <span>{faq.q}</span>
+                        <ChevronDown className={cn('h-4 w-4 text-zinc-500 transition-transform duration-200 shrink-0 ml-4', isOpen && 'rotate-180')} />
+                      </button>
+                      
+                      {/* Accordion Content with smooth Tailwind transition */}
+                      <div className={cn(
+                        'transition-all duration-350 ease-in-out overflow-hidden',
+                        isOpen ? 'max-h-60 border-t border-zinc-800 bg-zinc-950/20' : 'max-h-0'
+                      )}>
+                        <p className="p-5 text-xs leading-relaxed text-zinc-400 font-medium">
+                          {faq.a}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Escassez Final */}
+            <div className="mt-20 max-w-3xl mx-auto text-center border-t border-zinc-900 pt-12">
+              <h3 className="text-xl font-black text-zinc-100 mb-4">Não deixe para depois...</h3>
+              <p className="text-sm leading-relaxed text-zinc-400 max-w-xl mx-auto">
+                Ao fechar esta página, você perderá a oportunidade única de receber a condição especial do quiz com os <strong>7 dias de teste grátis</strong> e a <strong>garantia de 15 dias</strong> para experimentar o AxonIQ completo.
               </p>
+              <button
+                type="button"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-black text-white hover:bg-blue-500 shadow-md shadow-blue-600/10 transition active:scale-[0.98]"
+              >
+                Garantir meu teste gratuito
+                <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
           </StepCard>
         )
