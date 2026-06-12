@@ -9,7 +9,6 @@ import {
   Check,
   CheckCircle2,
   Clock,
-  Flame,
   Loader2,
   Lock,
   MessageCircle,
@@ -288,6 +287,30 @@ function firstName(name: string) {
   return name.trim().split(' ')[0] || 'voce'
 }
 
+function readStorage(key: string) {
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value)
+  } catch {
+    // Safari can deny storage in private or restricted contexts.
+  }
+}
+
+function removeStorage(key: string) {
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // Ignore unavailable storage.
+  }
+}
+
 function ScreenShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-[#09090B] text-zinc-100 selection:bg-blue-600 selection:text-white overflow-x-hidden relative">
@@ -478,9 +501,13 @@ export default function QuizPage() {
 
   const persist = useCallback(async (payload: Record<string, unknown>) => {
     try {
-      const storedSessionId = typeof window !== 'undefined' ? window.localStorage.getItem(SESSION_KEY) : null
+      const storedSessionId = typeof window !== 'undefined' ? readStorage(SESSION_KEY) : null
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), 6000)
+
       const res = await fetch('/api/quiz-funnel', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: sessionId || storedSessionId,
@@ -489,18 +516,23 @@ export default function QuizPage() {
           ...payload,
         }),
       })
+      window.clearTimeout(timeout)
       const data = await res.json()
       if (data.sessionId) {
         setSessionId(data.sessionId)
-        window.localStorage.setItem(SESSION_KEY, data.sessionId)
+        writeStorage(SESSION_KEY, data.sessionId)
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.warn('Salvamento do quiz excedeu o tempo limite.')
+        return
+      }
       console.error('Erro ao salvar quiz:', error)
     }
   }, [sessionId])
 
   const saveLocalState = useCallback((nextStep: number, nextAnswers = answers, nextLead = lead) => {
-    window.localStorage.setItem(STATE_KEY, JSON.stringify({
+    writeStorage(STATE_KEY, JSON.stringify({
       stepIndex: nextStep,
       answers: nextAnswers,
       lead: nextLead,
@@ -510,10 +542,10 @@ export default function QuizPage() {
   useEffect(() => {
     document.title = 'Diagnostico de Estudo | AxonIQ'
 
-    const storedSessionId = window.localStorage.getItem(SESSION_KEY)
+    const storedSessionId = readStorage(SESSION_KEY)
     if (storedSessionId) setSessionId(storedSessionId)
 
-    const storedState = window.localStorage.getItem(STATE_KEY)
+    const storedState = readStorage(STATE_KEY)
     if (storedState) {
       try {
         const parsed = JSON.parse(storedState)
@@ -523,12 +555,9 @@ export default function QuizPage() {
           setStepIndex(Math.min(parsed.stepIndex, steps.length - 1))
         }
       } catch {
-        window.localStorage.removeItem(STATE_KEY)
+        removeStorage(STATE_KEY)
       }
     }
-
-    persist({ currentStep: 0, event: 'quiz_view' })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const goToStep = useCallback((nextStep: number, event = 'step_continue') => {
@@ -632,8 +661,8 @@ export default function QuizPage() {
   }
 
   const resetQuiz = () => {
-    window.localStorage.removeItem(SESSION_KEY)
-    window.localStorage.removeItem(STATE_KEY)
+    removeStorage(SESSION_KEY)
+    removeStorage(STATE_KEY)
     setSessionId(null)
     setAnswers({})
     setLead({ name: '', email: '', phone: '' })
@@ -821,21 +850,7 @@ export default function QuizPage() {
       case 'loading':
         return (
           <StepCard>
-            <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
-              <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
-                <Loader2 className="h-10 w-10 animate-spin" />
-              </div>
-              <h2 className="mb-3 text-3xl font-black text-zinc-100 sm:text-5xl">{activeStep.title}</h2>
-              <p className="max-w-md text-zinc-400">{activeStep.subtitle}</p>
-              <div className="mt-10 h-2 w-full max-w-sm overflow-hidden rounded-full bg-zinc-800">
-                <motion.div
-                  className="h-full rounded-full bg-blue-500"
-                  initial={{ width: '8%' }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: activeStep.duration / 1000, ease: 'easeInOut' }}
-                />
-              </div>
-            </div>
+            <LoadingStep duration={activeStep.duration} title={activeStep.title} />
           </StepCard>
         )
 

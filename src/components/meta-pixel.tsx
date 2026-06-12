@@ -8,8 +8,8 @@ import { logPixelEvent } from '@/app/actions/pixel-actions'
 // Declarando globalmente para o TypeScript não reclamar do window.fbq
 declare global {
   interface Window {
-    fbq: any
-    _fbq: any
+    fbq?: (...args: unknown[]) => void
+    _fbq?: (...args: unknown[]) => void
   }
 }
 
@@ -30,14 +30,12 @@ export function MetaPixel() {
       if (window.fbq) {
         window.fbq('track', 'PageView')
       }
-      logPixelEvent('PageView').catch(() => {})
       
       // Páginas importantes disparam ViewContent
       if (pathname === '/' || pathname === '/pricing' || pathname?.startsWith('/landing')) {
         if (window.fbq) {
           window.fbq('track', 'ViewContent')
         }
-        logPixelEvent('ViewContent').catch(() => {})
       }
     }
   }, [pathname, isInternalRoute])
@@ -107,4 +105,3 @@ export const trackPurchase = (value: number, currency: string = 'BRL') => {
   }
   logPixelEvent('Purchase').catch(() => {})
 }
-
